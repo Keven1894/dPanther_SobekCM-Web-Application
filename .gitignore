@@ -155,6 +155,7 @@ $RECYCLE.BIN
 # ====================================
 SobekCM/mySobek/InProcess/
 SobekCM/temp/
+SobekCM/config/
 SobekCM/config/sobekcm.config
 SobekCM/config/user
 SobekCM/design/aggregations/
