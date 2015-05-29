@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using SobekCM.Core.Navigation;
 using SobekCM.Library.HTML;
+using SobekCM.Library.Settings;
 using SobekCM.Tools;
 
 #endregion
@@ -16,10 +18,16 @@ namespace SobekCM.Library.ItemViewer.Viewers
 	/// <see cref="iItemViewer" /> interface. </remarks>
 	public class PDF_ItemViewer : abstractItemViewer
 	{
+	    private bool writeAsIframe;
+
 		/// <summary> Constructor for a new instance of the PDF_ItemViewer class </summary>
 		/// <param name="FileName"> Name of the PDF file to display </param>
-		public PDF_ItemViewer( string FileName )
+        public PDF_ItemViewer(string FileName, Navigation_Object Current_Mode)
 		{
+            // Determine if this should be written as an iFrame
+		    writeAsIframe = ((!String.IsNullOrEmpty(Current_Mode.Browser_Type)) && (Current_Mode.Browser_Type.IndexOf("CHROME") == 0));
+
+		    // Save the filename
 			this.FileName = FileName;
 		}
 
@@ -108,19 +116,30 @@ namespace SobekCM.Library.ItemViewer.Viewers
             Output.WriteLine("\t\t<td id=\"sbkPdf_MainArea\">" );
             Output.WriteLine("<table style=\"width:95%;\"><tr>" );
             Output.WriteLine("<td style=\"text-align:left\"><a id=\"sbkPdf_DownloadFileLink\" href=\"" + displayFileName + "\">Download this PDF</a></td>");
-            Output.WriteLine("<td style=\"text-align:right\"><a id=\"sbkPdf_DownloadAdobeReaderLink\" href=\"http://get.adobe.com/reader/\"><img src=\"" + CurrentMode.Base_URL + "default/images/get_adobe_reader.png\" alt=\"Download Adobe Reader\" /></a></td>");
-            Output.WriteLine("</tr></table>");
-            Output.WriteLine("</td></tr>");
-            Output.WriteLine("\t\t<tr><td style=\"text-align:left;\">");
+            Output.WriteLine("<td style=\"text-align:right\"><a id=\"sbkPdf_DownloadAdobeReaderLink\" href=\"http://get.adobe.com/reader/\"><img src=\"" + Static_Resources.Get_Adobe_Reader_Png + "\" alt=\"Download Adobe Reader\" /></a></td>");
+            Output.WriteLine("</tr></table><br />");
+            //Output.WriteLine("</td></tr>");
+            //Output.WriteLine("\t\t<tr><td>");
 
-			if (CurrentMode.Text_Search.Length > 0)
+			if ( !String.IsNullOrWhiteSpace(CurrentMode.Text_Search))
 			{
 				displayFileName = displayFileName + "#search=\"" + CurrentMode.Text_Search.Replace("\"", "").Replace("+", " ").Replace("-", " ") + "\"";
 			}
 
-            Output.WriteLine("                  <embed id=\"sbkPdf_Container\" src='" + displayFileName + "' href='" + FileName + "'></embed>");
-            
-			// Finish the table
+
+            // Write as an iFrame, or as embed
+            if (writeAsIframe)
+            {
+                Output.WriteLine("                  <iframe id=\"sbkPdf_Container\" src='" + displayFileName + "' href='" + FileName + "' style=\"width:100%;\"></iframe>");
+            }
+            else
+            {
+                //Output.WriteLine("                  <object id=\"sbkPdf_Container\" data='" + displayFileName + "' type=\"application/pdf\" width=\"800px\"></object>");
+
+                Output.WriteLine("                  <embed id=\"sbkPdf_Container\" src='" + displayFileName + "' href='" + FileName + "' style=\"width:100%;\"></embed>");
+            }
+
+            // Finish the table
             Output.WriteLine("\t\t</td>");
             Output.WriteLine("\t\t<!-- END PDF VIEWER OUTPUT -->" );
 
@@ -133,8 +152,8 @@ namespace SobekCM.Library.ItemViewer.Viewers
         /// <param name="Body_Attributes"> List of body attributes to be included </param>
         public override void Add_ViewerSpecific_Body_Attributes(List<Tuple<string, string>> Body_Attributes)
         {
-            Body_Attributes.Add(new Tuple<string, string>("onload", "pdf_set_fullscreen();"));
-            Body_Attributes.Add(new Tuple<string, string>("onresize", "pdf_set_fullscreen();"));
+            Body_Attributes.Add(new Tuple<string, string>("onload", "pdf_set_fullscreen(" + writeAsIframe.ToString().ToLower() + ");"));
+            Body_Attributes.Add(new Tuple<string, string>("onresize", "pdf_set_fullscreen(" + writeAsIframe.ToString().ToLower() + ");"));
         }
 
         /// <summary> Gets the collection of special behaviors which this item viewer

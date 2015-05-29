@@ -19,10 +19,11 @@ using SobekCM.Library.Database;
 using SobekCM.Library.Email;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -36,7 +37,7 @@ namespace SobekCM.Library.MySobekViewer
     /// During a valid html request, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  Since this action requires authentication, an instance of the  <see cref="MySobek_HtmlSubwriter"/> class is created. </li>
     /// <li>The mySobek subwriter creates an instance of this viewer to display the list of items in each bookshelf or the list of bookshelves</li>
@@ -55,7 +56,7 @@ namespace SobekCM.Library.MySobekViewer
 
             properFolderName = String.Empty;
             int current_folder_id = -1;
-            if (RequestSpecificValues.Current_Mode.My_Sobek_SubMode.Length > 0)
+            if ( !String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.My_Sobek_SubMode))
             {
                 // Try to get this RequestSpecificValues.Current_User folder from the RequestSpecificValues.Current_User object
                 User_Folder userFolder = RequestSpecificValues.Current_User.Get_Folder( RequestSpecificValues.Current_Mode.My_Sobek_SubMode );
@@ -223,7 +224,7 @@ namespace SobekCM.Library.MySobekViewer
                                 bool is_html_format = (format != "TEXT");
 
                                 // Send this email
-                                Item_Email_Helper.Send_Email(email, String.Empty, comments, RequestSpecificValues.Current_User.Full_Name, RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation, newItem, is_html_format, RequestSpecificValues.Current_Mode.Base_URL + newItem.BibID + "/" + newItem.VID, RequestSpecificValues.Current_User.UserID);
+                                Item_Email_Helper.Send_Email(email, String.Empty, comments, RequestSpecificValues.Current_User.Full_Name, RequestSpecificValues.Current_Mode.Instance_Abbreviation, newItem, is_html_format, RequestSpecificValues.Current_Mode.Base_URL + newItem.BibID + "/" + newItem.VID, RequestSpecificValues.Current_User.UserID);
                             }
                     }
 
@@ -327,7 +328,7 @@ namespace SobekCM.Library.MySobekViewer
         {
             Tracer.Add_Trace("Folder_Mgmt_MySobekViewer.Add_Popup_HTML", "Add any popup divisions for form elements");
 
-			Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.custom.min.js\"></script>");
+			Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Custom_Js + "\"></script>");
 			Output.WriteLine();
 
             // Add the hidden fields
@@ -375,7 +376,7 @@ namespace SobekCM.Library.MySobekViewer
 
                     Output.WriteLine("    </table>");
                     Output.WriteLine("  </fieldset>");
-                    Output.WriteLine("  <div class=\"sbk_PopupButtonsDiv\"><a href=\"\" onclick=\"return email_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/send_button_g.gif\" value=\"Submit\" alt=\"Submit\"></div><br />");
+                    Output.WriteLine("  <div class=\"sbk_PopupButtonsDiv\"><a href=\"\" onclick=\"return email_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/send_button_g.gif\" value=\"Submit\" alt=\"Submit\"></div><br />");
                     Output.WriteLine("</div>");
                     Output.WriteLine();
                 }
@@ -421,7 +422,7 @@ namespace SobekCM.Library.MySobekViewer
                     Output.WriteLine("    </table>");
                     Output.WriteLine("    <br />");
                     Output.WriteLine("  </fieldset><br />");
-                    Output.WriteLine("  <center><a href=\"\" onclick=\"return move_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
+                    Output.WriteLine("  <center><a href=\"\" onclick=\"return move_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
                     Output.WriteLine("</div>");
                     Output.WriteLine();
                 }
@@ -447,7 +448,7 @@ namespace SobekCM.Library.MySobekViewer
                     Output.WriteLine("    </table>");
                     Output.WriteLine("    <br />");
                     Output.WriteLine("  </fieldset><br />");
-                    Output.WriteLine("  <center><a href=\"\" onclick=\"return add_item_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
+                    Output.WriteLine("  <center><a href=\"\" onclick=\"return add_item_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
                     Output.WriteLine("</div>");
                     Output.WriteLine();
                 }
@@ -498,7 +499,7 @@ namespace SobekCM.Library.MySobekViewer
                     Output.WriteLine("    </table>");
                     Output.WriteLine("    <br />");
                     Output.WriteLine("  </fieldset><br />");
-                    Output.WriteLine("  <center><a href=\"\" onclick=\"return new_bookshelf_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
+                    Output.WriteLine("  <center><a href=\"\" onclick=\"return new_bookshelf_form_close();\"><img border=\"0\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\"></center><br />");
                     Output.WriteLine("</div>");
                     Output.WriteLine();
                 }
@@ -554,7 +555,7 @@ namespace SobekCM.Library.MySobekViewer
                 TreeNode rootNode = new TreeNode
                                         {
                                             Text = "&nbsp; <a title=\"Manage my library\" href=\"" + redirect_url.Replace("XXXXXXXXXXXXXXXXXX", String.Empty) + "\">My Library  (Manage my bookshelves)</a>",
-                                            ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/bookshelf.jpg",
+                                            ImageUrl = Static_Resources.Bookshelf_Img,
                                             SelectAction = TreeNodeSelectAction.None
                                         };
                 treeView1.Nodes.Add(rootNode);
@@ -564,7 +565,7 @@ namespace SobekCM.Library.MySobekViewer
                                         {
                                             Text = "&nbsp; <a title=\"View my collections home page\" href=\"" + personalized_home + "\">My Collections Home</a>", 
                                             SelectAction = TreeNodeSelectAction.None,
-                                            ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/home_folder.gif"
+                                            ImageUrl = Static_Resources.Home_Folder_Gif
                                         };
                 rootNode.ChildNodes.Add(homeNode);
 
@@ -573,7 +574,7 @@ namespace SobekCM.Library.MySobekViewer
                                                  {
                                                      Text ="&nbsp; <a title=\"View my saved searches\" href=\"" + saved_search_url + "\">My Saved Searches</a>",
                                                      SelectAction = TreeNodeSelectAction.None,
-                                                     ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/saved_searches.gif"
+                                                     ImageUrl = Static_Resources.Saved_Searches_Img
                                                  };
                 rootNode.ChildNodes.Add(savedSearchesNode);
 
@@ -591,12 +592,12 @@ namespace SobekCM.Library.MySobekViewer
                             selectedNodes.Add(folderNode);
                             if (thisFolder.IsPublic)
                             {
-                                folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/open_folder_public.jpg";
+                                folderNode.ImageUrl = Static_Resources.Open_Folder_Public_Jpg;
                                 folderNode.ImageToolTip = "Public folder";
                             }
                             else
                             {
-                                folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/open_folder.jpg";
+                                folderNode.ImageUrl = Static_Resources.Open_Folder_Jpg;
                             }
                             folderNode.Text = "&nbsp; <span class=\"Selected_TreeNode_Text\">" + thisFolder.Folder_Name + "</span>";
                             folderNode.SelectAction = TreeNodeSelectAction.None;
@@ -605,12 +606,12 @@ namespace SobekCM.Library.MySobekViewer
                         {
                             if (thisFolder.IsPublic)
                             {
-                                folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder_public.jpg";
+                                folderNode.ImageUrl = Static_Resources.Closed_Folder_Public_Jpg;
                                 folderNode.ImageToolTip = "Public folder";
                             }
                             else
                             {
-                                folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder.jpg";
+                                folderNode.ImageUrl = Static_Resources.Closed_Folder_Jpg;
                             }
                             folderNode.Text = "&nbsp; <a href=\"" + redirect_url.Replace("XXXXXXXXXXXXXXXXXX", thisFolder.Folder_Name_Encoded) + "\">" + thisFolder.Folder_Name + "</a>";
                         }
@@ -707,9 +708,9 @@ namespace SobekCM.Library.MySobekViewer
                 bookshelfManageBuilder.AppendLine("  <blockquote>");
                 bookshelfManageBuilder.AppendLine("  <table width=\"630px\">");
                 bookshelfManageBuilder.AppendLine("    <tr valign=\"middle\">");
-                bookshelfManageBuilder.AppendLine("      <td align=\"left\" width=\"30px\"><a href=\"?\" id=\"new_bookshelf_link\" name=\"new_bookshelf_link\" onclick=\"return open_new_bookshelf_folder();\" title=\"Click to add a new bookshelf\" ><img title=\"Click to add a new bookshelf\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/new_folder.jpg\" /></a><td>");
+                bookshelfManageBuilder.AppendLine("      <td align=\"left\" width=\"30px\"><a href=\"?\" id=\"new_bookshelf_link\" name=\"new_bookshelf_link\" onclick=\"return open_new_bookshelf_folder();\" title=\"Click to add a new bookshelf\" ><img title=\"Click to add a new bookshelf\" src=\"" + Static_Resources.New_Folder_Jpg + "\" /></a><td>");
                 bookshelfManageBuilder.AppendLine("      <td align=\"left\"><a href=\"?\" id=\"new_bookshelf_link\" name=\"new_bookshelf_link\" onclick=\"return open_new_bookshelf_folder();\" title=\"Click to add a new bookshelf\" >Add New Bookshelf</a><td>");
-                bookshelfManageBuilder.AppendLine("      <td align=\"right\" width=\"40px\"><a href=\"?\" id=\"refresh_bookshelf_link\" name=\"refresh_bookshelf_link\" onclick=\"return refresh_bookshelves();\" title=\"Refresh bookshelf list\" ><img title=\"Refresh bookshelf list\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/refresh_folder.jpg\" /></a><td>");
+                bookshelfManageBuilder.AppendLine("      <td align=\"right\" width=\"40px\"><a href=\"?\" id=\"refresh_bookshelf_link\" name=\"refresh_bookshelf_link\" onclick=\"return refresh_bookshelves();\" title=\"Refresh bookshelf list\" ><img title=\"Refresh bookshelf list\" src=\"" + Static_Resources.Refresh_Folder_Jpg + "\" /></a><td>");
                 bookshelfManageBuilder.AppendLine("      <td align=\"left\" width=\"150px\"><a href=\"?\" id=\"refresh_bookshelf_link\" name=\"refresh_bookshelf_link\" onclick=\"return refresh_bookshelves();\" title=\"Refresh bookshelf list\" >Refresh Bookshelves</a><td>");
                 bookshelfManageBuilder.AppendLine("    </tr>");
                 bookshelfManageBuilder.AppendLine("  </table>");
@@ -759,13 +760,13 @@ namespace SobekCM.Library.MySobekViewer
                         {
                             RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Public_Folder;
                             RequestSpecificValues.Current_Mode.FolderID = thisFolder.Folder_ID;
-                            bookshelfManageBuilder.AppendLine("      <td><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\"><img title=\"Public folder\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder_public.jpg\" /><a/></td>");
+                            bookshelfManageBuilder.AppendLine("      <td><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\"><img title=\"Public folder\" src=\"" + Static_Resources.Closed_Folder_Public_Jpg + "\" /><a/></td>");
                             bookshelfManageBuilder.AppendLine("      <td><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + thisFolder.Folder_Name + "</a></td>");
                             RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
                         }
                         else
                         {
-                            bookshelfManageBuilder.AppendLine("      <td><img title=\"Private folder\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder.jpg\" /></td>");
+                            bookshelfManageBuilder.AppendLine("      <td><img title=\"Private folder\" src=\"" + Static_Resources.Closed_Folder_Jpg + "\" /></td>");
                             bookshelfManageBuilder.AppendLine("      <td>" + thisFolder.Folder_Name + "</td>");
                         }
                         bookshelfManageBuilder.AppendLine("     </tr>");
@@ -800,12 +801,12 @@ namespace SobekCM.Library.MySobekViewer
                     SelectedNodes.Add(folderNode);
                     if (childFolders.IsPublic)
                     {
-                        folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/open_folder_public.jpg";
+                        folderNode.ImageUrl = Static_Resources.Open_Folder_Public_Jpg;
                         folderNode.ImageToolTip = "Public folder";
                     }
                     else
                     {
-                        folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/open_folder.jpg";
+                        folderNode.ImageUrl = Static_Resources.Open_Folder_Jpg;
                     }
 
                     folderNode.Text = "&nbsp; <span class=\"Selected_TreeNode_Text\">" + childFolders.Folder_Name + "</span>";
@@ -815,12 +816,12 @@ namespace SobekCM.Library.MySobekViewer
                 {
                     if (childFolders.IsPublic)
                     {
-                        folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder_public.jpg";
+                        folderNode.ImageUrl = Static_Resources.Closed_Folder_Public_Jpg;
                         folderNode.ImageToolTip = "Public folder";
                     }
                     else
                     {
-                        folderNode.ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "default/images/closed_folder.jpg";
+                        folderNode.ImageUrl = Static_Resources.Closed_Folder_Jpg;
                     }
                     folderNode.Text = "&nbsp; <a href=\"" + RedirectURL.Replace("XXXXXXXXXXXXXXXXXX", childFolders.Folder_Name_Encoded) + "\">" + childFolders.Folder_Name + "</a>";
                 }

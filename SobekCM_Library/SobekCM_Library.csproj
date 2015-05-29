@@ -112,7 +112,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AdminViewer\abstract_AdminViewer.cs" />
+    <Compile Include="AdminViewer\Add_Collection_AdminViewer.cs" />
     <Compile Include="AdminViewer\iMySobek_Admin_Viewer.cs" />
+    <Compile Include="AdminViewer\Permissions_Reports_AdminViewer.cs" />
+    <Compile Include="AdminViewer\Skin_Single_AdminViewer.cs" />
+    <Compile Include="AggregationViewer\Viewers\Manage_Menu_AggregationViewer.cs" />
     <Compile Include="AggregationViewer\Viewers\Advanced_Search_MimeType_AggregationViewer.cs" />
     <Compile Include="AggregationViewer\Viewers\Basic_Search_MimeType_AggregationViewer.cs" />
     <Compile Include="AggregationViewer\Viewers\Advanced_Search_YearRange_AggregationViewer.cs" />
@@ -121,6 +125,8 @@
     <Compile Include="AggregationViewer\Viewers\Map_Browse_AggregationViewer_Beta.cs" />
     <Compile Include="AggregationViewer\Viewers\Map_Search_AggregationViewer_Beta.cs" />
     <Compile Include="AggregationViewer\Viewers\Rotating_Highlight_MimeType_AggregationViewer.cs" />
+    <Compile Include="AggregationViewer\Viewers\User_Permissions_AggregationViewer.cs" />
+    <Compile Include="AggregationViewer\Viewers\Work_History_AggregationViewer.cs" />
     <Compile Include="Citation\Elements\base types\checkBox_Element.cs" />
     <Compile Include="Citation\Elements\implemented elements\Additional_Work_Needed_Element.cs" />
     <Compile Include="Citation\Elements\implemented elements\Born_Digital_Element.cs" />
@@ -176,6 +182,8 @@
     <Compile Include="Citation\Elements\nonstandard elements\Serial_Hierarchy_Panel_Element.cs" />
     <Compile Include="Citation\Elements\nonstandard elements\Zoological_Taxonomy_Form_Element.cs" />
     <Compile Include="Citation\Template_MemoryMgmt_Utility.cs" />
+    <Compile Include="CKEditor\CKEditor.cs" />
+    <Compile Include="CKEditor\CKEditor_Security_Token.cs" />
     <Compile Include="HTML\Admin_HtmlSubwriter.cs" />
     <Compile Include="HTML\HeaderFooter_Helper_HtmlSubWriter.cs" />
     <Compile Include="HTML\HtmlSubwriter_Behaviors_Enum.cs" />
@@ -348,7 +356,7 @@
     <Compile Include="MySobekViewer\Edit_Item_Permissions_MySobekViewer.cs" />
     <Compile Include="RequestCache.cs" />
     <Compile Include="ResultsViewer\Google_Map_ResultsViewer_Beta.cs" />
-    <Compile Include="Skins\SobekCM_Skin_Collection_Builder.cs" />
+    <Compile Include="Settings\Static_Resources.cs" />
     <Compile Include="UI\UI_ApplicationCache_Gateway.cs" />
     <Compile Include="UploadiFive\UploadiFive_Settings.cs" />
     <Compile Include="MySobekViewer\Page_Image_Upload_MySobekViewer.cs" />
@@ -617,10 +625,6 @@
     <ProjectReference Include="..\SobekCM_Tools\SobekCM_Tools.csproj">
       <Project>{A511CE4C-7BD6-4446-BCA8-AB71F7AA8078}</Project>
       <Name>SobekCM_Tools</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SobekCM_UI_Library\SobekCM_UI_Library.csproj">
-      <Project>{9eba10c0-170d-420d-888a-b1d180c3ce0c}</Project>
-      <Name>SobekCM_UI_Library</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

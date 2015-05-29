@@ -1,5 +1,6 @@
 ﻿#region Using directives
 
+using System;
 using System.Text;
 using System.Web.UI.WebControls;
 using SobekCM.Library.ItemViewer.Viewers;
@@ -26,7 +27,7 @@ namespace SobekCM.Library.ItemViewer.Fragments
             {
                 // Determine the number of columns for text areas, depending on browser
                 int actual_cols = 50;
-                if (CurrentMode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0)
+                if (( !String.IsNullOrEmpty(CurrentMode.Browser_Type)) && (CurrentMode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0))
                     actual_cols = 45;
 
                 StringBuilder responseBuilder = new StringBuilder();
@@ -44,7 +45,7 @@ namespace SobekCM.Library.ItemViewer.Fragments
                 responseBuilder.AppendLine("    </table>");
                 responseBuilder.AppendLine("    <br />");
                 responseBuilder.AppendLine("  </fieldset><br />");
-                responseBuilder.AppendLine("  <center><a href=\"\" onclick=\"return describe_item_form_close();\"><img border=\"0\" src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\" ></center><br />");
+                responseBuilder.AppendLine("  <center><a href=\"\" onclick=\"return describe_item_form_close();\"><img border=\"0\" src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin_Or_Skin + "/buttons/cancel_button_g.gif\" alt=\"CLOSE\" /></a> &nbsp; &nbsp; <input type=\"image\" src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin_Or_Skin + "/buttons/save_button_g.gif\" value=\"Submit\" alt=\"Submit\" ></center><br />");
                 responseBuilder.AppendLine("</div>");
                 responseBuilder.AppendLine();
 

@@ -10,8 +10,9 @@ using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -41,7 +42,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             StringBuilder scriptBuilder = new StringBuilder(10000);
 
             scriptBuilder.AppendLine("<script type=\"text/javascript\" src=\"http://maps.google.com/maps/api/js?sensor=false\"></script>");
-            scriptBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/keydragzoom_packed.js\"></script>");
+            scriptBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Keydragzoom_Packed_Js + "\"></script>");
             scriptBuilder.AppendLine("<script type=\"text/javascript\">");
             scriptBuilder.AppendLine("  //<![CDATA[");
             scriptBuilder.AppendLine("  // Global values");
@@ -69,7 +70,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
                 scriptBuilder.AppendLine("    // Create the custom icon / marker image");
                 scriptBuilder.AppendLine("    var iconSize = new google.maps.Size(11, 11);");
                 scriptBuilder.AppendLine("    var iconAnchor = new google.maps.Point(5, 5);");
-                scriptBuilder.AppendLine("    var pointer_image = '" + RequestSpecificValues.Current_Mode.Base_URL + "/default/images/map_point.png';");
+                scriptBuilder.AppendLine("    var pointer_image = '" + Static_Resources.Map_Point_Png + "';");
                 scriptBuilder.AppendLine("    custom_icon = new google.maps.MarkerImage(pointer_image, iconSize, null, iconAnchor);");
 
                 scriptBuilder.AppendLine();
@@ -173,7 +174,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             }
         }
 
-        private void add_single_point(string Latitude, string Longitude, SobekCM_Navigation_Object Current_Mode, List<DataRow> DatarowsInThisPoint, StringBuilder ScriptBuilder)
+        private void add_single_point(string Latitude, string Longitude, Navigation_Object Current_Mode, List<DataRow> DatarowsInThisPoint, StringBuilder ScriptBuilder)
         {
             // Build the info window
             StringBuilder contentBuilder = new StringBuilder(2000);
@@ -194,7 +195,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
                 string thumb = UI_ApplicationCache_Gateway.Settings.Image_URL + groupThumbnail.Replace("\\", "/").Replace("//", "/");
                 if ((thumb.ToUpper().IndexOf(".JPG") < 0) && (thumb.ToUpper().IndexOf(".GIF") < 0))
                 {
-                    thumb = RequestSpecificValues.Current_Mode.Default_Images_URL + "NoThumb.jpg";
+                    thumb = Static_Resources.Nothumb_Jpg;
                 }
 
 				contentBuilder.Append("<td><table class=\"sbkMbav_Thumb\" >");

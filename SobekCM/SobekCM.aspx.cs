@@ -1,14 +1,17 @@
 ﻿#region Using directives
 
 using System;
+using System.IO;
 using System.Web;
 using System.Web.UI;
 using SobekCM.Core.Client;
 using SobekCM.Core.Navigation;
+using SobekCM.Engine_Library.Configuration;
 using SobekCM.Engine_Library.Database;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -71,6 +74,8 @@ namespace SobekCM
 						(pageGlobals.currentMode.Mode != Display_Mode_Enum.Internal) &&
 						(pageGlobals.currentMode.Mode != Display_Mode_Enum.Public_Folder) &&
 						((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Home_Edit)) &&
+                        ((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Work_History)) &&
+                        ((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.User_Permissions)) &&
 						((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Child_Page_Edit)) &&
 						((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Home) || (pageGlobals.currentMode.Home_Type != Home_Type_Enum.Personalized)) &&
 						(pageGlobals.currentMode.Result_Display_Type != Result_Display_Type_Enum.Export) &&
@@ -135,7 +140,7 @@ namespace SobekCM
 
 		#endregion
 
-		#region Methods called during execution of the HTML from UFDC.aspx
+		#region Methods called during execution of the HTML from SobekCM.aspx
 
 		protected void Write_Page_Title()
 		{
@@ -166,7 +171,7 @@ namespace SobekCM
 
 			pageGlobals.tracer.Add_Trace("sobekcm(.aspx).Write_Within_HTML_Head", String.Empty);
 
-			// Only bother writing the style references if this is writing HTML (either logged out or logged in via myUFDC)
+			// Only bother writing the style references if this is writing HTML (either logged out or logged in via mySobekCM)
 			if ((pageGlobals.mainWriter.Writer_Type == Writer_Type_Enum.HTML) || (pageGlobals.mainWriter.Writer_Type == Writer_Type_Enum.HTML_LoggedIn))
 			{
 				((Html_MainWriter)pageGlobals.mainWriter).Write_Within_HTML_Head(Response.Output, pageGlobals.tracer);
@@ -276,11 +281,56 @@ namespace SobekCM
 		    if (!SobekEngineClient.Config_Read_Attempted)
 		    {
                 string path = Server.MapPath("config/default/sobekcm_microservices.config");
-                SobekEngineClient.Read_Config_File(path);
+                SobekEngineClient.Read_Config_File(path, UI_ApplicationCache_Gateway.Settings.System_Base_URL);
+		    }
+
+            // Also, ensure the static resource locations have been read
+		    if (!Static_Resources.Config_Read_Attempted)
+		    {
+		        try
+		        {
+#if DEBUG
+                    string base_url = Request.Url.AbsoluteUri.ToLower().Replace("sobekcm.aspx", "");
+                    if (base_url.IndexOf("?") > 0)
+                        base_url = base_url.Substring(0, base_url.IndexOf("?"));
+
+                    if (base_url.IndexOf("localhost:") > 0)
+                    {
+                        UI_ApplicationCache_Gateway.Settings.Application_Server_URL = base_url;
+                    }
+#endif
+
+		            // Try to read the static resources configuration file
+		            string static_config_file = UI_ApplicationCache_Gateway.Settings.Base_Directory + "\\config\\default\\sobekcm_static_resources_" + UI_ApplicationCache_Gateway.Settings.Static_Resources_Config_File.Replace(" ", "_") + ".config";
+		            if (File.Exists(static_config_file))
+		            {
+		                Static_Resources.Read_Config(static_config_file, UI_ApplicationCache_Gateway.Settings.Application_Server_URL + "default");
+		            }
+		            else if (File.Exists(UI_ApplicationCache_Gateway.Settings.Base_Directory + "\\config\\default\\sobekcm_static_resources_cdn.config"))
+		            {
+                        Static_Resources.Read_Config(UI_ApplicationCache_Gateway.Settings.Base_Directory + "\\config\\default\\sobekcm_static_resources_cdn.config", UI_ApplicationCache_Gateway.Settings.Application_Server_URL + "default");
+		            }
+
+                    // Look for the user override settings file 
+                    string user_config_file = UI_ApplicationCache_Gateway.Settings.Base_Directory + "\\config\\user\\sobekcm_static_resources.config";
+		            if (File.Exists(user_config_file))
+		            {
+                        Static_Resources.Read_Config(user_config_file, UI_ApplicationCache_Gateway.Settings.Application_Server_URL + "default");
+		            }
+		        }
+		        catch
+		        {
+		            // Do nothing in the catch.. there are suitable defaults in this case
+		        }
+		        finally
+		        {
+                    Static_Resources.Config_Read_Attempted = true;
+		        }
+
 		    }
 
 
-			pageGlobals = new SobekCM_Page_Globals(IsPostBack, "SOBEKCM");
+		    pageGlobals = new SobekCM_Page_Globals(IsPostBack, "SOBEKCM");
 
 			base.OnInit(E);
 		}

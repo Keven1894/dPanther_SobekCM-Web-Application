@@ -14,12 +14,13 @@ using SobekCM.Core.MemoryMgmt;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Database;
-using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.Email;
 using SobekCM.Library.ItemViewer;
 using SobekCM.Library.ItemViewer.Fragments;
 using SobekCM.Library.ItemViewer.Viewers;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Behaviors;
 using SobekCM.Resource_Object.Bib_Info;
@@ -27,7 +28,6 @@ using SobekCM.Resource_Object.Divisions;
 using SobekCM.Resource_Object.Metadata_Modules;
 using SobekCM.Resource_Object.Metadata_Modules.EAD;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -171,7 +171,7 @@ namespace SobekCM.Library.HTML
                                     cc_list = String.Empty;
 
                                 // Send the email
-                                HttpContext.Current.Session.Add("ON_LOAD_MESSAGE", !Item_Email_Helper.Send_Email(address, cc_list, comments, RequestSpecificValues.Current_User.Full_Name,RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation,RequestSpecificValues.Current_Item,is_html_format,HttpContext.Current.Items["Original_URL"].ToString(), RequestSpecificValues.Current_User.UserID)
+                                HttpContext.Current.Session.Add("ON_LOAD_MESSAGE", !Item_Email_Helper.Send_Email(address, cc_list, comments, RequestSpecificValues.Current_User.Full_Name,RequestSpecificValues.Current_Mode.Instance_Abbreviation,RequestSpecificValues.Current_Item,is_html_format,HttpContext.Current.Items["Original_URL"].ToString(), RequestSpecificValues.Current_User.UserID)
                                     ? "Error encountered while sending email" : "Your email has been sent");
 
                                 HttpContext.Current.Response.Redirect( HttpContext.Current.Items["Original_URL"].ToString(), false);
@@ -322,13 +322,13 @@ namespace SobekCM.Library.HTML
             }
 
             // Set the code for bib level mets to show the volume tree by default
-            if ((RequestSpecificValues.Current_Item.METS_Header.RecordStatus_Enum == METS_Record_Status.BIB_LEVEL) && (RequestSpecificValues.Current_Mode.ViewerCode.Length == 0))
+            if ((RequestSpecificValues.Current_Item.METS_Header.RecordStatus_Enum == METS_Record_Status.BIB_LEVEL) && (String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.ViewerCode)))
             {
                 RequestSpecificValues.Current_Mode.ViewerCode = "allvolumes1";
             }
 
             // If there is a file name included, look for the sequence of that file
-            if (RequestSpecificValues.Current_Mode.Page_By_FileName.Length > 0)
+            if (!String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Page_By_FileName))
             {
                 int page_sequence = RequestSpecificValues.Current_Item.Divisions.Physical_Tree.Page_Sequence_By_FileName(RequestSpecificValues.Current_Mode.Page_By_FileName);
                 if (page_sequence > 0)
@@ -339,13 +339,14 @@ namespace SobekCM.Library.HTML
             }
 
             // Get the valid viewer code
-            RequestSpecificValues.Tracer.Add_Trace("Html_MainWriter.Add_Controls", "Getting the appropriate item viewer");
+            RequestSpecificValues.Tracer.Add_Trace("Item_HtmlSubwriter.Add_Controls", "Getting the appropriate item viewer");
 
-            if ((RequestSpecificValues.Current_Mode.ViewerCode.Length == 0) && (RequestSpecificValues.Current_Mode.Coordinates.Length > 0))
+            if (( String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.ViewerCode)) && ( !String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Coordinates)))
             {
                 RequestSpecificValues.Current_Mode.ViewerCode = "map";
             }
-            RequestSpecificValues.Current_Mode.ViewerCode = RequestSpecificValues.Current_Item.Web.Get_Valid_Viewer_Code(RequestSpecificValues.Current_Mode.ViewerCode, RequestSpecificValues.Current_Mode.Page);
+            int currentPageIndex = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value : 1;
+            RequestSpecificValues.Current_Mode.ViewerCode = RequestSpecificValues.Current_Item.Web.Get_Valid_Viewer_Code(RequestSpecificValues.Current_Mode.ViewerCode, currentPageIndex );
             View_Object viewObject = RequestSpecificValues.Current_Item.Web.Get_Viewer(RequestSpecificValues.Current_Mode.ViewerCode);
             PageViewer = ItemViewer_Factory.Get_Viewer(viewObject, RequestSpecificValues.Current_Item.Bib_Info.SobekCM_Type_String.ToUpper(), RequestSpecificValues.Current_Item, RequestSpecificValues.Current_User, RequestSpecificValues.Current_Mode);
 
@@ -552,7 +553,7 @@ namespace SobekCM.Library.HTML
 
                 
                 menuStartLiteral.Text = string.Format("        <div class=\"sbkIsw_ShowTocRow\">" + Environment.NewLine +
-                    "          <a href=\"{1}\"><div class=\"sbkIsw_UpToc\">{4}<img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_up_arrow.png\" alt=\"\" /></div></a>" + Environment.NewLine + 
+                    "          <a href=\"{1}\"><div class=\"sbkIsw_UpToc\">{4}<img src=\"" + Static_Resources.Button_Up_Arrow_Png + "\" alt=\"\" /></div></a>" + Environment.NewLine + 
                     "        </div>", table_of_contents, redirect_url, RequestSpecificValues.Current_Mode.Base_URL, RequestSpecificValues.HTML_Skin.Base_Skin_Code, hide_toc);
                 TocPlaceHolder.Controls.Add(menuStartLiteral);
 
@@ -736,7 +737,7 @@ namespace SobekCM.Library.HTML
                 }
 
                 // Add the HELP icon next
-				Output.WriteLine("<span id=\"sbk_InternalHeader_Help\"><a href=\"" + UI_ApplicationCache_Gateway.Settings.Help_URL(RequestSpecificValues.Current_Mode.Base_URL) + "help/itemheader\" title=\"Help regarding this header\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/help_button_darkgray.jpg\" alt=\"?\" title=\"Help regarding this header\" /></a></span>");
+				Output.WriteLine("<span id=\"sbk_InternalHeader_Help\"><a href=\"" + UI_ApplicationCache_Gateway.Settings.Help_URL(RequestSpecificValues.Current_Mode.Base_URL) + "help/itemheader\" title=\"Help regarding this header\"><img src=\"" + Static_Resources.Help_Button_Darkgray_Jpg + "\" alt=\"?\" title=\"Help regarding this header\" /></a></span>");
 
                 Output.WriteLine("      </td>");
                 Output.WriteLine("    </tr>");
@@ -1075,51 +1076,37 @@ namespace SobekCM.Library.HTML
 
 					if (RequestSpecificValues.Current_Item.Web.ItemID > 0)
 					{
-						Output.WriteLine("\t\t<span id=\"printbuttonitem\" class=\"action-sf-menu-item\" onclick=\"print_form_open();\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/printer.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"printbuttonspan\">" + print_text + "</span></span>");
+						Output.WriteLine("\t\t<span id=\"printbuttonitem\" class=\"action-sf-menu-item\" onclick=\"print_form_open();\"><img src=\"" + Static_Resources.Printer_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"printbuttonspan\">" + print_text + "</span></span>");
 					}
 					else
 					{
-						Output.WriteLine("\t\t<span id=\"printbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.print();return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/printer.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"printbuttonspan\">" + print_text + "</span></span>");
+                        Output.WriteLine("\t\t<span id=\"printbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.print();return false;\"><img src=\"" + Static_Resources.Printer_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"printbuttonspan\">" + print_text + "</span></span>");
 					}
-
-
-				    //if (RequestSpecificValues.Current_Item.Behaviors.Can_Be_Described)
-				    //{
-				    //    if (RequestSpecificValues.Current_User != null)
-				    //    {
-				    //        Output.Write("<a href=\"?m=hmh\" onmouseover=\"document.getElementById('describe_button').src='" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button_h.gif'\" onmouseout=\"document.getElementById('describe_button').src='" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button.gif'\"  onclick=\"return describe_item_form_open( 'describe_button' );\"><img class=\"ResultSavePrintButtons\" border=\"0px\" name=\"describe_button\" id=\"describe_button\" src=\"" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button.gif\" title=\"Add a description to this item\" alt=\"DESCRIBE\" /></a>");
-				    //    }
-				    //    else
-				    //    {
-				    //        Output.Write("<a href=\"?m=hmh\" onmouseover=\"document.getElementById('describe_button').src='" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button_h.gif'\" onmouseout=\"document.getElementById('describe_button').src='" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button.gif'\"><img class=\"ResultSavePrintButtons\" border=\"0px\" name=\"describe_button\" id=\"describe_button\" src=\"" + currentMode.Base_URL + "design/skins/" + htmlSkin.Base_Skin_Code + "/buttons/describe_rect_button.gif\" title=\"Add a description to this item\" alt=\"DESCRIBE\" /></a>");
-				    //    }
-				    //}
-
 
 
 				    if ( isLoggedOn )
 				    {
-						Output.WriteLine("\t\t<span id=\"sendbuttonitem\" class=\"action-sf-menu-item\" onclick=\"email_form_open();\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/email.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"sendbuttonspan\">" + send_text + "</span></span>");
+                        Output.WriteLine("\t\t<span id=\"sendbuttonitem\" class=\"action-sf-menu-item\" onclick=\"email_form_open();\"><img src=\"" + Static_Resources.Email_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"sendbuttonspan\">" + send_text + "</span></span>");
 
 
 					    if (RequestSpecificValues.Current_Item.Web.ItemID > 0)
 					    {
 						    if (RequestSpecificValues.Current_User.Is_In_Bookshelf(RequestSpecificValues.Current_Item.BibID, RequestSpecificValues.Current_Item.VID))
 						    {
-							    Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"return remove_item_itemviewer();\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/minussign.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + remove_text + "</span></span>");
+                                Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"return remove_item_itemviewer();\"><img src=\"" + Static_Resources.Minussign_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + remove_text + "</span></span>");
 						    }
 						    else
 						    {
-                                Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"add_item_form_open();return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/plussign.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + add_text + "</span></span>");
+                                Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"add_item_form_open();return false;\"><img src=\"" + Static_Resources.Plussign_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + add_text + "</span></span>");
 						    }
 					    }
 				    }
 				    else
 				    {
-                        Output.WriteLine("\t\t<span id=\"sendbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.location='" + logOnUrl + "';return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/email.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"sendbuttonspan\">" + send_text + "</span></span>");
+                        Output.WriteLine("\t\t<span id=\"sendbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.location='" + logOnUrl + "';return false;\"><img src=\"" + Static_Resources.Email_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"sendbuttonspan\">" + send_text + "</span></span>");
 
 					    if (RequestSpecificValues.Current_Item.Web.ItemID > 0)
-                            Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.location='" + logOnUrl + "';return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/plussign.png\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + add_text + "</span></span>");
+                            Output.WriteLine("\t\t<span id=\"addbuttonitem\" class=\"action-sf-menu-item\" onclick=\"window.location='" + logOnUrl + "';return false;\"><img src=\"" + Static_Resources.Plussign_Png + "\" alt=\"\" style=\"vertical-align:middle\" /><span id=\"addbuttonspan\">" + add_text + "</span></span>");
 				    }
 
 					Output.WriteLine("\t\t<span id=\"sharebuttonitem\" class=\"action-sf-menu-item\" onclick=\"toggle_share_form('share_button');\"><span id=\"sharebuttonspan\">Share</span></span>");
@@ -1134,8 +1121,8 @@ namespace SobekCM.Library.HTML
 
 
 			    // Save the current view type
-			    ushort page = RequestSpecificValues.Current_Mode.Page;
-			    ushort subpage = RequestSpecificValues.Current_Mode.SubPage;
+			    ushort page = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value  : (ushort) 1;
+			    ushort subpage = RequestSpecificValues.Current_Mode.SubPage.HasValue ? RequestSpecificValues.Current_Mode.SubPage.Value : (ushort) 1;
 			    string viewerCode = RequestSpecificValues.Current_Mode.ViewerCode;
 			    RequestSpecificValues.Current_Mode.SubPage = 0;
 
@@ -1276,7 +1263,7 @@ namespace SobekCM.Library.HTML
 							    Output.WriteLine("\t\t\t<li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">Thumbnails</a></li>");
 
 
-							    if (RequestSpecificValues.Current_Mode.Internal_User)
+                                if ((RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.LoggedOn) && (RequestSpecificValues.Current_User.Is_Internal_User))
 							    {
 								    RequestSpecificValues.Current_Mode.ViewerCode = "allvolumes3";
 								    Output.WriteLine("\t\t\t<li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">List View</a></li>");
@@ -1319,7 +1306,7 @@ namespace SobekCM.Library.HTML
 			    // Add each page display type
 			    if ((RequestSpecificValues.Current_Page != null) && (!itemRestrictedFromUserByIp))
 			    {
-				    int page_seq = RequestSpecificValues.Current_Mode.Page;
+				    int page_seq = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value  : 1;
 				    string resourceType = RequestSpecificValues.Current_Item.Bib_Info.SobekCM_Type_String.ToUpper();
 				    if (RequestSpecificValues.Current_Item.Behaviors.Item_Level_Page_Views_Count > 0)
 				    {
@@ -1561,7 +1548,7 @@ namespace SobekCM.Library.HTML
                         redirect_url = redirect_url + "?toc=y";
                     else
                         redirect_url = redirect_url + "&toc=y";
-                    Output.WriteLine("\t\t<div class=\"sbkIsw_DownTOC\"><a href=\"" + redirect_url + "\">" + show_toc_text + "<img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_down_arrow.png\" alt=\"\" /></a></div>");
+                    Output.WriteLine("\t\t<div class=\"sbkIsw_DownTOC\"><a href=\"" + redirect_url + "\">" + show_toc_text + "<img src=\"" + Static_Resources.Button_Down_Arrow_Png + "\" alt=\"\" /></a></div>");
                     // Output.WriteLine("\t\t<a href=\"" + redirect_url + "\">" + show_toc_text + "<div class=\"downarrow\"></div></a>");
                     Output.WriteLine("\t</div>");
                 }
@@ -1616,7 +1603,7 @@ namespace SobekCM.Library.HTML
                         // Add the TOC as a floating DIV
                         Output.WriteLine("      <div id=\"sbkEad_FloatingTOC\">");
                         Output.WriteLine("      <ul class=\"sbkEad_TocMenu\">");
-                        Output.WriteLine("        <li class=\"sbkEad_TocHeader\">TABLE OF CONTENTS &nbsp; <span style=\"color:#eeeeee\"><a href=\"#\" title=\"Return to the top of this document\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/up_arrow.gif\" /></a></span></li>");
+                        Output.WriteLine("        <li class=\"sbkEad_TocHeader\">TABLE OF CONTENTS &nbsp; <span style=\"color:#eeeeee\"><a href=\"#\" title=\"Return to the top of this document\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/up_arrow.gif\" /></a></span></li>");
 
                         foreach (EAD_TOC_Included_Section thisMatch in eadInfo.TOC_Included_Sections)
                         {
@@ -1774,8 +1761,8 @@ namespace SobekCM.Library.HTML
                         if ((PageViewer.Current_Page > 1) && ((firstButtonURL.Length > 0) || (prevButtonURL.Length > 0)))
                         {
                             buttonsHtmlBuilder.AppendLine("\t\t\t\t<span class=\"sbkIsw_LeftPaginationButtons\">");
-                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + first_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + firstButtonURL + "'; return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_first_arrow.png\" class=\"roundbutton_img_left\" alt=\"\" />" + first_page_text + "</button>&nbsp;");
-                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + previous_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + prevButtonURL + "'; return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"roundbutton_img_left\" alt=\"\" />" + previous_page_text + "</button>");
+                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + first_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + firstButtonURL + "'; return false;\"><img src=\"" + Static_Resources.Button_First_Arrow_Png + "\" class=\"roundbutton_img_left\" alt=\"\" />" + first_page_text + "</button>&nbsp;");
+                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + previous_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + prevButtonURL + "'; return false;\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"roundbutton_img_left\" alt=\"\" />" + previous_page_text + "</button>");
                             buttonsHtmlBuilder.AppendLine("\t\t\t\t</span>");
                         }
                          
@@ -1787,8 +1774,8 @@ namespace SobekCM.Library.HTML
                         if ((PageViewer.Current_Page < PageViewer.PageCount) && ((lastButtonURL.Length > 0) || (nextButtonURL.Length > 0)))
                         {
                             buttonsHtmlBuilder.AppendLine("\t\t\t\t<span class=\"sbkIsw_RightPaginationButtons\">");
-                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + next_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + nextButtonURL + "'; return false;\">" + next_page_text + "<img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"roundbutton_img_right\" alt=\"\" /></button>&nbsp;");
-                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + last_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + lastButtonURL + "'; return false;\">" + last_page_text + "<img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_last_arrow.png\" class=\"roundbutton_img_right\" alt=\"\" /></button>");
+                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + next_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + nextButtonURL + "'; return false;\">" + next_page_text + "<img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"roundbutton_img_right\" alt=\"\" /></button>&nbsp;");
+                            buttonsHtmlBuilder.AppendLine("\t\t\t\t\t<button title=\"" + last_page + "\" class=\"sbkIsw_RoundButton\" onclick=\"window.location='" + lastButtonURL + "'; return false;\">" + last_page_text + "<img src=\"" + Static_Resources.Button_Last_Arrow_Png + "\" class=\"roundbutton_img_right\" alt=\"\" /></button>");
                             buttonsHtmlBuilder.AppendLine("\t\t\t\t</span>");
                         }
 
@@ -2070,11 +2057,7 @@ namespace SobekCM.Library.HTML
             Tracer.Add_Trace("Item_HtmlSubwriter.Write_Final_Html", "Add reference to draggable jquery ui");
 	        if (!behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Item_Subwriter_Full_JQuery_UI))
 	        {
-#if DEBUG
-                Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.draggable.js\"></script>");
-#else
-		        Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.draggable.min.js\"></script>");
-#endif
+                Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Draggable_Js + "\"></script>");
 	        }
         }
 
@@ -2197,11 +2180,7 @@ namespace SobekCM.Library.HTML
             Output.WriteLine("  <meta name=\"robots\" content=\"noindex, nofollow\" />");
 
             // Write the main SobekCM item style sheet to use 
-#if DEBUG
-            Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Item.css\" rel=\"stylesheet\" type=\"text/css\" />");
-#else
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Item.min.css\" rel=\"stylesheet\" type=\"text/css\" title=\"standard\" />");
-#endif
+            Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Item_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
 
             // Add any viewer specific tags that need to reside within the HTML head
             if (PageViewer != null)

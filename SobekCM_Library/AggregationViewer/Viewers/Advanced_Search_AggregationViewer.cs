@@ -11,8 +11,9 @@ using SobekCM.Core.Search;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -24,7 +25,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
     /// During a valid html request to display the advanced search page, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in this case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  For a collection-level request, an instance of the  <see cref="Aggregation_HtmlSubwriter"/> class is created. </li>
     /// <li>To display the requested collection view, the collection subwriter will creates an instance of this class </li>
@@ -270,18 +271,18 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
 			if (RequestSpecificValues.Hierarchy_Object.Children_Count > 0)
 			{
-				Output.WriteLine("        <button name=\"searchButton\" id=\"searchButton\" class=\"sbk_SearchButton\" onclick=\"" + Search_Script_Action + ";return false;\">" + searchButtonText + "<img id=\"sbkAsav_ButtonArrow\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow2.png\" alt=\"\" /></button>");
+                Output.WriteLine("        <button name=\"searchButton\" id=\"searchButton\" class=\"sbk_SearchButton\" onclick=\"" + Search_Script_Action + ";return false;\">" + searchButtonText + "<img id=\"sbkAsav_ButtonArrow\" src=\"" + Static_Resources.Button_Next_Arrow2_Png + "\" alt=\"\" /></button>");
 			}
 			else
 			{
-				Output.WriteLine("        <button name=\"searchButton\" id=\"searchButton\" class=\"sbk_SearchButton\" onclick=\"" + Search_Script_Action + ";return false;\">" + searchButtonText + "<img id=\"sbkAsav_ButtonArrow\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow2.png\" alt=\"\" /></button>");
+				Output.WriteLine("        <button name=\"searchButton\" id=\"searchButton\" class=\"sbk_SearchButton\" onclick=\"" + Search_Script_Action + ";return false;\">" + searchButtonText + "<img id=\"sbkAsav_ButtonArrow\" src=\"" + Static_Resources.Button_Next_Arrow2_Png + "\" alt=\"\" /></button>");
 			}
 
 			Output.WriteLine("      </td>");
 			Output.WriteLine("    </tr>");
 			Output.WriteLine("    <tr>");
 			Output.WriteLine("      <td colspan=\"2\" class=\"sbkAsav_SearchOptions\">" + searchOptions + "</span></td>");
-			Output.WriteLine("      <td style=\"vertical-align:middle;text-align:left;\"> &nbsp; &nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "help\" target=\"SEARCHHELP\" ><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/help_button.jpg\" alt=\"HELP\" /></a></td>");
+			Output.WriteLine("      <td style=\"vertical-align:middle;text-align:left;\"> &nbsp; &nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "help\" target=\"SEARCHHELP\" ><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/help_button.jpg\" alt=\"HELP\" /></a></td>");
 			Output.WriteLine("      <td colspan=\"2\">&nbsp;</td>");
 			Output.WriteLine("    </tr>");
 			Output.WriteLine("    <tr>");

@@ -1,13 +1,15 @@
 #region Using directives
 
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Web;
 using System.Web.UI.WebControls;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Results;
 using SobekCM.Core.Search;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -54,7 +56,8 @@ namespace SobekCM.Library.ResultsViewer
             resultsBldr.AppendLine("<table>");
 
             // Set the counter for these results from the page 
-            int result_counter = ((RequestSpecificValues.Current_Mode.Page - 1)*Results_Per_Page) + 1;
+            int current_page = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value : 1;
+            int result_counter = ((current_page - 1) * Results_Per_Page) + 1;
 
             // Step through all the results
             int current_row = 0;
@@ -98,7 +101,7 @@ namespace SobekCM.Library.ResultsViewer
                 // Draw the thumbnail 
                 if ((thumb.ToUpper().IndexOf(".JPG") < 0) && (thumb.ToUpper().IndexOf(".GIF") < 0))
                 {
-                    resultsBldr.AppendLine("<a href=\"" + internal_link + "\"><img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "NoThumb.jpg\" border=\"0px\" class=\"resultsThumbnail\" alt=\"MISSING THUMBNAIL\" /></a></td>");
+                    resultsBldr.AppendLine("<a href=\"" + internal_link + "\"><img src=\"" + Static_Resources.Nothumb_Jpg + "\" border=\"0px\" class=\"resultsThumbnail\" alt=\"MISSING THUMBNAIL\" /></a></td>");
                 }
                 else
                 {
@@ -132,7 +135,7 @@ namespace SobekCM.Library.ResultsViewer
                     resultsBldr.AppendLine("\t\t\t\t<tr><td>" + UI_ApplicationCache_Gateway.Translation.Get_Translation(titleResult.Primary_Identifier_Type, RequestSpecificValues.Current_Mode.Language) + ":</td><td>&nbsp;</td><td>" + titleResult.Primary_Identifier + "</td></tr>");
                 }
 
-                if (RequestSpecificValues.Current_Mode.Internal_User)
+                if ((RequestSpecificValues.Current_User != null ) && ( RequestSpecificValues.Current_User.LoggedOn ) && ( RequestSpecificValues.Current_User.Is_Internal_User ))
                 {
                     resultsBldr.AppendLine("\t\t\t\t<tr><td>BibID:</td><td>&nbsp;</td><td>" + titleResult.BibID + "</td></tr>");
 
@@ -150,6 +153,12 @@ namespace SobekCM.Library.ResultsViewer
                 for (int i = 0; i < RequestSpecificValues.Results_Statistics.Metadata_Labels.Count; i++)
 				{
                     string field = RequestSpecificValues.Results_Statistics.Metadata_Labels[i];
+
+                    // Somehow the metadata for this item did not fully save in the database.  Break out, rather than
+                    // throw the exception
+                    if ((titleResult.Metadata_Display_Values == null) || (titleResult.Metadata_Display_Values.Length <= i))
+                        break;
+
 					string value = titleResult.Metadata_Display_Values[i];
 					Metadata_Search_Field thisField = UI_ApplicationCache_Gateway.Settings.Metadata_Search_Field_By_Name(field);
 					string display_field = string.Empty;

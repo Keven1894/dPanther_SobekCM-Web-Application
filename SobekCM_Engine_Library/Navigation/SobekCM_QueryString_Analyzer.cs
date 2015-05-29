@@ -10,7 +10,6 @@ using System.Web;
 using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
-using SobekCM.EngineLibrary.ApplicationState;
 using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Engine_Library.Database;
 using SobekCM.Tools;
@@ -43,7 +42,7 @@ namespace SobekCM.Engine_Library.Navigation
 		/// <param name="URL_Portals"> List of all web portals into this system </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
 		public static void Parse_Query(NameValueCollection QueryString,
-			SobekCM_Navigation_Object Navigator,
+			Navigation_Object Navigator,
 			string Base_URL,
 			string[] User_Languages,
 			Aggregation_Code_Manager Code_Manager,
@@ -132,15 +131,20 @@ namespace SobekCM.Engine_Library.Navigation
             // Get the valid URL Portal
             Navigator.Default_Aggregation = "all";
             Portal urlPortal = URL_Portals.Get_Valid_Portal(Base_URL);
-            Navigator.SobekCM_Instance_Abbreviation = urlPortal.Abbreviation;
-            Navigator.SobekCM_Instance_Name = urlPortal.Name;
-            Navigator.Portal_PURL = urlPortal.Base_PURL;
-            if (urlPortal.Default_Aggregation.Length > 0)
-            {
+            Navigator.Instance_Abbreviation = urlPortal.Abbreviation;
+            Navigator.Instance_Name = urlPortal.Name;
+            if ( !String.IsNullOrEmpty(urlPortal.Base_PURL ))
+                Navigator.Portal_PURL = urlPortal.Base_PURL;
+		    if (String.IsNullOrEmpty(urlPortal.Default_Aggregation))
+		    {
+		        Navigator.Aggregation = "";
+		    }
+		    else
+		    {
                 Navigator.Default_Aggregation = urlPortal.Default_Aggregation;
-                Navigator.Aggregation = urlPortal.Default_Aggregation;
-            }
-            if (urlPortal.Default_Web_Skin.Length > 0)
+                Navigator.Aggregation = urlPortal.Default_Aggregation; 
+		    }
+            if (!String.IsNullOrEmpty(urlPortal.Default_Web_Skin))
             {
                 Navigator.Default_Skin = urlPortal.Default_Web_Skin;
                 Navigator.Skin = urlPortal.Default_Web_Skin;
@@ -264,15 +268,9 @@ namespace SobekCM.Engine_Library.Navigation
 											Navigator.Internal_Type = Internal_Type_Enum.Aggregations_List;
 											if (url_relative_list.Count > 2)
 											{
-												if (url_relative_list[2] == "list")
+												if (url_relative_list[2] == "tree")
 												{
-													if (url_relative_list.Count > 3)
-														Navigator.Info_Browse_Mode = url_relative_list[3];
-												}
-												else
-												{
-													Navigator.Internal_Type = Internal_Type_Enum.Aggregations;
-													Navigator.Info_Browse_Mode = url_relative_list[2].Replace("_"," ");
+												    Navigator.Internal_Type = Internal_Type_Enum.Aggregations_Tree;
 												}
 											}
 											break;
@@ -382,10 +380,16 @@ namespace SobekCM.Engine_Library.Navigation
 									}
 								}
 								break;
+
+                            case "register":
+                                Navigator.Mode = Display_Mode_Enum.My_Sobek;
+                                Navigator.My_Sobek_Type = My_Sobek_Type_Enum.Preferences;
+                                break;
 										   
 
 							case "my":
 								Navigator.Mode = Display_Mode_Enum.My_Sobek;
+                                Navigator.My_Sobek_Type = My_Sobek_Type_Enum.Home;
 								if (QueryString["return"] != null)
 									Navigator.Return_URL = QueryString["return"];
 								if ( url_relative_list.Count > 1 )
@@ -622,6 +626,12 @@ namespace SobekCM.Engine_Library.Navigation
                                             Navigator.Admin_Type = Admin_Type_Enum.Builder_Status;
                                             break;
 
+                                        case "addcoll":
+                                            Navigator.Admin_Type = Admin_Type_Enum.Add_Collection_Wizard;
+                                            if (url_relative_list.Count > 2)
+                                                Navigator.My_Sobek_SubMode = url_relative_list[2];
+                                            break;
+
                                         case "aggregations":
                                             Navigator.Admin_Type = Admin_Type_Enum.Aggregations_Mgmt;
                                             if (url_relative_list.Count > 2)
@@ -641,7 +651,15 @@ namespace SobekCM.Engine_Library.Navigation
                                             break;
 
                                         case "webskins":
-                                            Navigator.Admin_Type = Admin_Type_Enum.Skins;
+                                            Navigator.Admin_Type = Admin_Type_Enum.Skins_Mgmt;
+                                            break;
+
+                                        case "editskin":
+                                            Navigator.Admin_Type = Admin_Type_Enum.Skins_Single;
+                                            if (url_relative_list.Count > 2)
+                                                Navigator.My_Sobek_SubMode = url_relative_list[2];
+                                            if (url_relative_list.Count > 3)
+                                                Navigator.My_Sobek_SubMode = url_relative_list[2] + "/" + url_relative_list[3];
                                             break;
 
                                         case "defaults":
@@ -668,6 +686,12 @@ namespace SobekCM.Engine_Library.Navigation
 
                                         case "groups":
                                             Navigator.Admin_Type = Admin_Type_Enum.User_Groups;
+                                            if (url_relative_list.Count > 2)
+                                                Navigator.My_Sobek_SubMode = url_relative_list[2];
+                                            break;
+
+                                        case "permissions":
+                                            Navigator.Admin_Type = Admin_Type_Enum.User_Permissions_Reports;
                                             if (url_relative_list.Count > 2)
                                                 Navigator.My_Sobek_SubMode = url_relative_list[2];
                                             break;
@@ -710,6 +734,7 @@ namespace SobekCM.Engine_Library.Navigation
 							case "stats":
 							case "statistics":
 								Navigator.Mode = Display_Mode_Enum.Statistics;
+						        Navigator.Statistics_Type = Statistics_Type_Enum.Item_Count_Standard_View;
 								if ( url_relative_list.Count > 1 )
 								{
 									switch( url_relative_list[1] )
@@ -829,7 +854,7 @@ namespace SobekCM.Engine_Library.Navigation
 								break;
 
 							case "partners":
-								if (Navigator.Default_Aggregation == "all")
+								if (( String.IsNullOrEmpty(Navigator.Default_Aggregation)) || ( Navigator.Default_Aggregation == "all"))
 								{
 									Navigator.Mode = Display_Mode_Enum.Aggregation;
 									Navigator.Aggregation_Type = Aggregation_Type_Enum.Home;
@@ -850,11 +875,7 @@ namespace SobekCM.Engine_Library.Navigation
 								Navigator.Mode = Display_Mode_Enum.Aggregation;
 								Navigator.Aggregation_Type = Aggregation_Type_Enum.Home;
 								Navigator.Aggregation = String.Empty;
-								Navigator.Home_Type = Home_Type_Enum.Tree_Collapsed;
-								if ((url_relative_list.Count > 1) && (url_relative_list[1] == "expanded"))
-								{
-									Navigator.Home_Type = Home_Type_Enum.Tree_Expanded;
-								}
+								Navigator.Home_Type = Home_Type_Enum.Tree;
 								break;
 
 							case "brief":
@@ -906,6 +927,9 @@ namespace SobekCM.Engine_Library.Navigation
 							case "resultslike":
 							case "browseby":
 							case "info":
+                            case "aggrmanage":
+                            case "aggrhistory":
+                            case "aggrpermissions":
 								aggregation_querystring_analyze(Navigator, QueryString, Navigator.Default_Aggregation, url_relative_list);
 								break;
 
@@ -927,7 +951,7 @@ namespace SobekCM.Engine_Library.Navigation
 									// Perform all aggregation_style checks next
 									aggregation_querystring_analyze( Navigator, QueryString, url_relative_list[0], url_relative_list.GetRange(1, url_relative_list.Count - 1 ));
 								}
-								else if ((Engine_Database.Verify_Item_Lookup_Object(true, All_Items_Lookup, Tracer)) && (All_Items_Lookup.Contains_BibID(url_relative_list[0].ToUpper())))
+								else if ((Engine_Database.Verify_Item_Lookup_Object(false, true, All_Items_Lookup, Tracer)) && (All_Items_Lookup.Contains_BibID(url_relative_list[0].ToUpper())))
 								{
 									// This is a BibID for an existing title with at least one public item
 									Navigator.BibID = url_relative_list[0].ToUpper();
@@ -1106,37 +1130,59 @@ namespace SobekCM.Engine_Library.Navigation
 										source = source.Substring(0, source.Length - filename.Length);
 									}
 
+                                    // If the designated source exists, look for the files 
+								    if (Directory.Exists(source))
+								    {
+								        // This may point to the default html in the parent directory
+								        if ((Directory.Exists(source + "\\" + filename)) && (File.Exists(source + "\\" + filename + "\\default.html")))
+								        {
+								            Navigator.Info_Browse_Mode = possible_info_mode;
+								            Navigator.Page_By_FileName = source + "\\" + filename + "\\default.html";
+								        }
 
-									if (Directory.Exists(source))
-									{
-										string[] matching_file = Directory.GetFiles(source, filename + ".htm*");
-										if (matching_file.Length > 0)
-										{
-											Navigator.Info_Browse_Mode = possible_info_mode;
-											Navigator.Page_By_FileName = matching_file[0];
-										}
-									}
+								        if ( String.IsNullOrEmpty(Navigator.Page_By_FileName))
+								        {
+								            string[] matching_file = Directory.GetFiles(source, filename + ".htm*");
+								            if (matching_file.Length > 0)
+								            {
+								                Navigator.Info_Browse_Mode = possible_info_mode;
+								                Navigator.Page_By_FileName = matching_file[0];
+								            }
+								        }
 
-									if ( Navigator.Page_By_FileName.Length == 0 )
-									{
-										// This may point to the default html in the parent directory
-										if ((Directory.Exists(source + "\\" + filename)) && (File.Exists(source + "\\" + filename + "\\default.html")))
-										{
-											Navigator.Info_Browse_Mode = possible_info_mode;
-											Navigator.Page_By_FileName = source + "\\" + filename + "\\default.html";
-										}
-										else
-										{
-											if (Navigator.Default_Aggregation == "all")
-											{
-												Navigator.Info_Browse_Mode = "default";
-												Navigator.Page_By_FileName = base_source + "\\default.html";
-											}
-										}
-									}
+                                        if ((String.IsNullOrEmpty(Navigator.Page_By_FileName)) && ((String.IsNullOrEmpty(Navigator.Default_Aggregation)) || (Navigator.Default_Aggregation == "all")))
+								        {
+								            Navigator.Info_Browse_Mode = "default";
+								            Navigator.Page_By_FileName = base_source + "\\default.html";
+								        }
+								    }
 
-									// Last choice would be if this is a default aggregation
-									if ((Navigator.Page_By_FileName.Length == 0) && (Navigator.Default_Aggregation != "all"))
+                                    // If something was found, then check for submodes
+                                    if (!String.IsNullOrEmpty(Navigator.Page_By_FileName))
+								    {
+								        Navigator.WebContent_Type = WebContent_Type_Enum.Display;
+								        if (!String.IsNullOrEmpty(QueryString["mode"]))
+								        {
+								            switch (QueryString["mode"].ToLower())
+								            {
+								                case "edit":
+								                    Navigator.WebContent_Type = WebContent_Type_Enum.Edit;
+                                                    break;
+
+								                case "permissions":
+								                    Navigator.WebContent_Type = WebContent_Type_Enum.Permissions;
+                                                    break;
+
+                                                case "milestones":
+                                                    Navigator.WebContent_Type = WebContent_Type_Enum.Milestones;
+                                                    break;
+
+								            }
+								        }
+								    }
+
+								    // Last choice would be if this is a default aggregation
+                                    if ((String.IsNullOrEmpty(Navigator.Page_By_FileName)) && ((String.IsNullOrEmpty(Navigator.Default_Aggregation)) || (Navigator.Default_Aggregation == "all")))
 									{
 										aggregation_querystring_analyze(Navigator, QueryString, Navigator.Default_Aggregation, url_relative_list);
 									}
@@ -1150,8 +1196,12 @@ namespace SobekCM.Engine_Library.Navigation
 
 		#endregion
 
-		private static void aggregation_querystring_analyze(SobekCM_Navigation_Object Navigator, NameValueCollection QueryString, string Aggregation, List<string> RemainingURLRedirectList)
+		private static void aggregation_querystring_analyze(Navigation_Object Navigator, NameValueCollection QueryString, string Aggregation, List<string> RemainingURLRedirectList)
 		{
+            // If the aggrgeation passed in was null or empty, use ALL
+		    if (String.IsNullOrEmpty(Aggregation))
+		        Aggregation = "all";
+
 			Navigator.Aggregation = Aggregation;
 			Navigator.Mode = Display_Mode_Enum.Aggregation;
 			Navigator.Aggregation_Type = Aggregation_Type_Enum.Home;
@@ -1165,13 +1215,7 @@ namespace SobekCM.Engine_Library.Navigation
 			{
 				switch (RemainingURLRedirectList[0])
 				{
-					case "usage":
-						Navigator.Aggregation_Type = Aggregation_Type_Enum.Usage_Statistics;
-						if (RemainingURLRedirectList.Count > 1)
-						{
-							Navigator.Info_Browse_Mode = RemainingURLRedirectList[1];
-						}
-						break;
+
 
 					case "edit":
 						Navigator.Aggregation_Type = Aggregation_Type_Enum.Home_Edit;
@@ -1216,6 +1260,33 @@ namespace SobekCM.Engine_Library.Navigation
 							Navigator.Error_Message = QueryString["em"];
 						break;
 
+                    case "manage":
+                    case "aggrmanage":
+                        Navigator.Aggregation_Type = Aggregation_Type_Enum.Manage_Menu;
+                        break;
+                        
+                    case "permissions":
+                    case "aggrpermissions":
+                        Navigator.Aggregation_Type = Aggregation_Type_Enum.User_Permissions;
+                        break;
+
+                    case "history":
+                    case "aggrhistory":
+                        Navigator.Aggregation_Type = Aggregation_Type_Enum.Work_History;
+                        break;
+
+                    case "geography":
+                        Navigator.Aggregation_Type = Aggregation_Type_Enum.Browse_Map;
+                        break;
+
+                    case "usage":
+                        Navigator.Aggregation_Type = Aggregation_Type_Enum.Usage_Statistics;
+                        if (RemainingURLRedirectList.Count > 1)
+                        {
+                            Navigator.Info_Browse_Mode = RemainingURLRedirectList[1];
+                        }
+                        break;
+
 					case "map":
 						Navigator.Mode = Display_Mode_Enum.Search;
 						Navigator.Search_Type = Search_Type_Enum.Map;
@@ -1233,6 +1304,8 @@ namespace SobekCM.Engine_Library.Navigation
                             Navigator.Info_Browse_Mode = RemainingURLRedirectList[1];
                         }
                         break;
+
+
 
 					case "advanced":
 						Navigator.Mode = Display_Mode_Enum.Search;
@@ -1269,9 +1342,6 @@ namespace SobekCM.Engine_Library.Navigation
 						}
 						break;
 
-					case "geography":
-						Navigator.Aggregation_Type = Aggregation_Type_Enum.Browse_Map;
-						break;
 
 					case "results":
 					case "resultslike":
@@ -1361,7 +1431,7 @@ namespace SobekCM.Engine_Library.Navigation
 						if (QueryString["coord"] != null)
 						{
 							Navigator.Coordinates = QueryString["coord"].Trim();
-							if (Navigator.Coordinates.Length > 0)
+							if (!String.IsNullOrEmpty(Navigator.Coordinates))
 							{
 								Navigator.Search_Type = Search_Type_Enum.Map;
 								Navigator.Search_Fields = String.Empty;
@@ -1382,10 +1452,10 @@ namespace SobekCM.Engine_Library.Navigation
 							if (Int16.TryParse(QueryString["yr2"], out year2))
 								Navigator.DateRange_Year2 = year2;
 						}
-						if (Navigator.DateRange_Year1 > Navigator.DateRange_Year2)
+						if ((Navigator.DateRange_Year1.HasValue ) && ( Navigator.DateRange_Year2.HasValue ) && (Navigator.DateRange_Year1.Value > Navigator.DateRange_Year2.Value ))
 						{
-							short temp = Navigator.DateRange_Year1;
-							Navigator.DateRange_Year1 = Navigator.DateRange_Year2;
+							short temp = Navigator.DateRange_Year1.Value;
+                            Navigator.DateRange_Year1 = Navigator.DateRange_Year2.Value;
 							Navigator.DateRange_Year2 = temp;
 						}
 						if (QueryString["da1"] != null)

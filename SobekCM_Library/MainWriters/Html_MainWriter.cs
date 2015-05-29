@@ -12,13 +12,15 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.ApplicationState;
+using SobekCM.Engine_Library.Email;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MySobekViewer;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Behaviors;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -108,7 +110,7 @@ namespace SobekCM.Library.MainWriters
                         // Send the email now
                         if (RequestSpecificValues.Current_Mode.Caught_Exception != null)
                         {
-                            if (RequestSpecificValues.Current_Mode.Error_Message.Length == 0)
+                            if ( String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Error_Message))
                                 RequestSpecificValues.Current_Mode.Error_Message = "Unknown exception caught";
                             Email_Information(RequestSpecificValues.Current_Mode.Error_Message, RequestSpecificValues.Current_Mode.Caught_Exception, RequestSpecificValues.Tracer, false);
                         }
@@ -202,7 +204,7 @@ namespace SobekCM.Library.MainWriters
                         break;
 
                     case Display_Mode_Enum.Item_Display:
-                        if ((!RequestSpecificValues.Current_Mode.Invalid_Item) && (RequestSpecificValues.Current_Item != null))
+                        if ((!RequestSpecificValues.Current_Mode.Invalid_Item.HasValue || !RequestSpecificValues.Current_Mode.Invalid_Item.Value ) && (RequestSpecificValues.Current_Item != null))
                         {
                             bool show_toc = false;
                             if (HttpContext.Current.Session["Show TOC"] != null)
@@ -309,11 +311,7 @@ namespace SobekCM.Library.MainWriters
                     case Display_Mode_Enum.Aggregation:
 		                if ((RequestSpecificValues.Current_Mode.Aggregation_Type == Aggregation_Type_Enum.Home) || (RequestSpecificValues.Current_Mode.Aggregation_Type == Aggregation_Type_Enum.Home_Edit))
 		                {
-			                if ((RequestSpecificValues.Current_Mode.Aggregation.Length != 0) && (RequestSpecificValues.Current_Mode.Aggregation.ToUpper() != "ALL"))
-			                {
-				                return false;
-			                }
-			                return (RequestSpecificValues.Current_Mode.Home_Type == Home_Type_Enum.Tree_Collapsed) || (RequestSpecificValues.Current_Mode.Home_Type == Home_Type_Enum.Tree_Expanded);
+                            return false;
 		                }
 		                return true;
 
@@ -524,7 +522,7 @@ namespace SobekCM.Library.MainWriters
             if ( String.IsNullOrEmpty(thisTitle))
                 thisTitle = "{0}";
 
-            return String.Format(thisTitle, RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation);
+            return String.Format(thisTitle, RequestSpecificValues.Current_Mode.Instance_Abbreviation);
         }
 
         /// <summary> Writes the style references and other data to the HEAD portion of the web page </summary>
@@ -545,34 +543,17 @@ namespace SobekCM.Library.MainWriters
             }
 
             // Write the style sheet to use 
-#if DEBUG
-            Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM.css\" rel=\"stylesheet\" type=\"text/css\" />");
-#else
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM.min.css\" rel=\"stylesheet\" type=\"text/css\" />");
-
-#endif
+            Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
 
 			// Always add jQuery library (changed as of 7/8/2013)
             if ((RequestSpecificValues.Current_Mode.Mode != Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.ViewerCode != "pageturner"))
             {
-#if DEBUG
-                Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-1.10.2.js\"></script>");
-				Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_full.js\"></script>");
-                Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery.qtip.min.js\"></script>");
-                Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery.qtip.min.css\" /> ");
-#else
-                Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-1.10.2.min.js\"></script>");
-				Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_full.min.js\"></script>");
-
-     //           Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-1.10.2.min.js\"></script>");
-                Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery.qtip.min.js\"></script>");
-                Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery.qtip.min.css\" /> ");
-
-#endif
+                Output.WriteLine("  <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_1_10_2_Js + "\"></script>");
+				Output.WriteLine("  <script type=\"text/javascript\" src=\"" + Static_Resources.Sobekcm_Full_Js + "\"></script>");
 			}
 
 			// Special code for the menus, if this is not IE
-			if (HttpContext.Current.Request.Browser.Browser.ToUpper() != "IE")
+			if (HttpContext.Current.Request.Browser.Browser.IndexOf("IE",StringComparison.OrdinalIgnoreCase) < 0 )
 			{
 				string non_ie_hack = HttpContext.Current.Application["NonIE_Hack_CSS"] as string;
 				if (!String.IsNullOrEmpty(non_ie_hack))
@@ -585,7 +566,7 @@ namespace SobekCM.Library.MainWriters
 			else
 			{
 				Output.WriteLine("  <!--[if lt IE 9]>");
-				Output.WriteLine("    <script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/html5shiv/html5shiv.js\"></script>");
+				Output.WriteLine("    <script src=\"" + Static_Resources.Html5shiv_Js + "\"></script>");
 				Output.WriteLine("  <![endif]-->");
 			}
 
@@ -606,7 +587,7 @@ namespace SobekCM.Library.MainWriters
 			}
 
             // Add a printer friendly CSS
-            Output.WriteLine("  <link rel=\"stylesheet\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/print.css\" type=\"text/css\" media=\"print\" /> ");
+            Output.WriteLine("  <link rel=\"stylesheet\" href=\"" + Static_Resources.Print_Css + "\" type=\"text/css\" media=\"print\" /> ");
 
             // Add the apple touch icon
             Output.WriteLine("  <link rel=\"apple-touch-icon\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Skin + "/iphone-icon.png\" />");
@@ -686,10 +667,7 @@ namespace SobekCM.Library.MainWriters
             if (subwriter == null) return;
 
             // Start with the basic html at the beginning of the page
-            if (!subwriter.Subwriter_Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Header))
-            {
-                Display_Header(Output, Tracer);
-            }
+            Display_Header(Output, Tracer);
 
             try
             {
@@ -771,9 +749,9 @@ namespace SobekCM.Library.MainWriters
 			// Get the list of behaviors here
 	        List<HtmlSubwriter_Behaviors_Enum> behaviors = subwriter.Subwriter_Behaviors;
 
-            // If no header should be added, just return
-	        if (behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Header))
-		        return;
+            //// If no header should be added, just return
+            //if (behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Header))
+            //    return;
 
             // Should the internal header be added?
             if ((subwriter != null) && (RequestSpecificValues.Current_Mode.Mode != Display_Mode_Enum.My_Sobek) && (RequestSpecificValues.Current_Mode.Mode != Display_Mode_Enum.Administrative) && (RequestSpecificValues.Current_User != null))
@@ -839,7 +817,8 @@ namespace SobekCM.Library.MainWriters
                 }
             }
 
-            HeaderFooter_Helper_HtmlSubWriter.Add_Header(Output, RequestSpecificValues, subwriter.Container_CssClass, behaviors);
+            if (!behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Header))
+                HeaderFooter_Helper_HtmlSubWriter.Add_Header(Output, RequestSpecificValues, subwriter.Container_CssClass, behaviors);
 
             Output.WriteLine(String.Empty);
         }
@@ -934,17 +913,50 @@ namespace SobekCM.Library.MainWriters
                     // Email the error message
                     if (Tracer != null)
                     {
-                        SobekCM_Database.Send_Database_Email(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err + "<br /><br />" + Tracer.Text_Trace, true, false, -1, -1);
+                        Email_Helper.SendEmail(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err + "<br /><br />" + Tracer.Text_Trace, true, String.Empty);
                     }
                     else
                     {
-                        SobekCM_Database.Send_Database_Email(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err, true, false, -1, -1);
+                        Email_Helper.SendEmail(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err, true, String.Empty);
                     }
                 }
                 catch (Exception)
                 {
                     // Failed to send the email.. but not much else to do here really
                 }
+            }
+
+            try
+            {
+                StreamWriter writer = new StreamWriter(AppDomain.CurrentDomain.BaseDirectory + "\\temp\\exceptions.txt", true);
+                writer.WriteLine();
+                writer.WriteLine("Error Caught in Application_Error event ( " + DateTime.Now.ToString() + ")");
+                writer.WriteLine("User Host Address: " + HttpContext.Current.Request.UserHostAddress);
+                writer.WriteLine("Requested URL: " + HttpContext.Current.Request.Url);
+                if (ObjErr is SobekCM_Traced_Exception)
+                {
+                    SobekCM_Traced_Exception sobekException = (SobekCM_Traced_Exception)ObjErr;
+                    writer.WriteLine("Error Message: " + sobekException.InnerException.Message);
+                    writer.WriteLine("Stack Trace: " + ObjErr.StackTrace);
+                    writer.WriteLine("Error Message:" + sobekException.InnerException.StackTrace);
+                    writer.WriteLine();
+                    writer.WriteLine(sobekException.Trace_Route);
+                }
+                else
+                {
+
+                    writer.WriteLine("Error Message: " + ObjErr.Message);
+                    writer.WriteLine("Stack Trace: " + ObjErr.StackTrace);
+                }
+
+                writer.WriteLine();
+                writer.WriteLine("------------------------------------------------------------------");
+                writer.Flush();
+                writer.Close();
+            }
+            catch (Exception)
+            {
+                // Nothing else to do here.. no other known way to log this error
             }
 
             // Forward to our error message

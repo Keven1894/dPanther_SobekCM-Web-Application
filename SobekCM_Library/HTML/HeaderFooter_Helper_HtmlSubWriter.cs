@@ -8,8 +8,8 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Navigation;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Behaviors;
-using SobekCM.UI_Library;
 
 namespace SobekCM.Library.HTML
 {
@@ -39,13 +39,13 @@ namespace SobekCM.Library.HTML
             RequestSpecificValues.Current_Mode.Mode = thisMode;
 
             // Determine which header and footer to display
-            bool useItemHeader = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter));
+            bool useItemHeader = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || ((Behaviors != null) && (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter)));
 
             // Create the breadcrumbs text
             string breadcrumbs = "&nbsp; &nbsp; ";
             if (useItemHeader)
             {
-                StringBuilder breadcrumb_builder = new StringBuilder("<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>");
+                StringBuilder breadcrumb_builder = new StringBuilder("<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>");
 
                 int codes_added = 0;
                 if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
@@ -151,7 +151,7 @@ namespace SobekCM.Library.HTML
                 switch (RequestSpecificValues.Current_Mode.Mode)
                 {
                     case Display_Mode_Enum.Error:
-                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                         break;
 
                     case Display_Mode_Enum.Aggregation:
@@ -159,12 +159,12 @@ namespace SobekCM.Library.HTML
                         {
                             if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                             {
-                                breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                                breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                             }
                         }
                         else
                         {
-                            breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                            breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                             if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                             {
                                 breadcrumbs = breadcrumbs + " &nbsp;|&nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Current_Mode.Aggregation + modified_url_options + "\">" + UI_ApplicationCache_Gateway.Aggregations.Get_Collection_Short_Name(RequestSpecificValues.Current_Mode.Aggregation) + "</a>";
@@ -173,7 +173,7 @@ namespace SobekCM.Library.HTML
                         break;
 
                     default:
-                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                         if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                         {
                             breadcrumbs = breadcrumbs + " &nbsp;|&nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Current_Mode.Aggregation + modified_url_options + "\">" + UI_ApplicationCache_Gateway.Aggregations.Get_Collection_Short_Name(RequestSpecificValues.Current_Mode.Aggregation) + "</a>";
@@ -187,7 +187,7 @@ namespace SobekCM.Library.HTML
             string mySobekLinks = String.Empty;
             if (!RequestSpecificValues.Current_Mode.Is_Robot)
             {
-                string mySobekText = "my" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+                string mySobekText = "my" + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
                 string mySobekOptions = url_options;
                 string mySobekLogoutOptions = url_options;
                 string return_url = String.Empty;
@@ -286,11 +286,11 @@ namespace SobekCM.Library.HTML
 
             // Determine the possible banner to display
             string banner = String.Empty;
-            if (!Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Banner))
+            if (( Behaviors != null ) && ( !Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Banner)))
             {
                 if ((RequestSpecificValues.HTML_Skin != null) && (RequestSpecificValues.HTML_Skin.Override_Banner))
                 {
-                    banner = RequestSpecificValues.HTML_Skin.Banner_HTML;
+                    banner = !String.IsNullOrEmpty(RequestSpecificValues.HTML_Skin.Banner_HTML) ? RequestSpecificValues.HTML_Skin.Banner_HTML : String.Empty;
                 }
                 else
                 {
@@ -349,7 +349,7 @@ namespace SobekCM.Library.HTML
         public static void Add_Footer(TextWriter Output, RequestCache RequestSpecificValues, List<HtmlSubwriter_Behaviors_Enum> Behaviors)
         {
             // Determine which header and footer to display
-            bool useItemFooter = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter));
+            bool useItemFooter = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || ((Behaviors != null) && (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter)));
 
             // Get the current contact URL
             Display_Mode_Enum thisMode = RequestSpecificValues.Current_Mode.Mode;

@@ -13,6 +13,7 @@ using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
 using SobekCM.Tools;
 
 #endregion
@@ -154,7 +155,7 @@ namespace SobekCM.Library.MySobekViewer
             }
 
             StringBuilder literalBuilder = new StringBuilder(1000);
-            literalBuilder.AppendLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+            literalBuilder.AppendLine("<script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
             literalBuilder.AppendLine("<div class=\"SobekHomeText\" >");
             literalBuilder.AppendLine("<br />");
             literalBuilder.AppendLine("<blockquote>");
@@ -219,7 +220,7 @@ namespace SobekCM.Library.MySobekViewer
             literalBuilder.AppendLine("   </td><td>&nbsp;</td></tr>");
             literalBuilder.AppendLine("  <tr align=\"right\" valign=\"bottom\" height=\"50px\" ><td colspan=\"3\">");
             RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.Log_Out;
-            literalBuilder.AppendLine("    <a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/cancel_button.gif\" border=\"0\" alt=\"CANCEL\" /></a> &nbsp; ");
+            literalBuilder.AppendLine("    <a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/cancel_button.gif\" border=\"0\" alt=\"CANCEL\" /></a> &nbsp; ");
             RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.New_Password;
 
             LiteralControl literal4 = new LiteralControl(literalBuilder.ToString());
@@ -228,7 +229,7 @@ namespace SobekCM.Library.MySobekViewer
             // Add the submit button
             ImageButton submitButton = new ImageButton
                                            {
-                                               ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/buttons/save_button.gif",
+                                               ImageUrl = RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/buttons/save_button.gif",
                                                AlternateText = "SAVE"
                                            };
             submitButton.Click += submitButton_Click;

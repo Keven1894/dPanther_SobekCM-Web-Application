@@ -4,9 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -113,22 +114,22 @@ namespace SobekCM.Library.HTML
 
         private void print_brief_citation( string image_width, TextWriter Output)
         {
-            if (RequestSpecificValues.Current_Mode.Base_Skin == "ufdc")
+            if (RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin == "ufdc")
             {
-                Output.WriteLine("<img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "ufdc_banner_" + image_width + ".jpg\" />");
+                Output.WriteLine("<img src=\"ufdc_banner_" + image_width + ".jpg\" />");
                 Output.WriteLine("<br />");
             }
 
-            if (RequestSpecificValues.Current_Mode.Base_Skin == "dloc")
+            if (RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin == "dloc")
             {
-                Output.WriteLine("<img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "dloc_banner_" + image_width + ".jpg\" />");
+                Output.WriteLine("<img src=\"dloc_banner_" + image_width + ".jpg\" />");
                 Output.WriteLine("<br />");
             }
 
             Output.WriteLine("<table cellspacing=\"5px\" class=\"citation\" width=\"550px\" >");
             Output.WriteLine("  <tr align=\"left\"><td><b>Title:</b> &nbsp; </td><td>" + RequestSpecificValues.Current_Item.Bib_Info.Main_Title + "</td></tr>");
             Output.WriteLine("  <tr align=\"left\"><td><b>URL:</b> &nbsp; </td><td>" + RequestSpecificValues.Current_Mode.Base_URL + "/" + RequestSpecificValues.Current_Item.BibID + "/" + RequestSpecificValues.Current_Item.VID + "</td></tr>");
-            Output.WriteLine("  <tr align=\"left\"><td><b>Site:</b> &nbsp; </td><td>" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Name + "</td></tr>");
+            Output.WriteLine("  <tr align=\"left\"><td><b>Site:</b> &nbsp; </td><td>" + RequestSpecificValues.Current_Mode.Instance_Name + "</td></tr>");
             Output.WriteLine("</table>");
         }
 
@@ -146,10 +147,12 @@ namespace SobekCM.Library.HTML
                 if (thisFile.System_Name.ToUpper().IndexOf(".JP2") > 0)
                 {
                     int zoomlevels = zoom_levels( thisFile.Width, thisFile.Height );
-                    int size_pixels = 512 + (RequestSpecificValues.Current_Mode.Viewport_Size * 256);
+                    int currViewportSize = RequestSpecificValues.Current_Mode.Viewport_Size.HasValue ? RequestSpecificValues.Current_Mode.Viewport_Size.Value : 1;
+                    int size_pixels = 512 + (currViewportSize * 256);
                     if (RequestSpecificValues.Current_Mode.Viewport_Size == 3)
                         size_pixels = 1536;
-                    int rotation = (RequestSpecificValues.Current_Mode.Viewport_Rotation % 4) * 90;
+                    int currViewportRotation = RequestSpecificValues.Current_Mode.Viewport_Rotation.HasValue ? RequestSpecificValues.Current_Mode.Viewport_Rotation.Value : 0;
+                    int rotation = (currViewportRotation % 4) * 90;
 
                     string jpeg2000_filename = thisFile.System_Name;
                     if ((jpeg2000_filename.Length > 0) && (jpeg2000_filename[0] != '/'))
@@ -170,7 +173,8 @@ namespace SobekCM.Library.HTML
         private int zoom_levels( int width, int height )
         {
             // Get the current portal size in pixels
-            float size_pixels = 512 + (RequestSpecificValues.Current_Mode.Viewport_Size * 256);
+            int currViewportSize = RequestSpecificValues.Current_Mode.Viewport_Size.HasValue ? RequestSpecificValues.Current_Mode.Viewport_Size.Value : 1;
+            float size_pixels = 512 + (currViewportSize * 256);
             if (RequestSpecificValues.Current_Mode.Viewport_Size == 3)
                 size_pixels = 1536;
 
@@ -268,15 +272,15 @@ namespace SobekCM.Library.HTML
         private void print_full_citation(TextWriter Output)
         {
             Output.WriteLine("</center>");
-            if (RequestSpecificValues.Current_Mode.Base_Skin == "ufdc")
+            if (RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin == "ufdc")
             {
-                Output.WriteLine("<img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "ufdc_banner_700.jpg\" />");
+                Output.WriteLine("<img src=\"ufdc_banner_700.jpg\" />");
                 Output.WriteLine("<br />");
             }
 
-            if (RequestSpecificValues.Current_Mode.Base_Skin == "dloc")
+            if (RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin == "dloc")
             {
-                Output.WriteLine("<img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "dloc_banner_700.jpg\" />");
+                Output.WriteLine("<img src=\"dloc_banner_700.jpg\" />");
                 Output.WriteLine("<br />");
             }
 
@@ -322,14 +326,10 @@ namespace SobekCM.Library.HTML
             Output.WriteLine("  <meta name=\"robots\" content=\"noindex, nofollow\" />");
 
             // Write the style sheet to use 
-#if DEBUG
-            Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Item.css\" rel=\"stylesheet\" type=\"text/css\" />");
-#else
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Item.min.css\" rel=\"stylesheet\" type=\"text/css\" title=\"standard\" />");
-#endif
+            Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Item_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
  
             // Write the style sheet to use 
-            Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Print.css\" rel=\"stylesheet\" type=\"text/css\" title=\"standard\" />");
+            Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Print_Css + "\" rel=\"stylesheet\" type=\"text/css\" title=\"standard\" />");
         }
 
         /// <summary> Gets the collection of special behaviors which this subwriter

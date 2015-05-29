@@ -31,12 +31,15 @@ namespace SobekCM.Core.MemoryMgmt
 
         public static CachedDataManager_AggregationServices Aggregations { get; private set;}
 
+        public static CachedDataManager_WebSkinServices WebSkins { get; private set; }
+
 
 		/// <summary> Static constructor initializes several variables </summary>
 		static CachedDataManager()
 		{
 		    Settings = new CachedDataManager_Settings();
 		    Aggregations = new CachedDataManager_AggregationServices(Settings);
+		    WebSkins = new CachedDataManager_WebSkinServices(Settings);
             Settings.CachingServerEnabled = false;
             Settings.Disabled = false;
 		}
@@ -1134,7 +1137,7 @@ namespace SobekCM.Core.MemoryMgmt
 		/// <param name="Count"> Number of fields or terms to include in the key for this result </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
 		/// <returns> Either NULL or the search results item/title list </returns>
-		public static Search_Results_Statistics Retrieve_Search_Result_Statistics( SobekCM_Navigation_Object Current_Mode, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Custom_Tracer Tracer)
+		public static Search_Results_Statistics Retrieve_Search_Result_Statistics( Navigation_Object Current_Mode, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Custom_Tracer Tracer)
 		{
 			// If the cache is disabled, just return before even tracing
 			if ( Settings.Disabled )
@@ -1196,7 +1199,7 @@ namespace SobekCM.Core.MemoryMgmt
 			//{
 			//    key = "a_" + precision + "_" + aggregation_code + "s_" + Current_Mode.SubAggregation + "t_" + Current_Mode.Search_String + "f_" + search_fields;
 			//}
-			if ((Current_Mode.Search_String.Length == 0) && (Current_Mode.Coordinates.Length > 0))
+			if ((String.IsNullOrEmpty(Current_Mode.Search_String)) && (!String.IsNullOrEmpty(Current_Mode.Coordinates)))
 			{
 				key = "TOTALRESULTS_" + precision + "_" + aggregation_code + "coord_" + Current_Mode.Coordinates;
 			}
@@ -1240,7 +1243,7 @@ namespace SobekCM.Core.MemoryMgmt
 		/// <param name="DateRange_End"> End of a date range search, or -1 </param>
 		/// <param name="StoreObject"> Search results item/title list </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		public static void Store_Search_Result_Statistics(SobekCM_Navigation_Object Current_Mode, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Search_Results_Statistics StoreObject, Custom_Tracer Tracer)
+		public static void Store_Search_Result_Statistics(Navigation_Object Current_Mode, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Search_Results_Statistics StoreObject, Custom_Tracer Tracer)
 		{
 			// If the cache is disabled, just return before even tracing
 			if ( Settings.Disabled )
@@ -1296,7 +1299,7 @@ namespace SobekCM.Core.MemoryMgmt
 			//{
 			//    key = "a_" + precision + "_" + aggregation_code + "s_" + Current_Mode.SubAggregation + "t_" + Current_Mode.Search_String + "f_" + search_fields;
 			//}
-			if ((Current_Mode.Search_String.Length == 0) && (Current_Mode.Coordinates.Length > 0))
+			if ((String.IsNullOrEmpty(Current_Mode.Search_String)) && (!String.IsNullOrEmpty(Current_Mode.Coordinates)))
 			{
 				key = "TOTALRESULTS_" + precision + "_" + aggregation_code + "coord_" + Current_Mode.Coordinates;
 			}
@@ -1339,7 +1342,7 @@ namespace SobekCM.Core.MemoryMgmt
 		/// <param name="DateRange_End"> End of a date range search, or -1 </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
 		/// <returns> Either NULL or the search results item/title list </returns>
-		public static List<iSearch_Title_Result> Retrieve_Search_Results(SobekCM_Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Custom_Tracer Tracer)
+		public static List<iSearch_Title_Result> Retrieve_Search_Results(Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, Custom_Tracer Tracer)
 		{
 			// If the cache is disabled, just return before even tracing
 			if ( Settings.Disabled )
@@ -1402,7 +1405,7 @@ namespace SobekCM.Core.MemoryMgmt
 			//{
 			//    key = "a_" + precision + "_" + aggregation_code + "s_" + Current_Mode.SubAggregation + "t_" + Current_Mode.Search_String + "f_" + search_fields;
 			//}
-			if ((Current_Mode.Search_String.Length == 0) && (Current_Mode.Coordinates.Length > 0))
+            if ((String.IsNullOrEmpty(Current_Mode.Search_String)) && (!String.IsNullOrEmpty(Current_Mode.Coordinates)))
 			{
 				key = "TOTALRESULTS_" + precision + "_" + aggregation_code + "coord_" + Current_Mode.Coordinates;
 			}
@@ -1447,7 +1450,7 @@ namespace SobekCM.Core.MemoryMgmt
 		/// <param name="DateRange_End"> End of a date range search, or -1 </param>
 		/// <param name="StoreObject"> Search results item/title list </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		public static void Store_Search_Results(SobekCM_Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, List<iSearch_Title_Result> StoreObject, Custom_Tracer Tracer)
+		public static void Store_Search_Results(Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, List<iSearch_Title_Result> StoreObject, Custom_Tracer Tracer)
 		{
 			// If the cache is disabled, just return before even tracing
 			if ( Settings.Disabled )
@@ -1505,7 +1508,7 @@ namespace SobekCM.Core.MemoryMgmt
 			//{
 			//    key = "a_" + precision + "_" + aggregation_code + "s_" + Current_Mode.SubAggregation + "t_" + Current_Mode.Search_String + "f_" + search_fields;
 			//}
-			if ((Current_Mode.Search_String.Length == 0) && (Current_Mode.Coordinates.Length > 0))
+            if ((String.IsNullOrEmpty(Current_Mode.Search_String)) && (!String.IsNullOrEmpty(Current_Mode.Coordinates)))
 			{
 				key = "TOTALRESULTS_" + precision + "_" + aggregation_code + "coord_" + Current_Mode.Coordinates;
 			}
@@ -1544,7 +1547,7 @@ namespace SobekCM.Core.MemoryMgmt
 		/// <param name="DateRange_End"> End of a date range search, or -1 </param>
 		/// <param name="StoreObject"> Search results item/title list </param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		public static void Store_Search_Results(SobekCM_Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, List<List<iSearch_Title_Result>> StoreObject, Custom_Tracer Tracer)
+		public static void Store_Search_Results(Navigation_Object Current_Mode, int Sort, int Count, List<string> Fields, List<string> Terms, long DateRange_Start, long DateRange_End, List<List<iSearch_Title_Result>> StoreObject, Custom_Tracer Tracer)
 		{
 			// If the cache is disabled, just return before even tracing
 			if ( Settings.Disabled )
@@ -1574,7 +1577,7 @@ namespace SobekCM.Core.MemoryMgmt
 			}
 
 			// Save the requested page of results and any additionally returned pages
-			int currentpage = Current_Mode.Page;
+		    int currentpage = Current_Mode.Page.HasValue ? Current_Mode.Page.Value : 1;
 			foreach (List<iSearch_Title_Result> pageOfResults in StoreObject)
 			{
 				// Start to build the key
@@ -1607,7 +1610,7 @@ namespace SobekCM.Core.MemoryMgmt
 				}
 
 				string key = keyBuilder.ToString();
-				if ((Current_Mode.Search_String.Length == 0) && (Current_Mode.Coordinates.Length > 0))
+                if ((String.IsNullOrEmpty(Current_Mode.Search_String)) && (!String.IsNullOrEmpty(Current_Mode.Coordinates)))
 				{
 					key = "TOTALRESULTS_" + precision + "_" + aggregation_code + "coord_" + Current_Mode.Coordinates;
 				}
@@ -1702,8 +1705,6 @@ namespace SobekCM.Core.MemoryMgmt
         //}
 
 		#endregion
-
-
 
         #region Static methods relating to storing and retrieving templates (for online submission and editing)
 
@@ -1870,164 +1871,6 @@ namespace SobekCM.Core.MemoryMgmt
 			}
 		}
 
-
-		#endregion
-
-		#region Static methods relating to storing and retrieving HTML skin objects
-
-		/// <summary> Removes all matching html skin objects from the cache or caching server </summary>
-		/// <param name="Skin_Code"> Code identifying this skin </param>
-		/// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> Number of instances of this skin removed from the cache or caching server </returns>
-		/// <remarks> This removes every instance of this skin, regardless of language </remarks>
-		public static int Remove_Skin(string Skin_Code, Custom_Tracer Tracer)
-		{
-			// If the cache is disabled, just return before even tracing
-			if ( Settings.Disabled )
-				return 0;
-
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("CachedDataManager.Remove_Skin");
-			}
-
-			int values_cleared = 0;
-			foreach (DictionaryEntry thisItem in HttpContext.Current.Cache)
-			{
-				if ((thisItem.Key.ToString() == "SKIN_" + Skin_Code.ToLower()) || (thisItem.Key.ToString().IndexOf("SKIN_" + Skin_Code.ToLower() + "_") == 0))
-				{
-					HttpContext.Current.Cache.Remove(thisItem.Key.ToString());
-					values_cleared++;
-				}
-			}
-
-            //// Do the same thing for the remote cache
-            //foreach (Cached_Object_Info cachedObject in AppFabric_Manager.Cached_Items)
-            //{
-            //    if ((cachedObject.Object_Key == "SKIN_" + Skin_Code.ToLower()) || (cachedObject.Object_Key.IndexOf("SKIN_" + Skin_Code.ToLower() + "_") == 0))
-            //    {
-            //        AppFabric_Manager.Expire_Item(cachedObject.Object_Key);
-            //        values_cleared++;
-            //    }
-            //}
-
-			return values_cleared;
-		}
-
-		/// <summary> Retrieves the html skin object from the cache or caching server </summary>
-		/// <param name="Skin_Code"> Code for this html display skin </param>
-		/// <param name="Language_Code"> Current language code for the user interface ( skins are language-specific)</param>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> Either NULL or the html skin object </returns>
-		public static SobekCM_Skin_Object Retrieve_Skin( string Skin_Code, string Language_Code, Custom_Tracer Tracer)
-		{
-			// If the cache is disabled, just return before even tracing
-			if ( Settings.Disabled )
-				return null;
-
-			// Determine the key
-			string key = "SKIN_" + Skin_Code.ToLower();
-			if ((Language_Code.Length > 0) && (Language_Code != "en"))
-				key = key + "_" + Language_Code;
-
-			// See if this is in the local cache first
-			object returnValue = HttpContext.Current.Cache.Get(key);
-			if (returnValue != null)
-			{
-				if (Tracer != null)
-				{
-					Tracer.Add_Trace("CachedDataManager.Retrieve_Skin", "Found html skin on local cache");
-				}
-
-				return (SobekCM_Skin_Object)returnValue;
-			}
-
-			// Try to get this from the caching server, if enabled
-			if ((Settings.CachingServerEnabled) && (AppFabric_Manager.Contains(key)))
-			{
-				object from_app_fabric = AppFabric_Manager.Get(key, Tracer);
-				if (from_app_fabric != null)
-				{
-					if (Tracer != null)
-					{
-						Tracer.Add_Trace("CachedDataManager.Retrieve_Skin", "Found html skin on caching server");
-					}
-
-					// Check the number of item aggregationPermissions currently locally cached
-					if (Settings.LOCALLY_CACHED_SKINS_LIMIT > 0)
-					{
-						int items_cached = HttpContext.Current.Cache.Cast<DictionaryEntry>().Count(ThisItem => ThisItem.Key.ToString().IndexOf("SKIN_") == 0);
-
-						// Locally cache if this doesn't exceed the limit
-						if (items_cached < Settings.LOCALLY_CACHED_SKINS_LIMIT)
-						{
-							if (Tracer != null)
-							{
-								Tracer.Add_Trace("CachedDataManager.Retrieve_Skin", "Adding object '" + key + "' to the local cache with expiration of 1 minute");
-							}
-
-							HttpContext.Current.Cache.Insert(key, from_app_fabric, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(1));
-						}
-					}
-
-					return (SobekCM_Skin_Object)from_app_fabric;
-				}
-			}
-
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("CachedDataManager.Retrieve_Skin", "Skin not found in either the local cache or caching server");
-			}
-
-			// Since everything failed, just return null
-			return null;
-		}
-
-		/// <summary> Stores the html skin object to the cache or caching server </summary>
-		/// <param name="Skin_Code"> Code for this html display skin </param>
-		/// <param name="Language_Code"> Current language code for the user interface ( skins are language-specific)</param>
-		/// <param name="StoreObject"> HTML Skin object </param>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		public static void Store_Skin( string Skin_Code, string Language_Code, SobekCM_Skin_Object StoreObject, Custom_Tracer Tracer)
-		{
-			// If the cache is disabled, just return before even tracing
-			if ((Settings.Disabled) || ( StoreObject == null ))
-				return;
-
-			// Determine the key
-			string key = "SKIN_" + Skin_Code.ToLower();
-			if ((Language_Code.Length > 0) && (Language_Code != "en"))
-				key = key + "_" + Language_Code;
-
-
-			// Check the number of item aggregationPermissions currently locally cached
-			if ((Settings.LOCALLY_CACHED_SKINS_LIMIT > 0) || ( !Settings.CachingServerEnabled ))
-			{
-				int items_cached = HttpContext.Current.Cache.Cast<DictionaryEntry>().Count(ThisItem => ThisItem.Key.ToString().IndexOf("SKIN_") == 0);
-
-				// Locally cache if this doesn't exceed the limit
-				if ((items_cached < Settings.LOCALLY_CACHED_SKINS_LIMIT) || ( !Settings.CachingServerEnabled ))
-				{
-					if (Tracer != null)
-					{
-						Tracer.Add_Trace("CachedDataManager.Store_Skin", "Adding object '" + key + "' to the local cache with expiration of 1 minute");
-					}
-
-					HttpContext.Current.Cache.Insert(key, StoreObject, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(1));
-				}
-			}
-
-			// try to store in the caching server, if enabled
-			if ( Settings.CachingServerEnabled )
-			{
-				if (Tracer != null)
-				{
-					Tracer.Add_Trace("CachedDataManager.Store_Skin", "Adding object '" + key + "' to the caching server");
-				}
-
-				AppFabric_Manager.Add(key, StoreObject, Tracer);
-			}
-		}
 
 		#endregion
 

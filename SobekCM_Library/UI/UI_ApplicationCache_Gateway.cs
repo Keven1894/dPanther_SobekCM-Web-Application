@@ -7,12 +7,11 @@ using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Settings;
 using SobekCM.Core.Skins;
 using SobekCM.Core.Users;
-using SobekCM.EngineLibrary.ApplicationState;
 using SobekCM.Engine_Library.ApplicationState;
 
 #endregion
 
-namespace SobekCM.UI_Library
+namespace SobekCM.Library.UI
 {
     public static class UI_ApplicationCache_Gateway
     {
@@ -96,7 +95,7 @@ namespace SobekCM.UI_Library
             get { return Engine_ApplicationCache_Gateway.Stats_Date_Range; }
         }
 
-        public static SobekCM_Skin_Collection Web_Skin_Collection
+        public static Web_Skin_Collection Web_Skin_Collection
         {
             get { return Engine_ApplicationCache_Gateway.Web_Skin_Collection; }
         }

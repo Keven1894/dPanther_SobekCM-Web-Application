@@ -105,8 +105,16 @@ namespace SobekCM.Resource_Object.Bib_Info
                     foreach (Identifier_Info thisIdentifier in Identifiers)
                     {
                         metadataTerms.Add(new KeyValuePair<string, string>("Identifier", thisIdentifier.Identifier));
+
+                        if ((thisIdentifier.Type.IndexOf("ACCESSION", StringComparison.InvariantCultureIgnoreCase) >= 0) ||
+                            (thisIdentifier.Type.IndexOf("ACCN", StringComparison.InvariantCultureIgnoreCase) >= 0))
+                        {
+                            metadataTerms.Add(new KeyValuePair<string, string>("Accession Number", thisIdentifier.Identifier));
+                        }
                     }
                 }
+
+
 
                 // Add the languages
                 if (Languages_Count > 0)
@@ -883,6 +891,18 @@ namespace SobekCM.Resource_Object.Bib_Info
 
 		    affiliations.Add(New_Affiliation);
 		    return New_Affiliation;
+        }
+
+        /// <summary> Adds a new spatial subject (non-hierarchical) to this item </summary>
+        /// <param name="SpatialTerm"> Term for the spatial subject </param>
+        /// <returns> Subject_Info_Standard object that was created and added </returns>
+        public Subject_Info_Standard Add_Spatial_Subject(string SpatialTerm)
+        {
+            Subject_Info_Standard returnValue = new Subject_Info_Standard();
+            returnValue.Add_Geographic(SpatialTerm);
+            Add_Subject(returnValue);
+
+            return returnValue;
         }
 
 	    /// <summary> Adds a new temporal subject to this object </summary>

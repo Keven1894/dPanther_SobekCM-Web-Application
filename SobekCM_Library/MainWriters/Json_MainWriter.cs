@@ -6,10 +6,11 @@ using System.IO;
 using System.Linq;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Results;
-using SobekCM.EngineLibrary.ApplicationState;
+using SobekCM.Engine_Library.ApplicationState;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -31,7 +32,7 @@ namespace SobekCM.Library.MainWriters
         }
 
         /// <summary> Gets the enumeration of the type of main writer </summary>
-        /// <value> This property always returns the enumerational value <see cref="SobekCM.UI_Library.Navigation.Writer_Type_Enum.JSON"/>. </value>
+        /// <value> This property always returns the enumerational value <see cref="Writer_Type_Enum.JSON"/>. </value>
         public override Writer_Type_Enum Writer_Type { get { return Writer_Type_Enum.JSON; } }
 
         /// <summary> Perform all the work of adding text directly to the response stream back to the web user </summary>
@@ -67,8 +68,9 @@ namespace SobekCM.Library.MainWriters
             {
                 if (RequestSpecificValues.Current_Mode.ViewerCode != "text")
                 {
-                    int first_page_to_show = (RequestSpecificValues.Current_Mode.Page - 1) * 20;
-                    int last_page_to_show = (RequestSpecificValues.Current_Mode.Page * 20) - 1;
+                    int currentPageIndex = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value : 1;
+                    int first_page_to_show = (currentPageIndex - 1) * 20;
+                    int last_page_to_show = (currentPageIndex * 20) - 1;
                     if (first_page_to_show < RequestSpecificValues.Current_Item.Web.Static_PageCount)
                     {
                         int page = first_page_to_show;
@@ -164,7 +166,7 @@ namespace SobekCM.Library.MainWriters
                 string thumb = currentGreenstoneImageRoot + titleResult.BibID.Substring(0,2) + "/" + titleResult.BibID.Substring(2,2) + "/" + titleResult.BibID.Substring(4,2) + "/" + titleResult.BibID.Substring(6,2) + "/" + titleResult.BibID.Substring(8) + "/" + firstItemResult.VID + "/" + firstItemResult.MainThumbnail;
                 if ((thumb.ToUpper().IndexOf(".JPG") < 0) && (thumb.ToUpper().IndexOf(".GIF") < 0))
                 {
-                    thumb = RequestSpecificValues.Current_Mode.Default_Images_URL + "NoThumb.jpg";
+                    thumb = Static_Resources.Nothumb_Jpg;
                 }
                 thumb = thumb.Replace("\\", "/").Replace("//", "/").Replace("http:/", "http://");
 

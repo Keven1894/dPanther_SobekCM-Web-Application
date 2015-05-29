@@ -15,12 +15,13 @@ using SobekCM.Library.Citation.Template;
 using SobekCM.Library.HTML;
 using SobekCM.Library.ItemViewer.Viewers;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Bib_Info;
 using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Metadata_File_ReaderWriters;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -33,7 +34,7 @@ namespace SobekCM.Library.MySobekViewer
     /// During a valid html request, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  Since this action requires authentication, an instance of the  <see cref="MySobek_HtmlSubwriter"/> class is created. </li>
     /// <li>The mySobek subwriter creates an instance of this viewer to display the item for editing</li>
@@ -77,27 +78,60 @@ namespace SobekCM.Library.MySobekViewer
 	        string template_code = RequestSpecificValues.Current_User.Edit_Template_Code_Simple;
             if ((isProject) || (item.Contains_Complex_Content) || (item.Using_Complex_Template))
             {
-                template_code = RequestSpecificValues.Current_User.Edit_Template_Code_Complex;
-            }
-            completeTemplate = Template_MemoryMgmt_Utility.Retrieve_Template(template_code, RequestSpecificValues.Tracer);
-            if (completeTemplate != null)
-            {
-                RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Found CompleteTemplate in cache");
+                template_code = "standard_project";
+                completeTemplate = Template_MemoryMgmt_Utility.Retrieve_Template(template_code, RequestSpecificValues.Tracer);
+                if (completeTemplate != null)
+                {
+                    RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Found project-specific template in cache");
+                }
+                else
+                {
+                    RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Reading project-specific template file");
+
+                    // Look in the user-defined portion
+                    string user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\user\\standard\\project.xml";
+                    if (!File.Exists(user_template))
+                        user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\default\\standard\\project.xml";
+
+                    // Read this CompleteTemplate
+                    Template_XML_Reader reader = new Template_XML_Reader();
+                    completeTemplate = new CompleteTemplate();
+                    reader.Read_XML(user_template, completeTemplate, true);
+
+                    // Add the current codes to this template
+                    completeTemplate.Add_Codes(UI_ApplicationCache_Gateway.Aggregations);
+
+                    // Save this into the cache
+                    Template_MemoryMgmt_Utility.Store_Template(template_code, completeTemplate, RequestSpecificValues.Tracer);
+                }
             }
             else
             {
-                RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Reading CompleteTemplate file");
+                completeTemplate = Template_MemoryMgmt_Utility.Retrieve_Template(template_code, RequestSpecificValues.Tracer);
+                if (completeTemplate != null)
+                {
+                    RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Found template in cache");
+                }
+                else
+                {
+                    RequestSpecificValues.Tracer.Add_Trace("Edit_Item_Metadata_MySobekViewer.Constructor", "Reading template file");
 
-                // Read this CompleteTemplate
-                Template_XML_Reader reader = new Template_XML_Reader();
-                completeTemplate = new CompleteTemplate();
-                reader.Read_XML( UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\edit\\" + template_code + ".xml", completeTemplate, true);
+                    // Look in the user-defined portion
+                    string user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\user\\edit\\" + template_code + ".xml";
+                    if (!File.Exists(user_template))
+                        user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\default\\edit\\" + template_code + ".xml";
 
-                // Add the current codes to this CompleteTemplate
-                completeTemplate.Add_Codes(UI_ApplicationCache_Gateway.Aggregations);
+                    // Read this CompleteTemplate
+                    Template_XML_Reader reader = new Template_XML_Reader();
+                    completeTemplate = new CompleteTemplate();
+                    reader.Read_XML(user_template, completeTemplate, true);
 
-                // Save this into the cache
-                Template_MemoryMgmt_Utility.Store_Template(template_code, completeTemplate, RequestSpecificValues.Tracer);
+                    // Add the current codes to this template
+                    completeTemplate.Add_Codes(UI_ApplicationCache_Gateway.Aggregations);
+
+                    // Save this into the cache
+                    Template_MemoryMgmt_Utility.Store_Template(template_code, completeTemplate, RequestSpecificValues.Tracer);
+                }
             }
 
             // Get the current page number, or default to 1
@@ -273,7 +307,7 @@ namespace SobekCM.Library.MySobekViewer
 				Output.WriteLine("  <h2>Edit this item</h2>");
 				Output.WriteLine("    <ul>");
 				Output.WriteLine("      <li>Enter the data for this item below and press the SAVE button when all your edits are complete.</li>");
-				Output.WriteLine("      <li>Clicking on the green plus button ( <img class=\"repeat_button\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/new_element_demo.jpg\" /> ) will add another instance of the element, if the element is repeatable.</li>");
+                Output.WriteLine("      <li>Clicking on the green plus button ( <img class=\"repeat_button\" src=\"" + Static_Resources.New_Element_Demo_Jpg + "\" /> ) will add another instance of the element, if the element is repeatable.</li>");
 
                 // This whole section only applies if the simple and complex templates are different
 			    if (String.Compare(RequestSpecificValues.Current_User.Edit_Template_Code_Complex, RequestSpecificValues.Current_User.Edit_Template_Code_Simple, true) != 0)
@@ -312,9 +346,8 @@ namespace SobekCM.Library.MySobekViewer
 				Output.WriteLine("  <b>Edit this project</b>");
 				Output.WriteLine("    <ul>");
 				Output.WriteLine("      <li>Enter the default data for this project below and press the SAVE button when all your edits are complete.</li>");
-				Output.WriteLine("      <li>Clicking on the blue plus signs ( <img class=\"repeat_button\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/new_element_demo.jpg\" /> ) will add another instance of the element, if the element is repeatable.</li>");
+				Output.WriteLine("      <li>Clicking on the blue plus signs ( <img class=\"repeat_button\" src=\"" + Static_Resources.New_Element_Demo_Jpg + "\" /> ) will add another instance of the element, if the element is repeatable.</li>");
 				Output.WriteLine("      <li>Click on the element names for detailed information inluding definitions, best practices, and technical information.</li>");
-				Output.WriteLine("      <li>You are using the full editing form because you are editing a project.</li>");
 			}
 
 			Output.WriteLine("     </ul>");
@@ -363,11 +396,11 @@ namespace SobekCM.Library.MySobekViewer
 
 			// Add the first buttons
 			Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to top of form -->");
-			Output.WriteLine("      <script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+			Output.WriteLine("      <script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
 			Output.WriteLine();
 			Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-			Output.WriteLine("        <button onclick=\"editmetadata_cancel_form();return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-			Output.WriteLine("        <button onclick=\"editmetadata_save_form();return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
+			Output.WriteLine("        <button onclick=\"editmetadata_cancel_form();return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+			Output.WriteLine("        <button onclick=\"editmetadata_save_form();return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
 			Output.WriteLine("      </div>");
 			Output.WriteLine("      <br /><br />");
 			Output.WriteLine();
@@ -378,7 +411,7 @@ namespace SobekCM.Library.MySobekViewer
 			{
 				if (page >= 1)
 				{
-					bool isMozilla = RequestSpecificValues.Current_Mode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0;
+				    bool isMozilla = ((!String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Browser_Type)) && (RequestSpecificValues.Current_Mode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0));
 
 					popUpFormsHtml = completeTemplate.Render_Template_HTML(Output, item, RequestSpecificValues.Current_Mode.Skin == RequestSpecificValues.Current_Mode.Default_Skin ? RequestSpecificValues.Current_Mode.Skin.ToUpper() : RequestSpecificValues.Current_Mode.Skin, isMozilla, RequestSpecificValues.Current_User, RequestSpecificValues.Current_Mode.Language, UI_ApplicationCache_Gateway.Translation, RequestSpecificValues.Current_Mode.Base_URL, ((int)page));
 				}
@@ -392,8 +425,8 @@ namespace SobekCM.Library.MySobekViewer
 			Output.WriteLine();
 			Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to bottom of form -->");
 			Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-			Output.WriteLine("        <button onclick=\"editmetadata_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-			Output.WriteLine("        <button onclick=\"editmetadata_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
+			Output.WriteLine("        <button onclick=\"editmetadata_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+			Output.WriteLine("        <button onclick=\"editmetadata_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
 			Output.WriteLine("      </div>");
 			Output.WriteLine("      <br />");
 			Output.WriteLine("    </div>");
@@ -418,7 +451,7 @@ namespace SobekCM.Library.MySobekViewer
             Output.WriteLine("<!-- Hidden field is used for postbacks to add new form elements (i.e., new name, new other titles, etc..) -->");
             Output.WriteLine("<input type=\"hidden\" id=\"new_element_requested\" name=\"new_element_requested\" value=\"\" />");
             Output.WriteLine();
-			Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.custom.min.js\"></script>");
+			Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Custom_Js + "\"></script>");
 
             if (popUpFormsHtml.Length > 0)
             {

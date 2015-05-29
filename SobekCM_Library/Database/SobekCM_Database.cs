@@ -172,8 +172,9 @@ namespace SobekCM.Library.Database
 				newConnection.Close();
 				return true;
 			}
-			catch
+			catch ( Exception ee )
 			{
+			    lastException = ee;
 				return false;
 			}
 		}
@@ -713,93 +714,6 @@ namespace SobekCM.Library.Database
 					Tracer.Add_Trace("SobekCM_Database.Get_Page_Item_Count_History", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
 					Tracer.Add_Trace("SobekCM_Database.Get_Page_Item_Count_History", ee.Message, Custom_Trace_Type_Enum.Error);
 					Tracer.Add_Trace("SobekCM_Database.Get_Page_Item_Count_History", ee.StackTrace, Custom_Trace_Type_Enum.Error);
-				}
-				return null;
-			}
-		}
-
-
-		/// <summary> Gets the list of all users that are linked to items which may have usage statistics  </summary>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> DataTable of all the users linked to items </returns>
-		/// <remarks> This calls the 'SobekCM_Stats_Get_Users_Linked_To_Items' stored procedure </remarks>
-		public static DataTable Get_Users_Linked_To_Items( Custom_Tracer Tracer)
-		{
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("SobekCM_Database.Get_Users_Linked_To_Items", "Pulling from database");
-			}
-
-			try
-			{
-				// Define a temporary dataset
-				DataSet tempSet = SqlHelper.ExecuteDataset(connectionString, CommandType.StoredProcedure, "SobekCM_Stats_Get_Users_Linked_To_Items" );
-
-				// If there was no data for this collection and entry point, return null (an ERROR occurred)
-				if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null) || (tempSet.Tables[0].Rows.Count == 0))
-				{
-					return null;
-				}
-
-				// Return the first table from the returned dataset
-				return tempSet.Tables[0];
-			}
-			catch (Exception ee)
-			{
-				lastException = ee;
-				if (Tracer != null)
-				{
-					Tracer.Add_Trace("SobekCM_Database.Get_Users_Linked_To_Items", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
-					Tracer.Add_Trace("SobekCM_Database.Get_Users_Linked_To_Items", ee.Message, Custom_Trace_Type_Enum.Error);
-					Tracer.Add_Trace("SobekCM_Database.Get_Users_Linked_To_Items", ee.StackTrace, Custom_Trace_Type_Enum.Error);
-				}
-				return null;
-			}
-		}
-
-
-		/// <summary> Gets the basic usage statistics for all items linked to a user </summary>
-		/// <param name="UserID"> Primary key for the user of interest, for which to pull the item usage stats </param>
-		/// <param name="Month"> Month for which to pull the usage information </param>
-		/// <param name="Year"> Year for which to pull the usage information </param>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> DataTable of the basic usage statistics for all items linked to a user for a single month and year </returns>
-		/// <remarks> This calls the 'SobekCM_Stats_Get_User_Linked_Items_Stats' stored procedure </remarks>
-		public static DataTable Get_User_Linked_Items_Stats( int UserID, int Month, int Year, Custom_Tracer Tracer)
-		{
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("SobekCM_Database.Get_User_Linked_Items_Stats", "Pulling from database");
-			}
-
-			try
-			{
-				// Build the parameter list
-				SqlParameter[] paramList = new SqlParameter[3];
-				paramList[0] = new SqlParameter("@userid", UserID);
-				paramList[1] = new SqlParameter("@month", Month);
-				paramList[2] = new SqlParameter("@year", Year);
-
-				// Define a temporary dataset
-				DataSet tempSet = SqlHelper.ExecuteDataset(connectionString, CommandType.StoredProcedure, "SobekCM_Stats_Get_User_Linked_Items_Stats", paramList);
-
-				// If there was no data for this collection and entry point, return null (an ERROR occurred)
-				if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null) || (tempSet.Tables[0].Rows.Count == 0))
-				{
-					return null;
-				}
-
-				// Return the first table from the returned dataset
-				return tempSet.Tables[0];
-			}
-			catch (Exception ee)
-			{
-				lastException = ee;
-				if (Tracer != null)
-				{
-					Tracer.Add_Trace("SobekCM_Database.Get_User_Linked_Items_Stats", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
-					Tracer.Add_Trace("SobekCM_Database.Get_User_Linked_Items_Stats", ee.Message, Custom_Trace_Type_Enum.Error);
-					Tracer.Add_Trace("SobekCM_Database.Get_User_Linked_Items_Stats", ee.StackTrace, Custom_Trace_Type_Enum.Error);
 				}
 				return null;
 			}
@@ -1385,7 +1299,7 @@ namespace SobekCM.Library.Database
 			adapter.Fill(tempSet);
 				
 			// If there was no data for this collection and entry point, return null (an ERROR occurred)
-			if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null) || (tempSet.Tables[0].Rows.Count == 0))
+			if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null))
 			{
 				return null;
 			}
@@ -2184,6 +2098,7 @@ namespace SobekCM.Library.Database
 			user.Can_Delete_All = Convert.ToBoolean(userRow["Can_Delete_All_Items"]);
 			user.Is_System_Admin = Convert.ToBoolean(userRow["IsSystemAdmin"]);
 			user.Is_Portal_Admin = Convert.ToBoolean(userRow["IsPortalAdmin"]);
+            user.Is_Host_Admin = Convert.ToBoolean(userRow["IsHostAdmin"]);
 			user.Include_Tracking_In_Standard_Forms = Convert.ToBoolean(userRow["Include_Tracking_Standard_Forms"]);
 			user.Receive_Stats_Emails = Convert.ToBoolean(userRow["Receive_Stats_Emails"]);
 			user.Has_Item_Stats = Convert.ToBoolean(userRow["Has_Item_Stats"]);
@@ -3376,72 +3291,6 @@ namespace SobekCM.Library.Database
 
 		#region Methods used for SobekCM Administrative Tasks (moved from SobekCM Manager )
 
-		#region Methods related to the Thematic Heading values
-
-		/// <summary> Saves a new thematic heading or updates an existing thematic heading </summary>
-		/// <param name="ThematicHeadingID"> Primary key for the existing thematic heading, or -1 for a new heading </param>
-		/// <param name="ThemeOrder"> Order of this thematic heading, within the rest of the headings </param>
-		/// <param name="ThemeName"> Display name for this thematic heading</param>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> Thematic heading id, or -1 if there was an error </returns>
-		/// <remarks> This calls the 'SobekCM_Edit_Thematic_Heading' stored procedure </remarks> 
-		public static int Edit_Thematic_Heading( int ThematicHeadingID, int ThemeOrder, string ThemeName, Custom_Tracer Tracer)
-		{
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("SobekCM_Database.Edit_Thematic_Heading", String.Empty);
-			}
-
-			try
-			{
-				// Execute this non-query stored procedure
-				SqlParameter[] paramList = new SqlParameter[4];
-				paramList[0] = new SqlParameter("@thematicheadingid", ThematicHeadingID);
-				paramList[1] = new SqlParameter("@themeorder", ThemeOrder);
-				paramList[2] = new SqlParameter("@themename", ThemeName);
-				paramList[3] = new SqlParameter("@newid", -1) {Direction = ParameterDirection.Output};
-
-				SqlHelper.ExecuteNonQuery(connectionString, CommandType.StoredProcedure, "SobekCM_Edit_Thematic_Heading", paramList);
-
-				return Convert.ToInt32(paramList[3].Value);
-			}
-			catch (Exception ee)
-			{
-				lastException = ee;
-				return -1;
-			}
-		}
-
-		/// <summary> Deletes a thematic heading from the database  </summary>
-		/// <param name="ThematicHeadingID"> Primary key for the thematic heading to delete </param>
-		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
-		/// <returns> TRUE if successful, otherwise FALSE</returns>
-		/// <remarks> This calls the 'SobekCM_Delete_Thematic_Heading' stored procedure </remarks> 
-		public static bool Delete_Thematic_Heading( int ThematicHeadingID, Custom_Tracer Tracer)
-		{
-			if (Tracer != null)
-			{
-				Tracer.Add_Trace("SobekCM_Database.Delete_Thematic_Heading", String.Empty);
-			}
-
-			try
-			{
-				// Execute this non-query stored procedure
-				SqlParameter[] paramList = new SqlParameter[1];
-				paramList[0] = new SqlParameter("@thematicheadingid", ThematicHeadingID);
-
-				SqlHelper.ExecuteNonQuery(connectionString, CommandType.StoredProcedure, "SobekCM_Delete_Thematic_Heading", paramList);
-				return true;
-			}
-			catch (Exception ee)
-			{
-				lastException = ee;
-				return false;
-			}
-		}
-
-		#endregion
-
 
 		/// <summary> Saves a item aggregation alias for future use </summary>
 		/// <param name="Alias"> Alias string which will forward to a item aggregation </param>
@@ -3520,12 +3369,11 @@ namespace SobekCM.Library.Database
 		/// <param name="OverrideHeaderFooter"> Flag indicates this skin overrides the default header/footer</param>
 		/// <param name="Banner_Link"> Link to which the banner sends the user </param>
 		/// <param name="Notes"> Notes on this skin ( name, use, etc...) </param>
-		/// <param name="Build_On_Launch"> Flag indicates if this skin should be built upon launch ( i.e., is this a heavily used web skin? )</param>
 		/// <param name="Suppress_Top_Navigation"> Flag indicates if the top-level aggregation navigation should be suppressed for this web skin ( i.e., is the top-level navigation embedded into the header file already? )</param>
 		/// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
 		/// <returns> TRUE if successful, otherwise FALSE </returns>
 		/// <remarks> This calls the 'SobekCM_Add_Web_Skin' stored procedure </remarks> 
-		public static bool Save_Web_Skin(string Skin_Code, string Base_Skin_Code, bool OverrideBanner, bool OverrideHeaderFooter, string Banner_Link, string Notes, bool Build_On_Launch, bool Suppress_Top_Navigation, Custom_Tracer Tracer)
+		public static bool Save_Web_Skin(string Skin_Code, string Base_Skin_Code, bool OverrideBanner, bool OverrideHeaderFooter, string Banner_Link, string Notes, bool Suppress_Top_Navigation, Custom_Tracer Tracer)
 		{
 			if (Tracer != null)
 			{
@@ -3542,7 +3390,7 @@ namespace SobekCM.Library.Database
 				paramList[3] = new SqlParameter("@overrideheaderfooter", OverrideHeaderFooter);
 				paramList[4] = new SqlParameter("@bannerlink", Banner_Link);
 				paramList[5] = new SqlParameter("@notes", Notes);
-				paramList[6] = new SqlParameter("@build_on_launch", Build_On_Launch);
+				paramList[6] = new SqlParameter("@build_on_launch", false);
 				paramList[7] = new SqlParameter("@suppress_top_nav", Suppress_Top_Navigation  );
 
 				SqlHelper.ExecuteNonQuery(connectionString, CommandType.StoredProcedure, "SobekCM_Add_Web_Skin", paramList);
@@ -6211,98 +6059,6 @@ namespace SobekCM.Library.Database
 
 		#endregion
 
-		#region Methods relating to sending emails from and logging emails in the database
-
-		/// <summary> Send an email using databse mail through the SQL database </summary>
-		/// <param name="Recipient_List"> List of recepients, seperated by a semi-colon </param>
-		/// <param name="Subject_Line"> Subject line for the email to send </param>
-		/// <param name="Email_Body"> Body of the email to send</param>
-		/// <param name="IsHtml"> Flag indicates if the email body is HTML-encoded, or plain text </param>
-		/// <param name="IsContactUs"> Flag indicates if this was sent from the 'Contact Us' feature of the library, rather than from a mySobek feature such as email your bookshelf </param>
-		/// <param name="ReplyToEmailID"> Primary key of the previous email, if this is a reply to a previously logged email </param>
-		/// <param name="UserID"> UserID that sent this message.  This is used to restrict the number of messages sent by the same user in the same day </param>
-		/// <returns> TRUE if successful, otherwise FALSE </returns>
-		/// <remarks> This calls the 'SobekCM_Send_Email' stored procedure to send and log this email. </remarks>
-		public static bool Send_Database_Email(string Recipient_List, string Subject_Line, string Email_Body, bool IsHtml, bool IsContactUs, int ReplyToEmailID, int UserID )
-		{
-			try
-			{
-				// Build the parameter list
-				SqlParameter[] paramList = new SqlParameter[7];
-				paramList[0] = new SqlParameter("@recipients_list", Recipient_List);
-				paramList[1] = new SqlParameter("@subject_line", Subject_Line);
-				paramList[2] = new SqlParameter("@email_body", Email_Body);
-				paramList[3] = new SqlParameter("@html_format", IsHtml);
-				paramList[4] = new SqlParameter("@contact_us", IsContactUs);
-				if (ReplyToEmailID > 0)
-				{
-					paramList[5] = new SqlParameter("@replytoemailid", ReplyToEmailID);
-				}
-				else
-				{
-					paramList[5] = new SqlParameter("@replytoemailid", DBNull.Value);
-				}
-				paramList[6] = new SqlParameter("@userid", UserID);
-
-				// Execute this non-query stored procedure
-				SqlHelper.ExecuteNonQuery(connectionString, CommandType.StoredProcedure, "SobekCM_Send_Email", paramList);
-
-				return true;
-			}
-			catch (Exception ee)
-			{
-				// Pass this exception onto the method to handle it
-				lastException = ee;
-				return false;
-			}
-		}
-
-		/// <summary> Log the fact an email was sent via a different system than the databse mail </summary>
-		/// <param name="Sender"> Name of the sender indicated in the sent email </param>
-		/// <param name="Recipient_List"> List of recepients, seperated by a semi-colon </param>
-		/// <param name="Subject_Line"> Subject line for the email to log </param>
-		/// <param name="Email_Body"> Body of the email to log</param>
-		/// <param name="IsHtml"> Flag indicates if the email body is HTML-encoded, or plain text </param>
-		/// <param name="IsContactUs"> Flag indicates if this was sent from the 'Contact Us' feature of the library, rather than from a mySobek feature such as email your bookshelf </param>
-		/// <param name="ReplyToEmailID"> Primary key of the previous email, if this is a reply to a previously logged email </param>
-		/// <returns> TRUE if successful, otherwise FALSE </returns>
-		/// <remarks> This calls the 'SobekCM_Log_Email' stored procedure. </remarks>
-		public static bool Log_Sent_Email( string Sender, string Recipient_List, string Subject_Line, string Email_Body, bool IsHtml, bool IsContactUs, int ReplyToEmailID)
-		{
-			try
-			{
-				// Build the parameter list
-				SqlParameter[] paramList = new SqlParameter[7];
-				paramList[0] = new SqlParameter("@sender", Sender);
-				paramList[1] = new SqlParameter("@recipients_list", Recipient_List);
-				paramList[2] = new SqlParameter("@subject_line", Subject_Line);
-				paramList[3] = new SqlParameter("@email_body", Email_Body);
-				paramList[4] = new SqlParameter("@html_format", IsHtml);
-				paramList[5] = new SqlParameter("@contact_us", IsContactUs);
-				if (ReplyToEmailID > 0)
-				{
-					paramList[6] = new SqlParameter("@replytoemailid", ReplyToEmailID);
-				}
-				else
-				{
-					paramList[6] = new SqlParameter("@replytoemailid", DBNull.Value);
-				}
-
-				// Execute this non-query stored procedure
-				SqlHelper.ExecuteNonQuery(connectionString, CommandType.StoredProcedure, "SobekCM_Log_Email", paramList);
-
-				return true;
-			}
-			catch (Exception ee)
-			{
-				// Pass this exception onto the method to handle it
-				lastException = ee;
-				return false;
-			}
-		}
-
-		#endregion
-
 		#region Methods related to OAI-PMH
 
 		/// <summary> Gets the list of all OAI-enabled item aggregationPermissions </summary>
@@ -6360,7 +6116,7 @@ namespace SobekCM.Library.Database
 				// Read in each row
 				while (reader.Read())
 				{
-					returnVal.Add(Include_Record ? new OAI_Record(reader.GetString(1), reader.GetString(2), reader.GetDateTime(3)) : new OAI_Record(reader.GetString(1), reader.GetDateTime(2)));
+                    returnVal.Add(Include_Record ? new OAI_Record(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDateTime(3)) : new OAI_Record(reader.GetString(0), reader.GetString(1), reader.GetDateTime(2)));
 				}
 
 				// Close the reader
@@ -6371,13 +6127,14 @@ namespace SobekCM.Library.Database
 			return returnVal;
 		}
 
-		/// <summary> Returns a single OAI-PMH record, by identifier ( BibID ) </summary>
-		/// <param name="Identifier"> Code the OAI-PMH record  (which is really the BibID)</param>
-		/// <param name="Data_Code"> Code for the metadata to be served ( usually oai_dc )</param>
+		/// <summary> Returns a single OAI-PMH record, by identifier ( BibID and VID ) </summary>
+		/// <param name="BibID"> BibID the OAI-PMH record )</param>
+        /// <param name="VID"> VID for the OAI-PMH record </param>
+		/// <param name="Data_Code"> Code for the metadata to be served ( usually oai_dc or marc21)</param>
 		/// <returns> Single OAI-PMH record </returns>
 		/// <remarks> This calls the 'SobekCM_Get_OAI_Data_Item' stored procedure  <br /><br />
 		/// This is called by the <see cref="Oai_MainWriter"/> class. </remarks> 
-		public static OAI_Record Get_OAI_Record( string Identifier, string Data_Code )
+		public static OAI_Record Get_OAI_Record( string BibID, string VID, string Data_Code )
 		{
 			// Create the connection
 			SqlConnection connect = new SqlConnection(connectionString);
@@ -6385,7 +6142,8 @@ namespace SobekCM.Library.Database
 			// Create the command 
 			SqlCommand executeCommand = new SqlCommand("SobekCM_Get_OAI_Data_Item", connect) { CommandType = CommandType.StoredProcedure };
 
-			executeCommand.Parameters.AddWithValue("@bibid", Identifier);
+            executeCommand.Parameters.AddWithValue("@bibid", BibID);
+            executeCommand.Parameters.AddWithValue("@vid", VID);
 			executeCommand.Parameters.AddWithValue("@data_code", Data_Code);
 
 			// Create the data reader
@@ -6406,35 +6164,6 @@ namespace SobekCM.Library.Database
 
 			return returnRecord;
 		}
-
-		#endregion
-
-		#region Methods used by the Statistics Usage Reader
-
-		/// <summary> Gets all the tables ued during the process of reading the statistics 
-		/// from the web iis logs and creating the associated SQL commands  </summary>
-		/// <returns> Large dataset with several tables ( all items, all titles, aggregationPermissions, etc.. )</returns>
-		public static DataSet Get_Statistics_Lookup_Tables()
-		{
-			// Create the connection
-			SqlConnection connect = new SqlConnection(connectionString);
-
-			// Create the command 
-			SqlCommand executeCommand = new SqlCommand("SobekCM_Statistics_Lookup_Tables", connect) {CommandType = CommandType.StoredProcedure};
-
-			// Create the adapter
-			SqlDataAdapter adapter = new SqlDataAdapter(executeCommand);
-
-			// Create the dataset
-			DataSet returnValue = new DataSet();
-
-			// Fill the dataset
-			adapter.Fill(returnValue);
-
-			// Return the results
-			return returnValue;
-		}
-
 
 		#endregion
 
@@ -7183,8 +6912,206 @@ namespace SobekCM.Library.Database
         
         #endregion
 
+        #region Methods to support the top-level user permissions reports
+
+        /// <summary> Get the list of users that have top-level permissions, such as editing all items, 
+        /// being an admin, deleting all items, or a power user  </summary>
+        /// <param name="Tracer"></param>
+        /// <returns></returns>
+	    public static DataTable Get_Global_User_Permissions(Custom_Tracer Tracer )
+	    {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions", "");
+            }
+
+            try
+            {
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "mySobek_Permissions_Report");
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+	    }
+
+        /// <summary> Get the list of users and for each user the list of aggregations they 
+        /// have special rights over (wither by user or through user group ) </summary>
+        /// <param name="Tracer"></param>
+        /// <returns></returns>
+        public static DataTable Get_Global_User_Permissions_Aggregations_Links(Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Aggregations_Links", "");
+            }
+
+            try
+            {
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "mySobek_Permissions_Report_Aggregation_Links");
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Aggregations_Links", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Aggregations_Links", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Aggregations_Links", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+        /// <summary> Get the list of aggregations that have special rights given to some users </summary>
+        /// <param name="Tracer"></param>
+        /// <returns></returns>
+        public static DataTable Get_Global_User_Permissions_Linked_Aggregations(Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Linked_Aggregations", "");
+            }
+
+            try
+            {
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "mySobek_Permissions_Report_Linked_Aggregations");
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Linked_Aggregations", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Linked_Aggregations", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Linked_Aggregations", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+        /// <summary> Get the list of users, with informaiton about the templates and default metadata, 
+        /// that can submit material to this instance  </summary>
+        /// <param name="Tracer"></param>
+        /// <returns></returns>
+        public static DataTable Get_Global_User_Permissions_Submission_Rights(Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Submission_Rights", "");
+            }
+
+            try
+            {
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "mySobek_Permissions_Report_Submission_Rights");
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Submission_Rights", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Submission_Rights", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Global_User_Permissions_Submission_Rights", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
 
 
-	}
+        public static DataTable Get_Aggregation_User_Permissions(string AggregationCode, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_User_Permissions", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[1];
+                parameters[0] = new SqlParameter("@Code", AggregationCode);
+
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "mySobek_Permissions_Report_Aggregation", parameters);
+
+                if ((tempSet == null) || (tempSet.Tables.Count == 0))
+                    return null;
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_User_Permissions", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_User_Permissions", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_User_Permissions", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+        public static DataTable Get_Aggregation_Change_Log(string AggregationCode, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_Change_Log", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[1];
+                parameters[0] = new SqlParameter("@Code", AggregationCode);
+
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Aggregation_Change_Log", parameters);
+
+                if ((tempSet == null) || (tempSet.Tables.Count == 0))
+                    return null;
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_Change_Log", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_Change_Log", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("SobekCM_Database.Get_Aggregation_Change_Log", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+        #endregion
+
+    }
 
 }

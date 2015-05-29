@@ -10,6 +10,7 @@ using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
 using SobekCM.Tools;
 
 #endregion
@@ -22,7 +23,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
     /// During a valid html request to display the home page with basic search, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in this case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  For a collection-level request, an instance of the  <see cref="Aggregation_HtmlSubwriter"/> class is created. </li>
     /// <li>To display the requested collection view, the collection subwriter will creates an instance of this class </li>
@@ -70,7 +71,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
             RequestSpecificValues.Current_Mode.Info_Browse_Mode = String.Empty;
             RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Home;
-            if ((!RequestSpecificValues.Current_Mode.Show_Selection_Panel) || (RequestSpecificValues.Hierarchy_Object.Children_Count == 0))
+            if ((!RequestSpecificValues.Current_Mode.Show_Selection_Panel.HasValue) || (!RequestSpecificValues.Current_Mode.Show_Selection_Panel.Value) || (RequestSpecificValues.Hierarchy_Object.Children_Count == 0))
             {
                 Search_Script_Action = "basic_search_sobekcm('" + arg1 + "', '" + browse_url + "')";
             }
@@ -131,7 +132,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             }
 
             string search_collection = "Search Collection";
-            const string INCLUDE_NO_MIMETYPE = "Include items with records only";
+            const string INCLUDE_NO_MIMETYPE = "Show only records with images or other media";
 
             //string include_privates = "Include non-public items";
             if (RequestSpecificValues.Current_Mode.Language == Web_Language_Enum.Spanish)
@@ -146,7 +147,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
             if ((RequestSpecificValues.Hierarchy_Object.Highlights != null) && ( RequestSpecificValues.Hierarchy_Object.Highlights.Count > 1))
             {
-                Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/contentslider.js\" > </script>");
+                Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Contentslider_Js + "\" > </script>");
                 Output.WriteLine("<!-- *****************************************");
                 Output.WriteLine("    * Featured Content Slider- (c) Dynamic Drive DHTML code library (www.dynamicdrive.com)");
                 Output.WriteLine("     * This notice MUST stay intact for legal use");
@@ -180,7 +181,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
                 Output.WriteLine("            <tr>");
                 Output.WriteLine("              <td colspan=\"2\">");
-                Output.WriteLine("                &nbsp; &nbsp; &nbsp; &nbsp; <input type=\"checkbox\" value=\"MIME_TYPE\" name=\"sbkRhav_mimetypeCheck\" id=\"sbkRhav_mimetypeCheck\" unchecked onclick=\"focus_element( 'SobekHomeSearchBox');\" /><label for=\"sbkRhav_mimetypeCheck\">" + INCLUDE_NO_MIMETYPE + "</label>");
+                Output.WriteLine("                <input type=\"checkbox\" value=\"MIME_TYPE\" name=\"sbkRhav_mimetypeCheck\" id=\"sbkRhav_mimetypeCheck\" unchecked onclick=\"focus_element( 'SobekHomeSearchBox');\" /><label for=\"sbkRhav_mimetypeCheck\">" + INCLUDE_NO_MIMETYPE + "</label>");
                 Output.WriteLine("              </td>");
                 Output.WriteLine("            </tr>");
 
@@ -281,7 +282,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
                 Output.WriteLine("            </tr>");
                 Output.WriteLine("            <tr>");
                 Output.WriteLine("              <td colspan=\"2\">");
-                Output.WriteLine("                &nbsp; &nbsp; &nbsp; &nbsp; <input type=\"checkbox\" value=\"MIME_TYPE\" name=\"sbkRhav_mimetypeCheck\" id=\"sbkRhav_mimetypeCheck\" unchecked onclick=\"focus_element( 'SobekHomeSearchBox');\" /><label for=\"sbkRhav_mimetypeCheck\">" + INCLUDE_NO_MIMETYPE + "</label>");
+                Output.WriteLine("                <input type=\"checkbox\" value=\"MIME_TYPE\" name=\"sbkRhav_mimetypeCheck\" id=\"sbkRhav_mimetypeCheck\" unchecked onclick=\"focus_element( 'SobekHomeSearchBox');\" /><label for=\"sbkRhav_mimetypeCheck\">" + INCLUDE_NO_MIMETYPE + "</label>");
                 Output.WriteLine("              </td>");
                 Output.WriteLine("            </tr>");
                 Output.WriteLine("          </table>");

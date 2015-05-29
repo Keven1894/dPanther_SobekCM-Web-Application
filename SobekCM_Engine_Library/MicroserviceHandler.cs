@@ -38,25 +38,50 @@ namespace SobekCM.Engine_Library
                     splitter = queryString.Split("/".ToCharArray());
                 List<string> paths = splitter.ToList();
 
-            //    DmsDatabaseGateway.DbConnectionString = "Server=DMS;Database=USYellow;Integrated Security=true;Connection Timeout=120";
+                // Set the encoding
+                context.Response.Charset = Encoding.UTF8.WebName;
+
+                // Set this to allow us to have our own error messages, without IIS jumping into it
+                context.Response.TrySkipIisCustomErrors = true;
 
                 // Get any matching endpoint configuration
                 Microservice_Endpoint endpoint = microserviceConfig.Get_Endpoint(paths);
                 if (endpoint == null)
                 {
+                    context.Response.ContentType = "text/plain";
                     context.Response.StatusCode = 501;
                     context.Response.Write("No endpoint found");
+                    
                 }
                 else
                 {
+                    // Ensure this is allowed in the range
+                    string requestIp = context.Request.UserHostAddress;
+                    if (!endpoint.AccessPermitted(requestIp))
+                    {
+                        context.Response.ContentType = "text/plain";
+                        context.Response.StatusCode = 403;
+                        context.Response.Write("You are forbidden from accessing this endpoint");
+                        return;
+                    }
+
+                    // Set the protocoal
                     if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.JSON)
                         context.Response.ContentType = "application/json";
+                    if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.JSON_P)
+                        context.Response.ContentType = "application/javascript";
                     if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.PROTOBUF)
                         context.Response.ContentType = "application/octet-stream";
+                    if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.XML)
+                        context.Response.ContentType = "text/xml";
+                    if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.SOAP)
+                        context.Response.ContentType = "text/xml";
+                    if (endpoint.Protocol == Microservice_Endpoint_Protocol_Enum.BINARY)
+                        context.Request.ContentType = "application/octet-stream";
 
                     try
                     {
-                        endpoint.Invoke(context.Response, paths, context.Request.Form);
+                        endpoint.Invoke(context.Response, paths, context.Request.QueryString, context.Request.Form);
                     }
                     catch (Exception ee)
                     {
@@ -68,6 +93,7 @@ namespace SobekCM.Engine_Library
             }
             else
             {
+                context.Response.ContentType = "text/plain";
                 context.Response.StatusCode = 400;
                 context.Response.Write("Invalid URI - No endpoint requested");
             }

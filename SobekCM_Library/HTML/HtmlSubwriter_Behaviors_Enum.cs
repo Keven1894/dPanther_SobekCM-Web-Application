@@ -17,6 +17,12 @@
 		/// <summary> Do not show the banner </summary>
         Suppress_Banner,
 
+        /// <summary> Do not show the main menu </summary>
+        Suppress_MainMenu,
+
+        /// <summary> Do not show the search form </summary>
+        Suppress_SearchForm,
+
 		/// <summary> Do not put the container tags around the resultant page </summary>
         Item_Subwriter_NonWindowed_Mode,
 
@@ -47,6 +53,9 @@
         MySobek_Subwriter_Mimic_Item_Subwriter,
 
         /// <summary> Used by aggregation viewers to tell the aggregation writer to NOT write out the home page text </summary>
-        Aggregation_Suppress_Home_Text
+        Aggregation_Suppress_Home_Text,
+
+        /// <summary> This viewer uses the JQuery datatables plug-in </summary>
+        Use_Jquery_DataTables
     }
 }

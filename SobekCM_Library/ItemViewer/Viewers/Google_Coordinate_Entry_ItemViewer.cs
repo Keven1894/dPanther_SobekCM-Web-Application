@@ -11,13 +11,14 @@ using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Resource_Object.Metadata_Modules;
 using SobekCM.Resource_Object.Metadata_Modules.GeoSpatial;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -41,7 +42,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 	    private static Dictionary<string, object> options;
 		
 		/// <summary> init viewer instance </summary>
-		public Google_Coordinate_Entry_ItemViewer(User_Object Current_User, SobekCM_Item Current_Item, SobekCM_Navigation_Object Current_Mode)
+		public Google_Coordinate_Entry_ItemViewer(User_Object Current_User, SobekCM_Item Current_Item, Navigation_Object Current_Mode)
 		{
 			try
 			{
@@ -576,22 +577,22 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 				//loading blanket
 				Output.WriteLine("  ");
-				Output.WriteLine(" <div id=\"mapedit_blanket_loading\"><div>Loading...<br/><br/><img src=\"" + CurrentMode.Base_URL + "default/images/mapedit/ajax-loader.gif\"></div></div> ");
+				Output.WriteLine(" <div id=\"mapedit_blanket_loading\"><div>Loading...<br/><br/><img src=\"" + Static_Resources.Ajax_Loader_Img + "\"></div></div> ");
 				Output.WriteLine("  ");
 
 				//standard css
-				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + CurrentMode.Base_URL + "default/jquery-ui.css\"/> ");
-				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + CurrentMode.Base_URL + "default/jquery-searchbox.css\"/> ");
+				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + Static_Resources.Jquery_Ui_Css + "\"/> ");
+				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + Static_Resources.Jquery_Searchbox_Css + "\"/> ");
 
 				//custom css
-				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + CurrentMode.Base_URL + "default/SobekCM_MapEditor.css\"/> ");
+				Output.WriteLine(" <link rel=\"stylesheet\" href=\"" + Static_Resources.Sobekcm_Mapeditor_Css + "\"/> ");
 
 				//standard js files
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.custom.min.js\"></script> ");
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-migrate-1.1.1.min.js\"></script> ");
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-rotate.js\"></script> ");
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-knob.js\"></script> ");
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-json-2.4.min.js\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Custom_Js + "\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Migrate_1_1_1_Js + "\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Rotate_Js + "\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Knob_Js + "\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Json_2_4_Js + "\"></script> ");
 				Output.WriteLine(" <script type=\"text/javascript\" src=\"https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false&key=AIzaSyCzliz5FjUlEI9D2605b33-etBrENSSBZM&libraries=drawing\"></script> ");
 				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/mapeditor/gmaps-infobox.js\"></script> ");
 
@@ -1503,8 +1504,8 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				#endregion
 
 				//custom js files (load order does matter)
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/mapeditor/sobekcm_map_editor.js\"></script> ");
-				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/mapeditor/gmaps-markerwithlabel-1.9.1.js\"></script> "); //must load after custom
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Sobekcm_Map_Editor_Js + "\"></script> ");
+				Output.WriteLine(" <script type=\"text/javascript\" src=\"" + Static_Resources.Gmaps_MarkerwithLabel_Js + "\"></script> "); //must load after custom
 
 				//end of custom content
 				Output.WriteLine("</td>");

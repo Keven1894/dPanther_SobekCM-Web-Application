@@ -14,8 +14,9 @@ using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -28,7 +29,7 @@ namespace SobekCM.Library.AdminViewer
     /// During a valid html request, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  Since this action requires authentication, an instance of the  <see cref="MySobek_HtmlSubwriter"/> class is created. </li>
     /// <li>The mySobek subwriter creates an instance of this viewer to manage the default metadata in this digital library</li>
@@ -227,6 +228,12 @@ namespace SobekCM.Library.AdminViewer
             get { return "Default Metadata"; }
         }
 
+        /// <summary> Gets the URL for the icon related to this administrative task </summary>
+        public override string Viewer_Icon
+        {
+            get { return Static_Resources.Pmets_Img; }
+        }
+
         /// <summary> Add the HTML to be displayed in the main SobekCM viewer area </summary>
         /// <param name="Output"> Textwriter to write the HTML for this viewer</param>
         /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
@@ -248,7 +255,7 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("<!-- Default_Metadata_AdminViewer.Write_ItemNavForm_Closing -->");
 
             // Add the scripts needed
-            Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.custom.min.js\"></script>");
+            Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Custom_Js + "\"></script>");
 
             // Add the hidden field
             Output.WriteLine("<!-- Hidden field is used for postbacks to indicate what to save -->");
@@ -283,8 +290,8 @@ namespace SobekCM.Library.AdminViewer
             // Add the buttons and close the table
             Output.WriteLine("    <tr style=\"height:35px; text-align: center; vertical-align: bottom;\">");
             Output.WriteLine("      <td colspan=\"2\"> &nbsp; &nbsp; ");
-            Output.WriteLine("        <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return project_form_close();\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
-            Output.WriteLine("        <button title=\"Save changes to this default metadata\" class=\"sbkAdm_RoundButton\" type=\"submit\">SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
+            Output.WriteLine("        <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return project_form_close();\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
+            Output.WriteLine("        <button title=\"Save changes to this default metadata\" class=\"sbkAdm_RoundButton\" type=\"submit\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
             Output.WriteLine("      </td>");
             Output.WriteLine("    </tr>");
             Output.WriteLine("  </table>");
@@ -294,7 +301,7 @@ namespace SobekCM.Library.AdminViewer
             Tracer.Add_Trace("Default_Metadata_AdminViewer.Write_ItemNavForm_Closing", "Write the rest of the form html");
 
 
-            Output.WriteLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_admin.js\" type=\"text/javascript\"></script>");
+            Output.WriteLine("<script src=\"" + Static_Resources.Sobekcm_Admin_Js + "\" type=\"text/javascript\"></script>");
             Output.WriteLine("<div class=\"sbkAdm_HomeText\">");
 
             if (actionMessage.Length > 0)
@@ -347,7 +354,7 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("      <tr>");
 
             // Add the SAVE button
-            Output.WriteLine("      <tr style=\"height:30px; text-align: center;\"><td colspan=\"2\"><button title=\"Save new default metadata\" class=\"sbkAdm_RoundButton\" onclick=\"return save_new_project();\">SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button></td></tr>");
+            Output.WriteLine("      <tr style=\"height:30px; text-align: center;\"><td colspan=\"2\"><button title=\"Save new default metadata\" class=\"sbkAdm_RoundButton\" onclick=\"return save_new_project();\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button></td></tr>");
             Output.WriteLine("    </table>");
             Output.WriteLine("  </div>");
             Output.WriteLine("  <br />");
