@@ -15,6 +15,8 @@ using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Behaviors;
 using SobekCM.Resource_Object.Bib_Info;
@@ -25,7 +27,6 @@ using SobekCM.Resource_Object.Metadata_Modules.GeoSpatial;
 using SobekCM.Resource_Object.Metadata_Modules.LearningObjects;
 using SobekCM.Resource_Object.Metadata_Modules.VRACore;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -141,7 +142,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 			// If this is an internal user or can edit this item, ensure the extra information 
 			// has been pulled for this item
-			if ((userCanEditItem) || (CurrentMode.Internal_User) || ( CurrentMode.ViewerCode == "tracking" ) || ( CurrentMode.ViewerCode == "media" ) || ( CurrentMode.ViewerCode == "archive" ))
+			if ((userCanEditItem) || (((CurrentUser != null ) && ( CurrentUser.LoggedOn ) && ( CurrentUser.Is_Internal_User ))) || ( CurrentMode.ViewerCode == "tracking" ) || ( CurrentMode.ViewerCode == "media" ) || ( CurrentMode.ViewerCode == "archive" ))
 			{
 				if (!CurrentItem.Tracking.Tracking_Info_Pulled)
 				{
@@ -185,7 +186,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 			// Get any search terms
 			List<string> terms = new List<string>();
-			if (CurrentMode.Text_Search.Trim().Length > 0)
+			if ( !String.IsNullOrWhiteSpace(CurrentMode.Text_Search))
 			{
 			    string[] splitter = CurrentMode.Text_Search.Replace("\"", "").Split(" ".ToCharArray());
 			    terms.AddRange(from thisSplit in splitter where thisSplit.Trim().Length > 0 select thisSplit.Trim());
@@ -234,7 +235,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 					}
 					else
 					{
-                        Output.WriteLine(Standard_Citation_String(!isRobot, Tracer) + Environment.NewLine + "  </td>" + Environment.NewLine + "  <!-- END CITATION VIEWER OUTPUT -->" );
+                        Output.WriteLine(Standard_Citation_String(!isRobot, Tracer) + Environment.NewLine + "  </td>" + Environment.NewLine + "  <div id=\"sbkCiv_EmptyRobotDiv\" />" + Environment.NewLine + "  <!-- END CITATION VIEWER OUTPUT -->");
 					}
 					break;
 
@@ -712,7 +713,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				CurrentMode.Mode = Display_Mode_Enum.My_Sobek;
 				CurrentMode.My_Sobek_Type = My_Sobek_Type_Enum.Edit_Item_Metadata;
 				CurrentMode.My_Sobek_SubMode = "1";
-				builder.AppendLine("<blockquote><a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode) + "\"><img src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin + "/buttons/edit_item_button.gif\" border=\"0px\" alt=\"Edit this item\" /></a></blockquote>");
+				builder.AppendLine("<blockquote><a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode) + "\"><img src=\"" + CurrentMode.Base_URL + "design/skins/" + CurrentMode.Base_Skin_Or_Skin + "/buttons/edit_item_button.gif\" border=\"0px\" alt=\"Edit this item\" /></a></blockquote>");
 				CurrentMode.Mode = Display_Mode_Enum.Item_Display;
 			}
 			else
@@ -757,6 +758,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 		/// <returns> HTML string with the basic information about this digital resource for display </returns>
 		public string Standard_Citation_String(bool Include_Links, Custom_Tracer Tracer)
 		{
+		    bool internalUser = ((CurrentUser != null) && (CurrentUser.LoggedOn) && (CurrentUser.Is_Internal_User));
 
             // Retrieve all the metadata modules that wil be used here
 		    Zoological_Taxonomy_Info taxonInfo = CurrentItem.Get_Metadata_Module(GlobalVar.ZOOLOGICAL_TAXONOMY_METADATA_MODULE_KEY) as Zoological_Taxonomy_Info;
@@ -802,7 +804,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 			// Build the strings for each section
 			string mets_info = translator.Get_Translation("METS Information", CurrentMode.Language);
-			string internal_info = translator.Get_Translation(CurrentMode.SobekCM_Instance_Abbreviation + " Membership", CurrentMode.Language);
+			string internal_info = translator.Get_Translation(CurrentMode.Instance_Abbreviation + " Membership", CurrentMode.Language);
 			string biblio_info = translator.Get_Translation("Material Information", CurrentMode.Language);
 			string subject_info = translator.Get_Translation("Subjects", CurrentMode.Language);
 			string notes_info = translator.Get_Translation("Notes", CurrentMode.Language);
@@ -823,7 +825,6 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 			// Start this table
 			result.AppendLine(INDENT + "<div class=\"sbkCiv_CitationSection\" id=\"sbkCiv_LinkSection\" >");
-			result.AppendLine(INDENT + "  <h2></h2>");
 			result.AppendLine(INDENT + "  <dl>");
 
 			// If this item is an external link item (i.e. has related URL, but no pages or downloads) the PURL should display as the Other URL
@@ -899,50 +900,49 @@ namespace SobekCM.Library.ItemViewer.Viewers
             result.AppendLine(INDENT + "</div>");
 
 			// Now, try to add the thumbnail from any page images here
-			bool thumb_added = false;
-			if (CurrentItem.Web.Static_PageCount > 0)
-			{
-				if (CurrentItem.Web.Pages_By_Sequence[0].Files.Count > 0)
-				{
-					string jpeg = String.Empty;
-					foreach (SobekCM_File_Info thisFileInfo in CurrentItem.Web.Pages_By_Sequence[0].Files)
-					{
-						if (thisFileInfo.System_Name.ToLower().IndexOf(".jpg") > 0)
-						{
-							if (jpeg.Length == 0)
-								jpeg = thisFileInfo.System_Name;
-							else if (thisFileInfo.System_Name.ToLower().IndexOf("thm.jpg") < 0)
-								jpeg = thisFileInfo.System_Name;
-						}
-					}
+		    if (CurrentItem.Behaviors.Dark_Flag != true)
+		    {
+		        if (!String.IsNullOrEmpty(CurrentItem.Behaviors.Main_Thumbnail))
+		        {
+		            string name_for_image = HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Main_Title.ToString());
+		            result.AppendLine();
+                    result.AppendLine(INDENT + "<div id=\"Sbk_CivThumbnailDiv\"><a href=\"" + CurrentMode.Base_URL + CurrentItem.BibID + "/" + CurrentItem.VID + "\" ><img src=\"" + CurrentItem.Web.Source_URL + "/" + CurrentItem.Behaviors.Main_Thumbnail + "\" alt=\"" + name_for_image + "\" id=\"Sbk_CivThumbnailImg\" itemprop=\"primaryImageOfPage\" /></a></div>");
+		            result.AppendLine();
+		        }
+		        else if (CurrentItem.Web.Static_PageCount > 0)
+		        {
+		            if (CurrentItem.Web.Pages_By_Sequence[0].Files.Count > 0)
+		            {
+		                string jpeg = String.Empty;
+		                foreach (SobekCM_File_Info thisFileInfo in CurrentItem.Web.Pages_By_Sequence[0].Files)
+		                {
+		                    if (thisFileInfo.System_Name.ToLower().IndexOf(".jpg") > 0)
+		                    {
+		                        if (jpeg.Length == 0)
+		                            jpeg = thisFileInfo.System_Name;
+		                        else if (thisFileInfo.System_Name.ToLower().IndexOf("thm.jpg") < 0)
+		                            jpeg = thisFileInfo.System_Name;
+		                    }
+		                }
 
-					string name_for_image = HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Main_Title.ToString());
-					string name_of_page = CurrentItem.Web.Pages_By_Sequence[0].Label;
-					name_for_image = name_for_image + " - " + HttpUtility.HtmlEncode(name_of_page);
-
-
-					// If a jpeg was found, show it
-					if (jpeg.Length > 0)
-					{
-						result.AppendLine();
-						result.AppendLine(INDENT + "<div id=\"Sbk_CivThumbnailDiv\"><a href=\"" + CurrentMode.Base_URL + CurrentItem.BibID + "/" + CurrentItem.VID + "\" ><img src=\"" + CurrentItem.Web.Source_URL + "/" + jpeg + "\" alt=\"MISSING IMAGE\" title=\"" + name_for_image + "\" id=\"Sbk_CivThumbnailImg\" itemprop=\"primaryImageOfPage\" /></a></div>");
-						result.AppendLine();
-						thumb_added = true;
-					}
-				}
-			}
-
-			// If no thumbnail added, try to add from main thumb information
-			if ((!thumb_added) && ( CurrentItem.Behaviors.Main_Thumbnail.Length > 0 ))
-			{					
-				string name_for_image = HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Main_Title.ToString());
-				result.AppendLine();
-				result.AppendLine(INDENT + "<div id=\"Sbk_CivThumbnailDiv\"><a href=\"" + CurrentMode.Base_URL + CurrentItem.BibID + "/" + CurrentItem.VID + "\" ><img src=\"" + CurrentItem.Web.Source_URL + "/" + CurrentItem.Behaviors.Main_Thumbnail + "\" alt=\"MISSING IMAGE\" title=\"" + name_for_image + "\" id=\"Sbk_CivThumbnailImg\" itemprop=\"primaryImageOfPage\" /></a></div>");
-				result.AppendLine();
-			}
+		                string name_for_image = HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Main_Title.ToString());
+		                string name_of_page = CurrentItem.Web.Pages_By_Sequence[0].Label;
+		                name_for_image = name_for_image + " - " + HttpUtility.HtmlEncode(name_of_page);
 
 
-			result.AppendLine(INDENT + "<div class=\"sbkCiv_CitationSection\" id=\"sbkCiv_BiblioSection\" >");
+		                // If a jpeg was found, show it
+		                if (jpeg.Length > 0)
+		                {
+		                    result.AppendLine();
+		                    result.AppendLine(INDENT + "<div id=\"Sbk_CivThumbnailDiv\"><a href=\"" + CurrentMode.Base_URL + CurrentItem.BibID + "/" + CurrentItem.VID + "\" ><img src=\"" + CurrentItem.Web.Source_URL + "/" + jpeg + "\" alt=\"" + name_for_image + "\" id=\"Sbk_CivThumbnailImg\" itemprop=\"primaryImageOfPage\" /></a></div>");
+		                    result.AppendLine();
+		                }
+		            }
+		        }
+		    }
+
+
+		    result.AppendLine(INDENT + "<div class=\"sbkCiv_CitationSection\" id=\"sbkCiv_BiblioSection\" >");
 		    result.AppendLine(INDENT + "<h2>" + biblio_info + "</h2>");
 			result.AppendLine(INDENT + "  <dl>");
 
@@ -976,11 +976,11 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							break;
 
 						case Title_Type_Enum.uniform:
-							uniform_titles.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisTitle.Title).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "TI") + Convert_String_To_XML_Safe(thisTitle.NonSort + " " + thisTitle.Title + " " + thisTitle.Subtitle).Trim() + search_link_end);
+							uniform_titles.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisTitle.Title).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "TI") + Convert_String_To_XML_Safe(thisTitle.NonSort + " " + thisTitle.Title + " " + thisTitle.Subtitle).Trim() + search_link_end);
 							break;
 
 						case Title_Type_Enum.translated:
-							translated_titles.Add((Convert_String_To_XML_Safe(thisTitle.NonSort + " " + thisTitle.Title + " " + thisTitle.Subtitle) + " ( <i>" + thisTitle.Language + "</i> )").Trim());
+							translated_titles.Add((Convert_String_To_XML_Safe(thisTitle.NonSort + " " + thisTitle.Title + " " + thisTitle.Subtitle) + " ( <em>" + thisTitle.Language + "</em> )").Trim());
 							break;
 
 						case Title_Type_Enum.abbreviated:
@@ -1011,7 +1011,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							if (hieroSubj.Country.Length > 0)
 							{
 								if (spatial_builder.Length > 0) spatial_builder.Append(" -- ");
-								spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.Country).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "CO") + hieroSubj.Country + search_link_end);
+                                spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.Country.Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "CO") + hieroSubj.Country + search_link_end);
 							}
 							if (hieroSubj.Province.Length > 0)
 							{
@@ -1026,7 +1026,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							if (hieroSubj.State.Length > 0)
 							{
 								if (spatial_builder.Length > 0) spatial_builder.Append(" -- ");
-								spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.State).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "ST") + hieroSubj.State + search_link_end);
+                                spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.State.Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "ST") + hieroSubj.State + search_link_end);
 							}
 							if (hieroSubj.Territory.Length > 0)
 							{
@@ -1036,12 +1036,12 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							if (hieroSubj.County.Length > 0)
 							{
 								if (spatial_builder.Length > 0) spatial_builder.Append(" -- ");
-								spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.County).Replace(",", "").Replace("&", "".Replace(" ", "+"))).Replace("<%CODE%>", "CT") + hieroSubj.County + search_link_end);
+                                spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.County.Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&", "".Replace(" ", "+"))).Replace("<%CODE%>", "CT") + hieroSubj.County + search_link_end);
 							}
 							if (hieroSubj.City.Length > 0)
 							{
 								if (spatial_builder.Length > 0) spatial_builder.Append(" -- ");
-								spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.City).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "CI") + hieroSubj.City + search_link_end);
+                                spatial_builder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(hieroSubj.City.Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "CI") + hieroSubj.City + search_link_end);
 							}
 							if (hieroSubj.CitySection.Length > 0)
 							{
@@ -1075,11 +1075,11 @@ namespace SobekCM.Library.ItemViewer.Viewers
 								{
 									if (baseSubject.Authority.Length > 0)
 									{
-										genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre) + "</span>" + search_link_end + " &nbsp; ( <i>" + baseSubject.Authority.ToLower() + "</i> )");
+                                        genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre).Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre) + "</span>" + search_link_end + " &nbsp; ( <em>" + baseSubject.Authority.ToLower() + "</em> )");
 									}
 									else
 									{
-										genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre) + "</span>" + search_link_end);
+                                        genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre).Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre) + "</span>" + search_link_end);
 									}
 								}
 							}
@@ -1087,11 +1087,11 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							{
 								if ((thisSubject.Authority.Length > 0) && (thisSubject.Authority.ToUpper() != "NONE"))
 								{
-									subjects.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisSubject.ToString(false)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "SU") + "<span itemprop=\"keywords\">" + thisSubject.ToString(false) + "</span>"+ search_link_end + " &nbsp; ( <i>" + thisSubject.Authority.ToLower() + "</i> )");
+                                    subjects.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisSubject.ToString(false).Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "SU") + "<span itemprop=\"keywords\">" + thisSubject.ToString(false) + "</span>" + search_link_end + " &nbsp; ( <em>" + thisSubject.Authority.ToLower() + "</em> )");
 								}
 								else
 								{
-									subjects.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisSubject.ToString(false)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "SU") + "<span itemprop=\"keywords\">" + thisSubject.ToString(false) + "</span>" + search_link_end);
+                                    subjects.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisSubject.ToString(false).Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "SU") + "<span itemprop=\"keywords\">" + thisSubject.ToString(false) + "</span>" + search_link_end);
 								}
 							}
 							break;
@@ -1103,13 +1103,15 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			{
 				foreach (Genre_Info thisGenre in CurrentItem.Bib_Info.Genres)
 				{
+				    string genreXml = Convert_String_To_XML_Safe(thisGenre.Genre_Term);
+
 					if (thisGenre.Authority.Length > 0)
 					{
-						genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre.Genre_Term)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre.Genre_Term) + "</span>" + search_link_end + " &nbsp; ( <i>" + thisGenre.Authority.ToLower() + "</i> )");
+                        genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre.Genre_Term.Replace("&amp;", "&").Replace("&", "").Replace("  "," "))).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre.Genre_Term) + "</span>" + search_link_end + " &nbsp; ( <em>" + thisGenre.Authority.ToLower() + "</em> )");
 					}
 					else
 					{
-						genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre.Genre_Term)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre.Genre_Term) + "</span>" + search_link_end);
+                        genres.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisGenre.Genre_Term.Replace("&amp;", "&").Replace("&", "").Replace("  "," "))).Replace(",", "").Replace(" ", "+")).Replace("<%CODE%>", "GE") + "<span itemprop=\"genre\">" + Convert_String_To_XML_Safe(thisGenre.Genre_Term) + "</span>" + search_link_end);
 					}
 				}
 			}
@@ -1117,7 +1119,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			// Add the titles
 			result.Append(Single_Citation_HTML_Row("Title", "<span itemprop=\"name\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Main_Title.NonSort + " " + CurrentItem.Bib_Info.Main_Title.Title + " " + CurrentItem.Bib_Info.Main_Title.Subtitle).Trim() + "</span>", INDENT));
 			if (CurrentItem.Bib_Info.hasSeriesTitle)
-				result.Append(Single_Citation_HTML_Row("Series Title", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(CurrentItem.Bib_Info.SeriesTitle.Title).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "TI") + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.SeriesTitle.NonSort + " " + CurrentItem.Bib_Info.SeriesTitle.Title + " " + CurrentItem.Bib_Info.SeriesTitle.Subtitle).Trim() + search_link_end, INDENT));
+                result.Append(Single_Citation_HTML_Row("Series Title", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(CurrentItem.Bib_Info.SeriesTitle.Title.Replace("&amp;", "&").Replace("&", "").Replace("  ", " ")).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "TI") + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.SeriesTitle.NonSort + " " + CurrentItem.Bib_Info.SeriesTitle.Title + " " + CurrentItem.Bib_Info.SeriesTitle.Subtitle).Trim() + search_link_end, INDENT));
 			Add_Citation_HTML_Rows("Uniform Title", uniform_titles, INDENT, result);
 			foreach (KeyValuePair<string, List<string>> altTitleType in alternative_titles)
 			{
@@ -1126,62 +1128,32 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			Add_Citation_HTML_Rows("Translated Title", translated_titles, INDENT, result);
 			Add_Citation_HTML_Rows("Abbreviated Title", abbreviated_titles, INDENT, result);
 
-			if ((CurrentItem.Bib_Info.Original_Description.Extent.Length > 0) && (CurrentItem.Bib_Info.Original_Description.Extent.ToUpper().Trim() != CurrentItem.Bib_Info.SobekCM_Type_String.ToUpper().Trim()))
-			{
-				result.Append(Single_Citation_HTML_Row("Physical Description", "<span itemprop=\"description\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Original_Description.Extent) + "</span>", INDENT));
-			}
-			else
-			{
-				result.Append(Single_Citation_HTML_Row("Physical Description", "<span itemprop=\"description\">" + CurrentItem.Bib_Info.SobekCM_Type_String + "</span>", INDENT));
-			}
+            // Collect and display the the statement of responsibility
+		    if (CurrentItem.Bib_Info.Notes_Count > 0)
+		    {
+		        Note_Info statementOfResponsibility = null;
+		        foreach (Note_Info thisNote in CurrentItem.Bib_Info.Notes)
+		        {
+		            if (thisNote.Note_Type == Note_Type_Enum.statement_of_responsibility)
+		            {
+                        statementOfResponsibility = thisNote;
+                        break;
+		            }
+		        }
 
-			result.Append(Single_Citation_HTML_Row("Scale", scale, INDENT));
+		        // If there was a statement of responsibility, add it now
+		        if (statementOfResponsibility != null)
+		        {
+		            result.Append(Single_Citation_HTML_Row(statementOfResponsibility.Note_Type_Display_String, "<span itemprop=\"notes\">" + Convert_String_To_XML_Safe(statementOfResponsibility.Note) + "</span>", INDENT));
+		        }
+		    }
 
-			List<string> languageList = new List<string>();
-			foreach (Language_Info thisLanguage in CurrentItem.Bib_Info.Languages)
-			{
-				if (thisLanguage.Language_Text.Length > 0)
-				{
-					string language_text = thisLanguage.Language_Text;
-					string from_possible_code = thisLanguage.Get_Language_By_Code(language_text);
-					if (from_possible_code.Length > 0)
-						language_text = from_possible_code;
-					if (language_text.ToUpper().IndexOf("ENGLISH") == 0)
-					{
-						languageList.Add("<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>");
-					}
-					else
-					{
-						languageList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(language_text)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "LA") + "<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>" + search_link_end);
 
-					}
-				}
-				else
-				{
-					if (thisLanguage.Language_ISO_Code.Length > 0)
-					{
-						string language_text = thisLanguage.Get_Language_By_Code(thisLanguage.Language_ISO_Code);
-						if (language_text.Length > 0)
-						{
-							if (language_text.ToUpper().IndexOf("ENGLISH") == 0)
-							{
-								languageList.Add("<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text)+ "</span>");
-							}
-							else
-							{
-								languageList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(language_text)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "LA") + "<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>" + search_link_end);
-
-							}
-						}
-					}
-				}
-			}
-			Add_Citation_HTML_Rows("Language", languageList, INDENT, result);
 
 
 			List<string> creators = new List<string>();
 			List<string> conferences = new List<string>();
-			if ((CurrentItem.Bib_Info.hasMainEntityName) && (CurrentItem.Bib_Info.Main_Entity_Name.Full_Name.Length > 0))
+			if (CurrentItem.Bib_Info.hasMainEntityName) 
 			{
 				if (CurrentItem.Bib_Info.Main_Entity_Name.Name_Type == Name_Info_Type_Enum.conference)
 				{
@@ -1213,7 +1185,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 						    nameBuilder.Append(thisName.Given_Name.Length > 0 ? Convert_String_To_XML_Safe(thisName.Given_Name) : "unknown");
 						}
 					}
-					string name_linked = search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisName.ToString(false)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "AU") + "<span itemprop=\"creator\">" + nameBuilder + "</span>" + search_link_end;
+					string name_linked = search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisName.ToString(false)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "AU") + "<span itemprop=\"creator\">" + nameBuilder + "</span>" + search_link_end;
 					if (nameBuilder.ToString() == "unknown")
 						name_linked = "unknown";
 
@@ -1257,7 +1229,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							    nameBuilder.Append(thisName.Given_Name.Length > 0 ? Convert_String_To_XML_Safe(thisName.Given_Name) : "unknown");
 							}
 						}
-						string name_linked = search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisName.ToString(false)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "AU") + "<span itemprop=\"creator\">" + nameBuilder + "</span>" + search_link_end;
+                        string name_linked = search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(thisName.ToString(false)).Replace(",", "").Replace("&amp;", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "AU") + "<span itemprop=\"creator\">" + nameBuilder + "</span>" + search_link_end;
 						if (nameBuilder.ToString() == "unknown")
 							name_linked = "unknown";
 						if (thisName.Display_Form.Length > 0)
@@ -1280,21 +1252,22 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 		    if ((CurrentItem.Bib_Info.hasDonor) && (CurrentItem.Bib_Info.Donor.Full_Name.Length > 0))
 			{
-				result.Append(Single_Citation_HTML_Row("Donor", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Donor.ToString()).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "DO") + CurrentItem.Bib_Info.Donor + search_link_end, INDENT));
+				result.Append(Single_Citation_HTML_Row("Donor", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(CurrentItem.Bib_Info.Donor.ToString()).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "DO") + CurrentItem.Bib_Info.Donor + search_link_end, INDENT));
 			}
 
 			if (CurrentItem.Bib_Info.Publishers_Count > 0)
 			{
-				List<string> pubs = CurrentItem.Bib_Info.Publishers.Select(ThisPublisher => search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(ThisPublisher.Name).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "PU") + "<span itemprop=\"publisher\">" + Convert_String_To_XML_Safe(ThisPublisher.Name) + "</span>" + search_link_end).ToList();
-			    Add_Citation_HTML_Rows("Publisher", pubs, INDENT, result);
+				List<string> pubs = CurrentItem.Bib_Info.Publishers.Select(ThisPublisher => search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(ThisPublisher.Name).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "PU") + "<span itemprop=\"publisher\">" + Convert_String_To_XML_Safe(ThisPublisher.Name) + "</span>" + search_link_end).ToList();
 
 				List<string> pub_places = new List<string>();
 				foreach (Publisher_Info thisPublisher in CurrentItem.Bib_Info.Publishers)
 				{
-				    pub_places.AddRange(thisPublisher.Places.Select(Place => search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(Place.Place_Text)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "PP") + Convert_String_To_XML_Safe(Place.Place_Text) + search_link_end));
+				    pub_places.AddRange(thisPublisher.Places.Select(Place => search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(Place.Place_Text)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "PP") + Convert_String_To_XML_Safe(Place.Place_Text) + search_link_end));
 				}
 
 				Add_Citation_HTML_Rows("Place of Publication", pub_places, INDENT, result);
+
+                Add_Citation_HTML_Rows("Publisher", pubs, INDENT, result);
 			}
 
 			if (CurrentItem.Bib_Info.Manufacturers_Count > 0)
@@ -1325,16 +1298,68 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				result.Append(Single_Citation_HTML_Row("Copyright Date", "<span itemprop=\"copyrightYear\">" + CurrentItem.Bib_Info.Origin_Info.Date_Copyrighted + "</span>", INDENT));
 			}
 
-			if (CurrentItem.Bib_Info.Origin_Info.Frequencies_Count > 0)
-			{
-				List<string> frequencies = new List<string>();
-				foreach (Origin_Info_Frequency thisFrequency in CurrentItem.Bib_Info.Origin_Info.Frequencies)
-				{
-					if (!frequencies.Contains(thisFrequency.Term.ToLower()))
-						frequencies.Add(thisFrequency.Term.ToLower());
-				}
-				Add_Citation_HTML_Rows("Frequency", frequencies, INDENT, result);
-			}
+            if (CurrentItem.Bib_Info.Origin_Info.Frequencies_Count > 0)
+            {
+                List<string> frequencies = new List<string>();
+                foreach (Origin_Info_Frequency thisFrequency in CurrentItem.Bib_Info.Origin_Info.Frequencies)
+                {
+                    if (!frequencies.Contains(thisFrequency.Term.ToLower()))
+                        frequencies.Add(thisFrequency.Term.ToLower());
+                }
+                Add_Citation_HTML_Rows("Frequency", frequencies, INDENT, result);
+            }
+
+            List<string> languageList = new List<string>();
+            foreach (Language_Info thisLanguage in CurrentItem.Bib_Info.Languages)
+            {
+                if (thisLanguage.Language_Text.Length > 0)
+                {
+                    string language_text = thisLanguage.Language_Text;
+                    string from_possible_code = thisLanguage.Get_Language_By_Code(language_text);
+                    if (from_possible_code.Length > 0)
+                        language_text = from_possible_code;
+                    if (language_text.ToUpper().IndexOf("ENGLISH") == 0)
+                    {
+                        languageList.Add("<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>");
+                    }
+                    else
+                    {
+                        languageList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(language_text)).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "LA") + "<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>" + search_link_end);
+
+                    }
+                }
+                else
+                {
+                    if (thisLanguage.Language_ISO_Code.Length > 0)
+                    {
+                        string language_text = thisLanguage.Get_Language_By_Code(thisLanguage.Language_ISO_Code);
+                        if (language_text.Length > 0)
+                        {
+                            if (language_text.ToUpper().IndexOf("ENGLISH") == 0)
+                            {
+                                languageList.Add("<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>");
+                            }
+                            else
+                            {
+                                languageList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(language_text)).Replace(",", "").Replace("&amp;", "&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "LA") + "<span itemprop=\"inLanguage\">" + Convert_String_To_XML_Safe(language_text) + "</span>" + search_link_end);
+
+                            }
+                        }
+                    }
+                }
+            }
+            Add_Citation_HTML_Rows("Language", languageList, INDENT, result);
+
+            if ((CurrentItem.Bib_Info.Original_Description.Extent.Length > 0) && (CurrentItem.Bib_Info.Original_Description.Extent.ToUpper().Trim() != CurrentItem.Bib_Info.SobekCM_Type_String.ToUpper().Trim()))
+            {
+                result.Append(Single_Citation_HTML_Row("Physical Description", "<span itemprop=\"description\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Original_Description.Extent) + "</span>", INDENT));
+            }
+            else
+            {
+                result.Append(Single_Citation_HTML_Row("Physical Description", "<span itemprop=\"description\">" + CurrentItem.Bib_Info.SobekCM_Type_String + "</span>", INDENT));
+            }
+
+            result.Append(Single_Citation_HTML_Row("Scale", scale, INDENT));
 
 			// Collect the state/edition information
 			if ((CurrentItem.Bib_Info.Origin_Info.Edition.Length > 0) || (( vraInfo != null ) && ( vraInfo.State_Edition_Count > 0)))
@@ -1365,7 +1390,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 					{
 						if (materialsBuilder.Length > 0)
 							materialsBuilder.Append(", ");
-						materialsBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(materials.Materials)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "MA") + "<span itemprop=\"materials\">" + Convert_String_To_XML_Safe(materials.Materials) + "</span>" + search_link_end);
+						materialsBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(materials.Materials)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "MA") + "<span itemprop=\"materials\">" + Convert_String_To_XML_Safe(materials.Materials) + "</span>" + search_link_end);
 					}
 				}
 				if (materialsBuilder.Length > 0)
@@ -1410,12 +1435,12 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			if (CurrentItem.Bib_Info.Containers_Count > 0)
 			{
 				StringBuilder physicalLocationBuilder = new StringBuilder(1000);
-				physicalLocationBuilder.Append("<table>");
+				physicalLocationBuilder.Append("<dl id=\"sbkCiv_LocationList\">");
 				foreach (Finding_Guide_Container thisContainer in CurrentItem.Bib_Info.Containers)
 				{
-					physicalLocationBuilder.Append("<tr><td>" + thisContainer.Type + ": </td><td>" + thisContainer.Name + "</td></tr>");
+					physicalLocationBuilder.Append("<dt>" + thisContainer.Type + ": </dt><dd>" + thisContainer.Name + "</dd>");
 				}
-				physicalLocationBuilder.Append("</table>");
+				physicalLocationBuilder.Append("</dl>");
 				result.Append(Single_Citation_HTML_Row("Physical Location", physicalLocationBuilder.ToString(), INDENT));
 			}
 			result.AppendLine(INDENT + "  </dl>");
@@ -1489,7 +1514,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 					{
 						if (divisionBuilder.Length > 0)
 							divisionBuilder.Append(", ");
-						divisionBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisDivision)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EJ") + Convert_String_To_XML_Safe(thisDivision) + search_link_end);
+						divisionBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisDivision)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EJ") + Convert_String_To_XML_Safe(thisDivision) + search_link_end);
 					}
 
 					result.Append(Single_Citation_HTML_Row("Degree Divisions", divisionBuilder.ToString(), INDENT));
@@ -1502,7 +1527,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 					{
 						if (disciplinesBuilder.Length > 0)
 							disciplinesBuilder.Append(", ");
-						disciplinesBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisDiscipline)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EI") + Convert_String_To_XML_Safe(thisDiscipline) + search_link_end);
+						disciplinesBuilder.Append(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisDiscipline)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EI") + Convert_String_To_XML_Safe(thisDiscipline) + search_link_end);
 					}
 					string text_disciplines = "Degree Disciplines";
 					if (CurrentMode.Skin.ToLower() == "ncf")
@@ -1511,16 +1536,16 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				}
 
 				if ( thesisInfo.Committee_Chair.Length > 0 )
-					result.Append(Single_Citation_HTML_Row("Committee Chair", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thesisInfo.Committee_Chair)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thesisInfo.Committee_Chair) + search_link_end, INDENT));
+					result.Append(Single_Citation_HTML_Row("Committee Chair", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thesisInfo.Committee_Chair)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thesisInfo.Committee_Chair) + search_link_end, INDENT));
 				if (thesisInfo.Committee_Co_Chair.Length > 0)
-					result.Append(Single_Citation_HTML_Row("Committee Co-Chair", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thesisInfo.Committee_Co_Chair)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thesisInfo.Committee_Co_Chair) + search_link_end, INDENT));
+					result.Append(Single_Citation_HTML_Row("Committee Co-Chair", search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thesisInfo.Committee_Co_Chair)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thesisInfo.Committee_Co_Chair) + search_link_end, INDENT));
 
 				if (thesisInfo.Committee_Members_Count > 0)
 				{
 					tempList.Clear();
 					foreach (string thisMember in thesisInfo.Committee_Members)
 					{
-						tempList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisMember)).Replace(",", "").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thisMember) + search_link_end);
+						tempList.Add(search_link.Replace("<%VALUE%>", HttpUtility.HtmlEncode(Convert_String_To_XML_Safe(thisMember)).Replace(",", "").Replace("&amp;","&").Replace("&", "").Replace(" ", "+")).Replace("<%CODE%>", "EC") + Convert_String_To_XML_Safe(thisMember) + search_link_end);
 					}
 					string text = "Committee Members";
 					if (CurrentMode.Skin.ToLower() == "ncf")
@@ -1930,7 +1955,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 					{
 						if (thisAudience.Authority.Length > 0)
 						{
-							tempList.Add(Convert_String_To_XML_Safe(thisAudience.Audience) + " &nbsp; ( <i>" + thisAudience.Authority.ToLower() + "</i> )");
+							tempList.Add(Convert_String_To_XML_Safe(thisAudience.Audience) + " &nbsp; ( <em>" + thisAudience.Authority.ToLower() + "</em> )");
 						}
 						else
 						{
@@ -1946,14 +1971,14 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			if ((CurrentItem.Bib_Info.Abstracts_Count > 0) || (CurrentItem.Bib_Info.Notes_Count > 0) || (CurrentItem.Behaviors.User_Tags_Count > 0))
 			{
 				// Ensure that if this user is non-internal, the only notes field is not internal
-				bool valid_notes_exist = CurrentMode.Internal_User;
+                bool valid_notes_exist = internalUser;
 				if (!valid_notes_exist)
 				{
 					if (CurrentItem.Bib_Info.Abstracts_Count > 0)
 						valid_notes_exist = true;
 					else
 					{
-						if (CurrentItem.Bib_Info.Notes.Any(ThisNote => ThisNote.Note_Type != Note_Type_Enum.internal_comments))
+                        if (CurrentItem.Bib_Info.Notes.Any(ThisNote => (ThisNote.Note_Type != Note_Type_Enum.internal_comments) && (ThisNote.Note_Type != Note_Type_Enum.statement_of_responsibility)))
 						{
 						    valid_notes_exist = true;
 						}
@@ -1976,16 +2001,21 @@ namespace SobekCM.Library.ItemViewer.Viewers
 						}
 					}
 
+
 					if (CurrentItem.Bib_Info.Notes_Count > 0)
 					{
 						foreach (Note_Info thisNote in CurrentItem.Bib_Info.Notes)
 						{
 							if (thisNote.Note_Type != Note_Type_Enum.NONE)
 							{
-								if ((thisNote.Note_Type != Note_Type_Enum.internal_comments) || (CurrentMode.Internal_User))
-								{
-									result.Append(Single_Citation_HTML_Row(thisNote.Note_Type_Display_String, "<span itemprop=\"notes\">" + Convert_String_To_XML_Safe(thisNote.Note) + "</span>", INDENT));
-								}
+                                // Statement of responsibilty will be printed at the very end
+							    if (thisNote.Note_Type != Note_Type_Enum.statement_of_responsibility)
+							    {
+							        if ((thisNote.Note_Type != Note_Type_Enum.internal_comments) || (internalUser))
+							        {
+							            result.Append(Single_Citation_HTML_Row(thisNote.Note_Type_Display_String, "<span itemprop=\"notes\">" + Convert_String_To_XML_Safe(thisNote.Note) + "</span>", INDENT));
+							        }
+							    }
 							}
 							else
 							{
@@ -2006,12 +2036,12 @@ namespace SobekCM.Library.ItemViewer.Viewers
 						{
 							if ((currentUser != null) && (currentUser.UserID == tag.UserID))
 							{
-								string citation_value = Convert_String_To_XML_Safe(tag.Description_Tag) + " <br /><i> Description added by you on " + tag.Date_Added.ToShortDateString() + "</i><br />( <a href=\"\" name=\"edit_describe_button" + tag_counter + "\" id=\"edit_describe_button" + tag_counter + "\" onclick=\"return edit_tag( 'edit_describe_button" + tag_counter + "', " + tag.TagID + ", '" + HttpUtility.HtmlEncode(tag.Description_Tag) + "');\">edit</a> | <a href=\"\" onclick=\"return delete_tag(" + tag.TagID + ");\">delete</a> )";
+								string citation_value = Convert_String_To_XML_Safe(tag.Description_Tag) + " <br /><em> Description added by you on " + tag.Date_Added.ToShortDateString() + "</em><br />( <a href=\"\" name=\"edit_describe_button" + tag_counter + "\" id=\"edit_describe_button" + tag_counter + "\" onclick=\"return edit_tag( 'edit_describe_button" + tag_counter + "', " + tag.TagID + ", '" + HttpUtility.HtmlEncode(tag.Description_Tag) + "');\">edit</a> | <a href=\"\" onclick=\"return delete_tag(" + tag.TagID + ");\">delete</a> )";
 								result.Append(INDENT + "    <tr>\n" + INDENT + "      <td width=\"15\"> </td>\n" + INDENT + "      <td width=\"" + width + "\" valign=\"top\"><b>" + Translator.Get_Translation("User Description", CurrentMode.Language) + ": </b></td>\n" + INDENT + "      <td style=\"background-color:#eeee88\">" + citation_value + "</td>\n" + INDENT + "    </tr>\n");
 							}
 							else
 							{
-								result.Append(Single_Citation_HTML_Row("User Description", Convert_String_To_XML_Safe(tag.Description_Tag) + " <br /><i> Description added by " + tag.UserName + " on " + tag.Date_Added.ToShortDateString() + "</i>", INDENT));
+								result.Append(Single_Citation_HTML_Row("User Description", Convert_String_To_XML_Safe(tag.Description_Tag) + " <br /><em> Description added by " + tag.UserName + " on " + tag.Date_Added.ToShortDateString() + "</em>", INDENT));
 							}
 
 							tag_counter++;
@@ -2035,7 +2065,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				{
 					// Include the code for internal users
 					string codeString = String.Empty;
-					if (CurrentMode.Internal_User)
+                    if (internalUser)
 						codeString = " ( i" + CurrentItem.Bib_Info.Source.Code + " )";
 
 					if ((Code_Manager != null) && (Code_Manager.isValidCode("i" + CurrentItem.Bib_Info.Source.Code)))
@@ -2044,7 +2074,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 						if (sourceAggr.Active)
 						{
 						    result.Append( !String.IsNullOrEmpty(sourceAggr.External_Link)
-											  ? Single_Citation_HTML_Row("Source Institution", "<span itemprop=\"sourceOrganization\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Source.Statement) + "</span>" + codeString + " ( <a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Source.Code + url_options + "\">" + CurrentMode.SobekCM_Instance_Abbreviation + " page</a> | <a href=\"" + sourceAggr.External_Link + "\">external link</a> )", INDENT)
+											  ? Single_Citation_HTML_Row("Source Institution", "<span itemprop=\"sourceOrganization\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Source.Statement) + "</span>" + codeString + " ( <a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Source.Code + url_options + "\">" + CurrentMode.Instance_Abbreviation + " page</a> | <a href=\"" + sourceAggr.External_Link + "\">external link</a> )", INDENT)
 											  : Single_Citation_HTML_Row("Source Institution", "<a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Source.Code + url_options + "\"><span itemprop=\"sourceOrganization\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Source.Statement) + "</span></a> " + codeString, INDENT));
 						}
 						else
@@ -2072,7 +2102,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				{
 					// Include the code for internal users
 					string codeString = String.Empty;
-					if (CurrentMode.Internal_User)
+                    if (internalUser)
 						codeString = " ( i" + CurrentItem.Bib_Info.Location.Holding_Code + " )";
 
 					if ((Code_Manager != null) && (Code_Manager.isValidCode("i" + CurrentItem.Bib_Info.Location.Holding_Code)))
@@ -2081,7 +2111,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 						if (holdingAggr.Active)
 						{
 						    result.Append(!String.IsNullOrEmpty(holdingAggr.External_Link)
-											  ? Single_Citation_HTML_Row("Holding Location", "<span itemprop=\"contentLocation\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Location.Holding_Name) + "</span>" + codeString + " ( <a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Location.Holding_Code + url_options + "\">" + CurrentMode.SobekCM_Instance_Abbreviation + " page</a> | <a href=\"" + holdingAggr.External_Link + "\">external link</a> )", INDENT)
+											  ? Single_Citation_HTML_Row("Holding Location", "<span itemprop=\"contentLocation\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Location.Holding_Name) + "</span>" + codeString + " ( <a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Location.Holding_Code + url_options + "\">" + CurrentMode.Instance_Abbreviation + " page</a> | <a href=\"" + holdingAggr.External_Link + "\">external link</a> )", INDENT)
 											  : Single_Citation_HTML_Row("Holding Location", "<a href=\"" + CurrentMode.Base_URL + "i" + CurrentItem.Bib_Info.Location.Holding_Code.ToLower() + url_options + "\"><span itemprop=\"contentLocation\">" + Convert_String_To_XML_Safe(CurrentItem.Bib_Info.Location.Holding_Name) + "</span></a> " + codeString, INDENT));
 						}
 						else
@@ -2107,47 +2137,44 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			string rights_statement = "<span itemprop=\"rights\">All applicable rights reserved by the source institution and holding location.</span>";
 			if (CurrentItem.Bib_Info.Access_Condition.Text.Length > 0)
 			{
-				rights_statement = "<span itemprop=\"rights\">" + CurrentItem.Bib_Info.Access_Condition.Text + "</span>";
+                if (CurrentItem.Bib_Info.Access_Condition.Text.IndexOf("http://") == 0)
+                    rights_statement = "<span itemprop=\"rights\"><a href=\"" + CurrentItem.Bib_Info.Access_Condition.Text + "\" target=\"RIGHTS\" >" + CurrentItem.Bib_Info.Access_Condition.Text + "</a></span>";
+                else
+                    rights_statement = "<span itemprop=\"rights\">" + CurrentItem.Bib_Info.Access_Condition.Text + "</span>";
 			}
 			result.AppendLine(INDENT + "    <dt style=\"width:" + width + "px\">" + Translator.Get_Translation("Rights Management", CurrentMode.Language) + ": </dt>");
 			result.Append(INDENT + "      <dd style=\"margin-left:" + width + "px\">");
 			const string SEE_TEXT = "See License Deed";
-			if (rights_statement.IndexOf("http://") == 0)
-			{
-				rights_statement = "<a href=\"" + rights_statement + "\" target=\"RIGHTS\" >" + rights_statement + "</a>";
-			}
-			else
-			{
+
 				if (rights_statement.IndexOf("[cc by-nc-nd]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by-nc-nd]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc-nd/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by_nc_nd.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by-nc-nd]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc-nd/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Nc_Nd_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc by-nc-sa]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by-nc-sa]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc-sa/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by_nc_sa.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by-nc-sa]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc-sa/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Nc_Sa_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc by-nc]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by-nc]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by_nc.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by-nc]", "<br /><a href=\"http://creativecommons.org/licenses/by-nc/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Nc_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc by-nd]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by-nd]", "<br /><a href=\"http://creativecommons.org/licenses/by-nd/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by_nd.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by-nd]", "<br /><a href=\"http://creativecommons.org/licenses/by-nd/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Nd_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc by-sa]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by-sa]", "<br /><a href=\"http://creativecommons.org/licenses/by-sa/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by_sa.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by-sa]", "<br /><a href=\"http://creativecommons.org/licenses/by-sa/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Sa_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc by]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc by]", "<br /><a href=\"http://creativecommons.org/licenses/by/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_by.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc by]", "<br /><a href=\"http://creativecommons.org/licenses/by/3.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_By_Img + "\" /></a>");
 				}
 				if (rights_statement.IndexOf("[cc0]") >= 0)
 				{
-					rights_statement = rights_statement.Replace("[cc0]", "<br /><a href=\"http://creativecommons.org/publicdomain/zero/1.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + CurrentMode.Default_Images_URL + "cc_zero.png\" /></a>");
+					rights_statement = rights_statement.Replace("[cc0]", "<br /><a href=\"http://creativecommons.org/publicdomain/zero/1.0/\" alt=\"" + SEE_TEXT + "\" target=\"cc_license\"><img src=\"" + Static_Resources.Cc_Zero_Img + "\" /></a>");
 				}
 
-			}
 			result.AppendLine(rights_statement + "</dd>");
 
             // Add eembargo date, if there is one
@@ -2164,7 +2191,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				{
 					if (thisIdentifier.Type.Length > 0)
 					{
-						tempList.Add("<i>" + Convert_String_To_XML_Safe(thisIdentifier.Type.ToLower()) + "</i> - <span itemprop=\"identifier\">" + Convert_String_To_XML_Safe(thisIdentifier.Identifier) + "</span>");
+						tempList.Add("<em>" + Convert_String_To_XML_Safe(thisIdentifier.Type.ToLower()) + "</em> - <span itemprop=\"identifier\">" + Convert_String_To_XML_Safe(thisIdentifier.Identifier) + "</span>");
 					}
 					else
 					{
@@ -2182,7 +2209,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				{
 					if (thisClassification.Authority.Length > 0)
 					{
-						tempList.Add("<i>" + Convert_String_To_XML_Safe(thisClassification.Authority.ToLower()) + "</i> - <span itemprop=\"classification\">" + Convert_String_To_XML_Safe(thisClassification.Classification) + "</span>");
+						tempList.Add("<em>" + Convert_String_To_XML_Safe(thisClassification.Authority.ToLower()) + "</em> - <span itemprop=\"classification\">" + Convert_String_To_XML_Safe(thisClassification.Classification) + "</span>");
 					}
 					else
 					{
@@ -2282,7 +2309,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				result.AppendLine();
 			}
 
-			if (CurrentMode.Internal_User)
+            if (internalUser)
 			{
 				List<string> codeList = new List<string>();
 
@@ -2292,14 +2319,14 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 				if (Code_Manager != null)
 				{
-				    codeList.AddRange(CurrentMode.Internal_User
+                    codeList.AddRange(internalUser
 				                          ? CurrentItem.Behaviors.Aggregations.Select(Aggregation => Aggregation.Code).Select(AltCode =>"<a href=\"" + CurrentMode.Base_URL + AltCode.ToLower() + url_options + "\">" +Convert_String_To_XML_Safe(Code_Manager.Get_Collection_Short_Name(AltCode)) + "</a> ( " +AltCode + " )")
 				                          : CurrentItem.Behaviors.Aggregations.Select(Aggregation => Aggregation.Code).Select(AltCode =>"<a href=\"" + CurrentMode.Base_URL + AltCode.ToLower() + url_options + "\">" +Convert_String_To_XML_Safe(Code_Manager.Get_Collection_Short_Name(AltCode)) + "</a>"));
 				    Add_Citation_HTML_Rows("Aggregations", codeList, INDENT, result);
 					codeList.Clear();
 				}
 
-				if (CurrentMode.Internal_User)
+                if (internalUser)
 				{
 					if (CurrentItem.Behaviors.Ticklers_Count > 0)
 					{
@@ -2314,7 +2341,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				result.AppendLine();
 			}
 
-			if (CurrentMode.Internal_User)
+            if (internalUser)
 			{
 
 				result.AppendLine(INDENT + "<div class=\"sbkCiv_CitationSection\" id=\"sbkCiv_MetsSection\" >");

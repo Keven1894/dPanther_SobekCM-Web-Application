@@ -1,5 +1,6 @@
 #region Using directives
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -135,14 +136,18 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 
                             // Is the extension already a part of the label?
-                            string label_upper = downloadGroup.Label.ToUpper();
-                            if (label_upper.IndexOf(download.File_Extension) > 0)
+                            string label = downloadGroup.Label;
+                            if (label.Length == 0)
                             {
-                                Output.WriteLine("                  <a href=\"" + file_link + "\" target=\"_blank\">" + downloadGroup.Label + "</a><br /><br />");
+                                label = download.System_Name;
+                            }
+                            if (label.IndexOf(download.File_Extension, System.StringComparison.OrdinalIgnoreCase) > 0)
+                            {
+                                Output.WriteLine("                  <a href=\"" + file_link + "\" target=\"_blank\">" + label + "</a><br /><br />");
                             }
                             else
                             {
-                                Output.WriteLine("                  <a href=\"" + file_link + "\" target=\"_blank\">" + downloadGroup.Label + " ( " + download.File_Extension + " )</a><br /><br />");
+                                Output.WriteLine("                  <a href=\"" + file_link + "\" target=\"_blank\">" + label + " ( " + download.File_Extension + " )</a><br /><br />");
                             }
                         }
                     }
@@ -169,7 +174,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
                 {
 
                     Output.WriteLine("                <h2>The following tiles are available for download:</h2>");
-                    Output.WriteLine(CurrentMode.Browser_Type.IndexOf("FIREFOX") >= 0
+                    Output.WriteLine(( !String.IsNullOrEmpty(CurrentMode.Browser_Type)) && ( CurrentMode.Browser_Type.IndexOf("FIREFOX") >= 0) 
                                            ? "                <p>To download, right click on the tile name below, select 'Save Link As...' and save the JPEG2000 to your local computer.</p>"
                                            : "                <p>To download, right click on the tile name below, select 'Save Target As...' and save the JPEG2000 to your local computer. </p>");
                     Output.WriteLine("                  <table id=\"sbkDiv_Aerials\">");

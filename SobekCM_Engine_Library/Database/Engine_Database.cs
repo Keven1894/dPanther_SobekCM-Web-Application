@@ -11,7 +11,6 @@ using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Results;
 using SobekCM.Core.Settings;
 using SobekCM.Core.Users;
-using SobekCM.EngineLibrary.ApplicationState;
 using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Tools;
 
@@ -532,41 +531,66 @@ namespace SobekCM.Engine_Library.Database
                     const int THEME_COL = 8;
                     const int LINK_COL = 9;
                     const int THEME_NAME_COL = 12;
+                    const int PARENT_SHORT_NAME = 13;
+                    const int PARENT_NAME = 14;
+                    const int PARENT_CODE = 15;
+
+                    Item_Aggregation_Related_Aggregations lastAggr = null;
 
                     while (reader.Read())
                     {
                         // Get the list key values out 
                         string code = reader.GetString(CODE_COL).ToUpper();
                         string type = reader.GetString(TYPE_COL);
-                        
 
-                        // Only do anything else if this is not somehow a repeat
-                        if (!Codes.isValidCode(code))
+                        if ((lastAggr != null) && (lastAggr.Code == code))
                         {
-                            // Create the object
-                            Item_Aggregation_Related_Aggregations thisAggr =
-                                new Item_Aggregation_Related_Aggregations(code, reader.GetString(NAME_COL),
-                                                                          reader.GetString(SHORT_NAME_COL), type,
-                                                                          reader.GetBoolean(IS_ACTIVE_COL),
-                                                                          reader.GetBoolean(HIDDEN_COL),
-                                                                          reader.GetString(DESC_COL),
-                                                                          (ushort)reader.GetInt32(ID_COL));
-
-                            if (!reader.IsDBNull(LINK_COL))
-                                thisAggr.External_Link = reader.GetString(LINK_COL);
-
-                            if (!reader.IsDBNull(THEME_NAME_COL))
+                            if (!reader.IsDBNull(PARENT_CODE))
                             {
-                                string theme_name = reader.GetString(THEME_NAME_COL);
-                                int theme = reader.GetInt32(THEME_COL);
-                                if (theme > 0)
-                                {
-                                    thisAggr.Thematic_Heading = new Thematic_Heading(theme, theme_name);
-                                }
+                                string second_parent_code = reader.GetString(PARENT_CODE).ToUpper();
+                                string second_parent_name = reader.GetString(PARENT_NAME).ToUpper();
+                                string second_parent_short = reader.GetString(PARENT_SHORT_NAME);
+                                lastAggr.Add_Parent_Aggregation(second_parent_code, second_parent_name, second_parent_short);
                             }
+                        }
+                        else
+                        {
+                            // Only do anything else if this is not somehow a repeat
+                            if (!Codes.isValidCode(code))
+                            {
+                                // Create the object
+                                lastAggr =
+                                    new Item_Aggregation_Related_Aggregations(code, reader.GetString(NAME_COL),
+                                        reader.GetString(SHORT_NAME_COL), type,
+                                        reader.GetBoolean(IS_ACTIVE_COL),
+                                        reader.GetBoolean(HIDDEN_COL),
+                                        reader.GetString(DESC_COL),
+                                        (ushort) reader.GetInt32(ID_COL));
 
-                            // Add this to the codes manager
-                            Codes.Add_Collection(thisAggr);
+                                if (!reader.IsDBNull(LINK_COL))
+                                    lastAggr.External_Link = reader.GetString(LINK_COL);
+
+                                if (!reader.IsDBNull(THEME_NAME_COL))
+                                {
+                                    string theme_name = reader.GetString(THEME_NAME_COL);
+                                    int theme = reader.GetInt32(THEME_COL);
+                                    if (theme > 0)
+                                    {
+                                        lastAggr.Thematic_Heading = new Thematic_Heading(theme, theme_name);
+                                    }
+                                }
+
+                                if (!reader.IsDBNull(PARENT_CODE))
+                                {
+                                    string parent_code = reader.GetString(PARENT_CODE).ToUpper();
+                                    string parent_name = reader.GetString(PARENT_NAME).ToUpper();
+                                    string parent_short = reader.GetString(PARENT_SHORT_NAME);
+                                    lastAggr.Add_Parent_Aggregation(parent_code, parent_name, parent_short);
+                                }
+
+                                // Add this to the codes manager
+                                Codes.Add_Collection(lastAggr);
+                            }
                         }
                     }
                     reader.Close();
@@ -845,6 +869,72 @@ namespace SobekCM.Engine_Library.Database
 
         #endregion
 
+        #region Methods related to the Thematic Heading values
+
+        /// <summary> Saves a new thematic heading or updates an existing thematic heading </summary>
+        /// <param name="ThematicHeadingID"> Primary key for the existing thematic heading, or -1 for a new heading </param>
+        /// <param name="ThemeOrder"> Order of this thematic heading, within the rest of the headings </param>
+        /// <param name="ThemeName"> Display name for this thematic heading</param>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> Thematic heading id, or -1 if there was an error </returns>
+        /// <remarks> This calls the 'SobekCM_Edit_Thematic_Heading' stored procedure </remarks> 
+        public static int Edit_Thematic_Heading(int ThematicHeadingID, int ThemeOrder, string ThemeName, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Edit_Thematic_Heading", String.Empty);
+            }
+
+            try
+            {
+                // Execute this non-query stored procedure
+                SqlParameter[] paramList = new SqlParameter[4];
+                paramList[0] = new SqlParameter("@thematicheadingid", ThematicHeadingID);
+                paramList[1] = new SqlParameter("@themeorder", ThemeOrder);
+                paramList[2] = new SqlParameter("@themename", ThemeName);
+                paramList[3] = new SqlParameter("@newid", -1) { Direction = ParameterDirection.Output };
+
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Edit_Thematic_Heading", paramList);
+
+                return Convert.ToInt32(paramList[3].Value);
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                return -1;
+            }
+        }
+
+        /// <summary> Deletes a thematic heading from the database  </summary>
+        /// <param name="ThematicHeadingID"> Primary key for the thematic heading to delete </param>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> TRUE if successful, otherwise FALSE</returns>
+        /// <remarks> This calls the 'SobekCM_Delete_Thematic_Heading' stored procedure </remarks> 
+        public static bool Delete_Thematic_Heading(int ThematicHeadingID, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Delete_Thematic_Heading", String.Empty);
+            }
+
+            try
+            {
+                // Execute this non-query stored procedure
+                SqlParameter[] paramList = new SqlParameter[1];
+                paramList[0] = new SqlParameter("@thematicheadingid", ThematicHeadingID);
+
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Delete_Thematic_Heading", paramList);
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                return false;
+            }
+        }
+
+        #endregion
+
 
         /// <summary> Gets the dataset with all default metadata and all templates </summary>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
@@ -959,7 +1049,7 @@ namespace SobekCM.Engine_Library.Database
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
         /// <returns> TRUE if successful or if the object is already filled, otherwise FALSE </returns>
         /// <remarks> This calls the 'SobekCM_Item_List_Web' stored procedure </remarks> 
-        internal static bool Verify_Item_Lookup_Object(bool Include_Private, Item_Lookup_Object ItemLookupObject, Custom_Tracer Tracer)
+        internal static bool Verify_Item_Lookup_Object(bool Always_Refresh, bool Include_Private, Item_Lookup_Object ItemLookupObject, Custom_Tracer Tracer)
         {
             if (Tracer != null)
             {
@@ -973,7 +1063,7 @@ namespace SobekCM.Engine_Library.Database
             lock (itemListPopulationLock)
             {
                 bool updateList = true;
-                if (ItemLookupObject != null)
+                if (( !Always_Refresh ) && ( ItemLookupObject != null))
                 {
                     TimeSpan sinceLastUpdate = DateTime.Now.Subtract(ItemLookupObject.Last_Updated);
                     if (sinceLastUpdate.TotalMinutes <= 1)
@@ -2948,10 +3038,9 @@ namespace SobekCM.Engine_Library.Database
         /// <param name="Code"> Code specifying the item aggregation to retrieve </param>
         /// <param name="Include_Counts"> Flag indicates whether to pull the title/item/page counts for this aggregation </param>
         /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
-        /// <param name="Is_Robot"> Flag indicates if this is a request from an indexing robot, which leaves out a good bit of the work </param>
         /// <returns> Arguments which include the <see cref="Item_Aggregation"/> object and a DataTable of the search field information</returns>
         /// <remarks> This method calls the stored procedure 'SobekCM_Get_Item_Aggregation2'. </remarks>
-        public static Complete_Item_Aggregation Get_Item_Aggregation(string Code, bool Include_Counts, bool Is_Robot, Custom_Tracer Tracer)
+        public static Complete_Item_Aggregation Get_Item_Aggregation(string Code, bool Include_Counts, Custom_Tracer Tracer)
         {
             if (Tracer != null)
             {
@@ -3046,22 +3135,6 @@ namespace SobekCM.Engine_Library.Database
                 }
                 throw;
             }
-        }
-
-        /// <summary> Adds the entire collection hierarchy under the ALL aggregation object </summary>
-        /// <param name="AllInfoObject"> All aggregationPermissions object within which to populate the hierarchy </param>
-        /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering </param>
-        /// <returns> TRUE if successful, otherwise FALSE </returns>
-        /// <remarks> This is postponed until it is needed for the TREE VIEW on the home page, to allow the system to start
-        /// faster, even with a great number of item aggregationPermissions in the hierarchy </remarks>
-        public static bool Add_Children_To_Main_Agg(Complete_Item_Aggregation AllInfoObject, Custom_Tracer Tracer)
-        {
-            DataTable childInfo = Get_Aggregation_Hierarchies(Tracer);
-            if (childInfo == null)
-                return false;
-
-            add_children(AllInfoObject, childInfo);
-            return true;
         }
 
         /// <summary> Creates the item aggregation object from the datatable extracted from the database </summary>
@@ -3250,7 +3323,7 @@ namespace SobekCM.Engine_Library.Database
         /// <returns> DataTable with relationships between all aggregationPermissions</returns>
         /// <remarks> This calls the 'SobekCM_Get_Collection_Hierarchies' stored procedure <br /><br />
         /// This is used by the <see cref="Internal_HtmlSubwriter"/> class</remarks>
-        public static DataTable Get_Aggregation_Hierarchies(Custom_Tracer Tracer)
+        public static DataSet Get_Aggregation_Hierarchies(Custom_Tracer Tracer)
         {
             if (Tracer != null)
             {
@@ -3269,7 +3342,7 @@ namespace SobekCM.Engine_Library.Database
                 }
 
                 // Return the first table from the returned dataset
-                return tempSet.Tables[0];
+                return tempSet;
             }
             catch (Exception ee)
             {
@@ -3337,6 +3410,8 @@ namespace SobekCM.Engine_Library.Database
         /// <remarks> This calls the 'SobekCM_Save_Item_Aggregation' stored procedure in the SobekCM database</remarks> 
         public static bool Save_Item_Aggregation(int AggregationID, string Code, string Name, string ShortName, string Description, Thematic_Heading ThematicHeading, string Type, bool IsActive, bool IsHidden, string DisplayOptions, int Map_Search, int Map_Search_Beta, int Map_Display, int Map_Display_Beta, bool OAI_Flag, string OAI_Metadata, string ContactEmail, string DefaultInterface, string ExternalLink, int ParentID, string Username, string LanguageVariants, Custom_Tracer Tracer)
         {
+            lastException = null;
+
             if (Tracer != null)
             {
                 Tracer.Add_Trace("SobekCM_Database.Save_Item_Aggregation", String.Empty);
@@ -3363,7 +3438,10 @@ namespace SobekCM.Engine_Library.Database
                 paramList[11] = new SqlParameter("@map_display", Map_Display);
                 paramList[12] = new SqlParameter("@oai_flag", OAI_Flag);
                 paramList[13] = new SqlParameter("@oai_metadata", OAI_Metadata);
-                paramList[14] = new SqlParameter("@contactemail", ContactEmail);
+                if ( ContactEmail == null )
+                    paramList[14] = new SqlParameter("@contactemail", String.Empty);
+                else
+                    paramList[14] = new SqlParameter("@contactemail", ContactEmail);
                 paramList[15] = new SqlParameter("@defaultinterface", DefaultInterface);
                 paramList[16] = new SqlParameter("@externallink", ExternalLink);
                 paramList[17] = new SqlParameter("@parentid", ParentID);
@@ -3396,9 +3474,112 @@ namespace SobekCM.Engine_Library.Database
 
         #endregion
 
+        #region Methods relating to sending emails from and logging emails in the database
 
-        /// <summary> Gets all the data necessary for the Builder, including file destination information,
-        /// general settings, server information, and the list of each BibID and File_Root </summary>
+        /// <summary> Send an email using databse mail through the SQL database </summary>
+        /// <param name="Recipient_List"> List of recepients, seperated by a semi-colon </param>
+        /// <param name="Subject_Line"> Subject line for the email to send </param>
+        /// <param name="Email_Body"> Body of the email to send</param>
+        /// <param name="From_Address"> Address this is FROM to override system </param>
+        /// <param name="Reply_To"> Address this should have as REPLY TO from system </param>
+        /// <param name="IsHtml"> Flag indicates if the email body is HTML-encoded, or plain text </param>
+        /// <param name="IsContactUs"> Flag indicates if this was sent from the 'Contact Us' feature of the library, rather than from a mySobek feature such as email your bookshelf </param>
+        /// <param name="ReplyToEmailID"> Primary key of the previous email, if this is a reply to a previously logged email </param>
+        /// <param name="UserID"> UserID that sent this message.  This is used to restrict the number of messages sent by the same user in the same day </param>
+        /// <returns> TRUE if successful, otherwise FALSE </returns>
+        /// <remarks> This calls the 'SobekCM_Send_Email' stored procedure to send and log this email. </remarks>
+        public static bool Send_Database_Email(string Recipient_List, string Subject_Line, string Email_Body, string From_Address, string Reply_To, bool IsHtml, bool IsContactUs, int ReplyToEmailID, int UserID)
+        {
+            try
+            {
+                // Build the parameter list
+                SqlParameter[] paramList = new SqlParameter[9];
+                paramList[0] = new SqlParameter("@recipients_list", Recipient_List.Replace(",",";"));
+                paramList[1] = new SqlParameter("@subject_line", Subject_Line);
+                paramList[2] = new SqlParameter("@email_body", Email_Body);
+                if ( String.IsNullOrEmpty(From_Address))
+                    paramList[3] = new SqlParameter("@from_address", DBNull.Value);
+                else
+                    paramList[3] = new SqlParameter("@from_address", From_Address);
+
+                if (String.IsNullOrEmpty(Reply_To))
+                    paramList[4] = new SqlParameter("@reply_to", DBNull.Value);
+                else
+                    paramList[4] = new SqlParameter("@reply_to", Reply_To);
+
+                paramList[5] = new SqlParameter("@html_format", IsHtml);
+                paramList[6] = new SqlParameter("@contact_us", IsContactUs);
+                if (ReplyToEmailID > 0)
+                {
+                    paramList[7] = new SqlParameter("@replytoemailid", ReplyToEmailID);
+                }
+                else
+                {
+                    paramList[7] = new SqlParameter("@replytoemailid", DBNull.Value);
+                }
+                paramList[8] = new SqlParameter("@userid", UserID);
+
+                // Execute this non-query stored procedure
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Send_Email", paramList);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                // Pass this exception onto the method to handle it
+                lastException = ee;
+                return false;
+            }
+        }
+
+        /// <summary> Log the fact an email was sent via a different system than the databse mail </summary>
+        /// <param name="Sender"> Name of the sender indicated in the sent email </param>
+        /// <param name="Recipient_List"> List of recepients, seperated by a semi-colon </param>
+        /// <param name="Subject_Line"> Subject line for the email to log </param>
+        /// <param name="Email_Body"> Body of the email to log</param>
+        /// <param name="IsHtml"> Flag indicates if the email body is HTML-encoded, or plain text </param>
+        /// <param name="IsContactUs"> Flag indicates if this was sent from the 'Contact Us' feature of the library, rather than from a mySobek feature such as email your bookshelf </param>
+        /// <param name="ReplyToEmailID"> Primary key of the previous email, if this is a reply to a previously logged email </param>
+        /// <returns> TRUE if successful, otherwise FALSE </returns>
+        /// <remarks> This calls the 'SobekCM_Log_Email' stored procedure. </remarks>
+        public static bool Log_Sent_Email(string Sender, string Recipient_List, string Subject_Line, string Email_Body, bool IsHtml, bool IsContactUs, int ReplyToEmailID)
+        {
+            try
+            {
+                // Build the parameter list
+                SqlParameter[] paramList = new SqlParameter[7];
+                paramList[0] = new SqlParameter("@sender", Sender);
+                paramList[1] = new SqlParameter("@recipients_list", Recipient_List);
+                paramList[2] = new SqlParameter("@subject_line", Subject_Line);
+                paramList[3] = new SqlParameter("@email_body", Email_Body);
+                paramList[4] = new SqlParameter("@html_format", IsHtml);
+                paramList[5] = new SqlParameter("@contact_us", IsContactUs);
+                if (ReplyToEmailID > 0)
+                {
+                    paramList[6] = new SqlParameter("@replytoemailid", ReplyToEmailID);
+                }
+                else
+                {
+                    paramList[6] = new SqlParameter("@replytoemailid", DBNull.Value);
+                }
+
+                // Execute this non-query stored procedure
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Log_Email", paramList);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                // Pass this exception onto the method to handle it
+                lastException = ee;
+                return false;
+            }
+        }
+
+        #endregion
+
+
+        /// <summary> Gets all the setting information necessary for SobekCM </summary>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
         /// <returns> DataSet with all the data necessary for the Builder, including file destination information,
         /// general settings, server information</returns>
@@ -3408,6 +3589,28 @@ namespace SobekCM.Engine_Library.Database
             try
             {
                 DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Get_Settings");
+                return tempSet;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                return null;
+            }
+        }
+
+        /// <summary> Gets the list of modules and incoming folders for the builder </summary>
+        /// <param name="IncludeDisabled"> Flag indicates whether all the disabled modules should be returned </param>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> DataSet with all the data necessary for the Builder, including file destination information,
+        /// general settings, server information</returns>
+        /// <remarks> This calls the 'SobekCM_Builder_Get_Settings' stored procedure </remarks> 
+        public static DataSet Get_Builder_Settings( bool IncludeDisabled, Custom_Tracer Tracer  )
+        {
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[1];
+                parameters[0] = new SqlParameter("@include_disabled", IncludeDisabled);
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Builder_Get_Settings", parameters);
                 return tempSet;
             }
             catch (Exception ee)
@@ -3466,5 +3669,409 @@ namespace SobekCM.Engine_Library.Database
                 return false;
             }
         }
+
+        /// <summary> Gets the simple list of items for a single item aggregation, or the list of all items in the library </summary>
+        /// <param name="Aggregation_Code"> Code for the item aggregation of interest, or an empty string</param>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> Dataset with the simple list of items, including BibID, VID, Title, CreateDate, and Resource Link </returns>
+        /// <remarks> This calls the 'SobekCM_Simple_Item_List' stored procedure </remarks> 
+        public static Tuple<string,string> Get_Random_Item(Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("SobekCM_Database.Get_Random_Item", "Get random item");
+            }
+
+            // Define a temporary dataset
+            DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Random_Item");
+
+            if ((tempSet != null) && (tempSet.Tables.Count > 0) && (tempSet.Tables[0].Rows.Count > 0))
+            {
+                string bibid = tempSet.Tables[0].Rows[0]["BibID"].ToString();
+                string vid = tempSet.Tables[0].Rows[0]["VID"].ToString();
+
+                return new Tuple<string, string>(bibid, vid);
+            }
+
+            return null;
+
+        }
+
+        #region Methods to support the collection of usage statitics from the IIS logs
+
+        /// <summary> Gets all the tables ued during the process of reading the statistics 
+        /// from the web iis logs and creating the associated SQL commands  </summary>
+        /// <returns> Large dataset with several tables ( all items, all titles, aggregationPermissions, etc.. )</returns>
+        public static DataSet Get_Statistics_Lookup_Tables()
+        {
+            // Create the connection
+            SqlConnection connect = new SqlConnection(Connection_String);
+
+            // Create the command 
+            SqlCommand executeCommand = new SqlCommand("SobekCM_Statistics_Lookup_Tables", connect) { CommandType = CommandType.StoredProcedure };
+
+            // Create the adapter
+            SqlDataAdapter adapter = new SqlDataAdapter(executeCommand);
+
+            // Create the dataset
+            DataSet returnValue = new DataSet();
+
+            // Fill the dataset
+            adapter.Fill(returnValue);
+
+            // Return the results
+            return returnValue;
+        }
+
+        public static bool Save_TopLevel_Statistics(int Year, int Month, int Hits, int Sessions, int Robot_Hits, int Xml_Hits, int Oai_Hits, int Json_Hits, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_TopLevel_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[8];
+                parameters[0] = new SqlParameter("@year", Year);
+                parameters[1] = new SqlParameter("@month", Month);
+                parameters[2] = new SqlParameter("@hits", Hits);
+                parameters[3] = new SqlParameter("@sessions", Sessions);
+                parameters[4] = new SqlParameter("@robot_hits", Robot_Hits);
+                parameters[5] = new SqlParameter("@xml_hits", Xml_Hits);
+                parameters[6] = new SqlParameter("@oai_hits", Oai_Hits);
+                parameters[7] = new SqlParameter("@json_hits", Json_Hits);
+      
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_TopLevel", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_TopLevel_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_TopLevel_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_TopLevel_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+        public static bool Save_WebContent_Statistics(int Year, int Month, int Hits, int Hits_Complete, string Level1, string Level2, string Level3, string Level4, string Level5, string Level6, string Level7, string Level8, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_WebContent_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[12];
+                parameters[0] = new SqlParameter("@year", Year);
+                parameters[1] = new SqlParameter("@month", Month);
+                parameters[2] = new SqlParameter("@hits", Hits);
+                parameters[3] = new SqlParameter("@hits_complete", Hits_Complete);
+                parameters[4] = new SqlParameter("@level1", Level1);
+                parameters[5] = new SqlParameter("@level2", Level2);
+                parameters[6] = new SqlParameter("@level3", Level3);
+                parameters[7] = new SqlParameter("@level4", Level4);
+                parameters[8] = new SqlParameter("@level5", Level5);
+                parameters[9] = new SqlParameter("@level6", Level6);
+                parameters[10] = new SqlParameter("@level7", Level7);
+                parameters[11] = new SqlParameter("@level8", Level8);
+      
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_WebContent", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_WebContent_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_WebContent_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_WebContent_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+
+        public static bool Save_Portal_Statistics(int PortalID, int Year, int Month, int Hits, Custom_Tracer Tracer )
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_Portal_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[4];
+                parameters[0] = new SqlParameter("@year", Year);
+                parameters[1] = new SqlParameter("@month", Month);
+                parameters[2] = new SqlParameter("@hits", Hits);
+                parameters[3] = new SqlParameter("@portalid", PortalID);
+                
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_Portal", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_Portal_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Portal_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Portal_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+        public static bool Save_Aggregation_Statistics(int AggregationID, int Year, int Month, int Hits, 
+            int Sessions, int HomePageViews, int BrowseViews, int AdvancedSearchViews, int SearchResultViews, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_Aggregation_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[9];
+                parameters[0] = new SqlParameter("@aggregationid", AggregationID);
+                parameters[1] = new SqlParameter("@year", Year);
+                parameters[2] = new SqlParameter("@month", Month);
+                parameters[3] = new SqlParameter("@hits", Hits);
+                parameters[4] = new SqlParameter("@sessions", Sessions);
+                parameters[5] = new SqlParameter("@home_page_views", HomePageViews);
+                parameters[6] = new SqlParameter("@browse_views", BrowseViews);
+                parameters[7] = new SqlParameter("@advanced_search_views", AdvancedSearchViews);
+                parameters[8] = new SqlParameter("@search_results_views", SearchResultViews);
+
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_Aggregation", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_Aggregation_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Aggregation_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Aggregation_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+        public static bool Save_Item_Group_Statistics(int GroupID, int Year, int Month, int Hits, int Sessions, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_Item_Group_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[5];
+                parameters[0] = new SqlParameter("@year", Year);
+                parameters[1] = new SqlParameter("@month", Month);
+                parameters[2] = new SqlParameter("@hits", Hits);
+                parameters[3] = new SqlParameter("@sessions", Sessions);
+                parameters[4] = new SqlParameter("@groupid", GroupID);
+
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_Item_Group", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Group_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Group_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Group_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+        public static bool Save_Item_Statistics(int ItemID, int Year, int Month, int Hits, int Sessions, int JpegViews, int ZoomableViews,
+            int CitationViews, int ThumbnailViews, int TextSearchViews, int FlashViews, int GoogleMapViews, int DownloadViews, 
+            int StaticViews, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Save_Item_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[14];
+                parameters[0] = new SqlParameter("@year", Year);
+                parameters[1] = new SqlParameter("@month", Month);
+                parameters[2] = new SqlParameter("@hits", Hits);
+                parameters[3] = new SqlParameter("@sessions", Sessions);
+                parameters[4] = new SqlParameter("@itemid", ItemID);
+                parameters[5] = new SqlParameter("@jpeg_views", JpegViews);
+                parameters[6] = new SqlParameter("@zoomable_views", ZoomableViews);
+                parameters[7] = new SqlParameter("@citation_views", CitationViews);
+                parameters[8] = new SqlParameter("@thumbnail_views", ThumbnailViews);
+                parameters[9] = new SqlParameter("@text_search_views", TextSearchViews);
+                parameters[10] = new SqlParameter("@flash_views", FlashViews);
+                parameters[11] = new SqlParameter("@google_map_views", GoogleMapViews);
+                parameters[12] = new SqlParameter("@download_views", DownloadViews);
+                parameters[13] = new SqlParameter("@static_views", StaticViews);
+
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Save_Item", parameters);
+
+                return true;
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Save_Item_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return false;
+            }
+        }
+
+        public static string Aggregate_Statistics(int Year, int Month, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Aggregate_Statistics", "");
+            }
+
+            try
+            {
+                SqlParameter[] parameters = new SqlParameter[3];
+                parameters[0] = new SqlParameter("@statyear", Year);
+                parameters[1] = new SqlParameter("@statmonth", Month);
+                SqlParameter returnMsg = parameters[2] = new SqlParameter("@message", Month);
+                returnMsg.Direction = ParameterDirection.InputOutput;
+
+                // Define a temporary dataset
+                SqlHelper.ExecuteNonQuery(Connection_String, CommandType.StoredProcedure, "SobekCM_Statistics_Aggregate", parameters);
+
+                return returnMsg.Value.ToString();
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Aggregate_Statistics", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Aggregate_Statistics", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Aggregate_Statistics", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return "Exception caught";
+            }
+        }
+
+        /// <summary> Gets the list of all users that are linked to items which may have usage statistics  </summary>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> DataTable of all the users linked to items </returns>
+        /// <remarks> This calls the 'SobekCM_Stats_Get_Users_Linked_To_Items' stored procedure </remarks>
+        public static DataTable Get_Users_Linked_To_Items(Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Get_Users_Linked_To_Items", "Pulling from database");
+            }
+
+            try
+            {
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Stats_Get_Users_Linked_To_Items");
+
+                // If there was no data for this collection and entry point, return null (an ERROR occurred)
+                if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null) || (tempSet.Tables[0].Rows.Count == 0))
+                {
+                    return null;
+                }
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Get_Users_Linked_To_Items", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Get_Users_Linked_To_Items", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Get_Users_Linked_To_Items", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+
+        /// <summary> Gets the basic usage statistics for all items linked to a user </summary>
+        /// <param name="UserID"> Primary key for the user of interest, for which to pull the item usage stats </param>
+        /// <param name="Month"> Month for which to pull the usage information </param>
+        /// <param name="Year"> Year for which to pull the usage information </param>
+        /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <returns> DataTable of the basic usage statistics for all items linked to a user for a single month and year </returns>
+        /// <remarks> This calls the 'SobekCM_Stats_Get_User_Linked_Items_Stats' stored procedure </remarks>
+        public static DataTable Get_User_Linked_Items_Stats(int UserID, int Month, int Year, Custom_Tracer Tracer)
+        {
+            if (Tracer != null)
+            {
+                Tracer.Add_Trace("Engine_Database.Get_User_Linked_Items_Stats", "Pulling from database");
+            }
+
+            try
+            {
+                // Build the parameter list
+                SqlParameter[] paramList = new SqlParameter[3];
+                paramList[0] = new SqlParameter("@userid", UserID);
+                paramList[1] = new SqlParameter("@month", Month);
+                paramList[2] = new SqlParameter("@year", Year);
+
+                // Define a temporary dataset
+                DataSet tempSet = SqlHelper.ExecuteDataset(Connection_String, CommandType.StoredProcedure, "SobekCM_Stats_Get_User_Linked_Items_Stats", paramList);
+
+                // If there was no data for this collection and entry point, return null (an ERROR occurred)
+                if ((tempSet.Tables.Count == 0) || (tempSet.Tables[0] == null) || (tempSet.Tables[0].Rows.Count == 0))
+                {
+                    return null;
+                }
+
+                // Return the first table from the returned dataset
+                return tempSet.Tables[0];
+            }
+            catch (Exception ee)
+            {
+                lastException = ee;
+                if (Tracer != null)
+                {
+                    Tracer.Add_Trace("Engine_Database.Get_User_Linked_Items_Stats", "Exception caught during database work", Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Get_User_Linked_Items_Stats", ee.Message, Custom_Trace_Type_Enum.Error);
+                    Tracer.Add_Trace("Engine_Database.Get_User_Linked_Items_Stats", ee.StackTrace, Custom_Trace_Type_Enum.Error);
+                }
+                return null;
+            }
+        }
+
+        #endregion
     }
 }

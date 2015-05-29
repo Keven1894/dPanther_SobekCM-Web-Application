@@ -6,27 +6,22 @@ using System.Data;
 using System.IO;
 using System.Text;
 using SobekCM.Core.Aggregations;
-using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Client;
 using SobekCM.Core.Configuration;
 using SobekCM.Core.Items;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Skins;
-using SobekCM.EngineLibrary.ApplicationState;
-using SobekCM.Engine_Library.Aggregations;
 using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Engine_Library.Database;
 using SobekCM.Engine_Library.Items;
-using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
-using SobekCM.Library.Skins;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Behaviors;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Resource_Object.Metadata_File_ReaderWriters;
 using SobekCM.Tools;
 using SobekCM.Tools.Logs;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -36,7 +31,7 @@ namespace SobekCM.Library
     public class Static_Pages_Builder
     {
         private readonly SobekCM_Assistant assistant;
-        private readonly SobekCM_Navigation_Object currentMode;
+        private readonly Navigation_Object currentMode;
 
         private int errors;
 
@@ -65,7 +60,7 @@ namespace SobekCM.Library
 		    defaultSkin = Default_Skin;
 
             // Create the mode object
-            currentMode = new SobekCM_Navigation_Object
+            currentMode = new Navigation_Object
                               {
                                   ViewerCode = "citation",
                                   Skin = String.Empty,
@@ -374,7 +369,7 @@ namespace SobekCM.Library
 	        currentMode.Skin = defaultSkin;
 
 			// Get the default web skin
-			SobekCM_Skin_Object defaultSkinObject = Engine_ApplicationCache_Gateway.Web_Skin_Collection[defaultSkin] ?? assistant.Get_HTML_Skin(currentMode, Engine_ApplicationCache_Gateway.Web_Skin_Collection, false, null);
+			Web_Skin_Object defaultSkinObject = assistant.Get_HTML_Skin(currentMode, Engine_ApplicationCache_Gateway.Web_Skin_Collection, false, null);
 
 	        // Get the list of all collections
             DataTable allCollections = SobekCM_Database.Get_Codes_Item_Aggregations( null);
@@ -421,7 +416,7 @@ namespace SobekCM.Library
 		                items = Engine_Database.Simple_Item_List(code, tracer);
 
 		                // Get the item aggregation object
-                        Item_Aggregation aggregation = SobekEngineClient.Aggregations.Get_Aggregation(code.ToLower(), UI_ApplicationCache_Gateway.Settings.Default_UI_Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, false, null);
+                        Item_Aggregation aggregation = SobekEngineClient.Aggregations.Get_Aggregation(code.ToLower(), UI_ApplicationCache_Gateway.Settings.Default_UI_Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, null);
 
 
 		                // Build the static browse pages
@@ -444,8 +439,8 @@ namespace SobekCM.Library
 
 		                if (Create_RSS_Feed(code, staticSobekcmDataLocation + "rss\\", thisCollectionView.Row["Name"].ToString(), items))
 		                {
-			                recent_rss_link_builder.Append("<img src=\"" + primaryWebServerUrl + "default/images/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/" + code + "_short_rss.xml\">" + thisCollectionView.Row["Name"] + "</a><br />" + Environment.NewLine);
-			                all_rss_link_builder.Append("<img src=\"" + primaryWebServerUrl + "default/images/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/" + code + "_rss.xml\">" + thisCollectionView.Row["Name"] + "</a><br />" + Environment.NewLine);
+			                recent_rss_link_builder.Append("<img src=\"http://cdn.sobekrepository.org/images/misc/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/" + code + "_short_rss.xml\">" + thisCollectionView.Row["Name"] + "</a><br />" + Environment.NewLine);
+                            all_rss_link_builder.Append("<img src=\"http://cdn.sobekrepository.org/images/misc/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/" + code + "_rss.xml\">" + thisCollectionView.Row["Name"] + "</a><br />" + Environment.NewLine);
 		                }
 	                }
                 }
@@ -461,7 +456,7 @@ namespace SobekCM.Library
             Console.WriteLine(InstanceName + @"Building static links page for ALL ITEMS");
 			SobekCM_Database.Builder_Add_Log_Entry(PrimaryLogId, String.Empty, "Standard", "Building static links page for ALL ITEMS", String.Empty);
 
-            Item_Aggregation allAggregation = SobekEngineClient.Aggregations.Get_Aggregation("all", UI_ApplicationCache_Gateway.Settings.Default_UI_Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, false, null);
+            Item_Aggregation allAggregation = SobekEngineClient.Aggregations.Get_Aggregation("all", UI_ApplicationCache_Gateway.Settings.Default_UI_Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, null);
 
             Build_All_Browse(allAggregation, items);
 
@@ -583,8 +578,8 @@ namespace SobekCM.Library
                 writer.WriteLine("      <br />");
                 writer.WriteLine("      In addition, the following three RSS feeds are provided:");
                 writer.WriteLine("      <blockquote>");
-                writer.WriteLine("        <img src=\"" + primaryWebServerUrl + "default/images/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/all_rss.xml\">All items in " + UI_ApplicationCache_Gateway.Settings.System_Abbreviation + "</a><br />");
-				writer.WriteLine("        <img src=\"" + primaryWebServerUrl + "default/images/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/all_short_rss.xml\">Most recently added items in " + UI_ApplicationCache_Gateway.Settings.System_Abbreviation + " (last 100)</a><br />");
+                writer.WriteLine("        <img src=\"http://cdn.sobekrepository.org/images/misc/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/all_rss.xml\">All items in " + UI_ApplicationCache_Gateway.Settings.System_Abbreviation + "</a><br />");
+                writer.WriteLine("        <img src=\"http://cdn.sobekrepository.org/images/misc/16px-Feed-icon.svg.png\" alt=\"RSS\" width=\"16\" height=\"16\">&nbsp;<a href=\"" + primaryWebServerUrl + "rss/all_short_rss.xml\">Most recently added items in " + UI_ApplicationCache_Gateway.Settings.System_Abbreviation + " (last 100)</a><br />");
                 writer.WriteLine("      </blockquote>");
                 writer.WriteLine("      RSS feeds	are a way to keep up-to-date on new materials that are added to the Digital Collections. RSS feeds are written in XML    and require a news reader to access.<br />");
                 writer.WriteLine("      <br />");
@@ -687,14 +682,11 @@ namespace SobekCM.Library
 	        if (( Aggregation.Web_Skins != null ) && ( Aggregation.Web_Skins.Count > 0))
 		        currentMode.Skin = Aggregation.Web_Skins[0];
 
-			// Get the skin object
-            SobekCM_Skin_Object skinObject = Engine_ApplicationCache_Gateway.Web_Skin_Collection[currentMode.Skin];
-			if (skinObject == null)
-			{
-                skinObject = assistant.Get_HTML_Skin(currentMode, Engine_ApplicationCache_Gateway.Web_Skin_Collection, false, null);
-                Engine_ApplicationCache_Gateway.Web_Skin_Collection.Add(skinObject);
-			}
-
+           // Get the skin object
+            Web_Skin_Object skinObject = assistant.Get_HTML_Skin(currentMode, Engine_ApplicationCache_Gateway.Web_Skin_Collection, false, null);
+            if (skinObject == null)
+                return true;
+  
 			StreamWriter writer = new StreamWriter(staticSobekcmDataLocation + Aggregation.Code.ToLower() + "_all.html", false);
 			writer.WriteLine("<!DOCTYPE html>");
 			writer.WriteLine("<html>");
@@ -707,7 +699,7 @@ namespace SobekCM.Library
 			writer.WriteLine("  <script type=\"text/javascript\" src=\"" + UI_ApplicationCache_Gateway.Settings.System_Base_URL + "default/scripts/jquery/jquery-1.10.2.min.js\"></script>");
 			writer.WriteLine("  <script type=\"text/javascript\" src=\"" + UI_ApplicationCache_Gateway.Settings.System_Base_URL + "default/scripts/sobekcm_full.min.js\"></script>");
 	        writer.WriteLine("  <meta name=\"robots\" content=\"index, follow\" />");
-			if (skinObject.CSS_Style.Length > 0)
+			if (!(String.IsNullOrEmpty(skinObject.CSS_Style)))
 			{
 				writer.WriteLine("  <link href=\"" + UI_ApplicationCache_Gateway.Settings.System_Base_URL + skinObject.CSS_Style + "\" rel=\"stylesheet\" type=\"text/css\" />");
 			}
@@ -746,8 +738,7 @@ namespace SobekCM.Library
 			writer.WriteLine("</div>");
 			writer.WriteLine();
 
-			writer.WriteLine("<div class=\"sbkPrsw_ResultsPanel\">");
-
+			writer.WriteLine("<div class=\"sbkPrsw_ResultsPanel\" id=\"main-content\">");
 
             writer.WriteLine("<br />");
             writer.WriteLine("<br />");
@@ -818,11 +809,11 @@ namespace SobekCM.Library
             currentMode.Skin = defaultSkin;
             currentMode.Mode = Display_Mode_Enum.Item_Display;
             currentMode.Language = Web_Language_Enum.English;
-            currentMode.Internal_User = false;
             currentMode.Trace_Flag = Trace_Flag_Type_Enum.No;
 
             // Get the current page
-            Page_TreeNode currentPage = SobekCM_Item_Factory.Get_Current_Page(Current_Item, currentMode.Page, null);
+            int current_page_index = currentMode.Page.HasValue ? Math.Max(currentMode.Page.Value, ((ushort)1)) : 1;
+            Page_TreeNode currentPage = SobekCM_Item_Factory.Get_Current_Page(Current_Item, current_page_index, null);
 
             // Finish writing this
             Finish_writing_html(Current_Item, currentPage, Static_FileName, Text_File_Directory);
@@ -854,7 +845,6 @@ namespace SobekCM.Library
                 currentMode.Skin = "";
                 currentMode.Mode = Display_Mode_Enum.Item_Display;
                 currentMode.Language = Web_Language_Enum.English;
-                currentMode.Internal_User = false;
                 currentMode.Trace_Flag = Trace_Flag_Type_Enum.No;
 
                 // Get the item
@@ -916,7 +906,6 @@ namespace SobekCM.Library
 			currentMode.Skin = defaultSkin;
             currentMode.Mode = Display_Mode_Enum.Item_Display;
             currentMode.Language = Web_Language_Enum.English;
-            currentMode.Internal_User = false;
             currentMode.Trace_Flag = Trace_Flag_Type_Enum.No;
 
             // Get the item
@@ -931,7 +920,8 @@ namespace SobekCM.Library
                 currentMode.Aggregation = currentItem.Behaviors.Aggregations[0].Code;
 
             // Get the current page
-            currentPage = SobekCM_Item_Factory.Get_Current_Page(currentItem, currentMode.Page, tracer);
+            int current_page_index = currentMode.Page.HasValue ? Math.Max(currentMode.Page.Value, ((ushort)1)) : 1;
+            currentPage = SobekCM_Item_Factory.Get_Current_Page(currentItem, current_page_index, tracer);
 
             // Finish writing this
             Finish_writing_html(currentItem, currentPage, Static_FileName, Text_File_Directory);
@@ -951,7 +941,7 @@ namespace SobekCM.Library
             //    currentMode.Skin = CurrentItem.Behaviors.Web_Skins[0];
 
             //// Get the skin object
-            //SobekCM_Skin_Object skinObject = skinsCollection[currentMode.Skin];
+            //Web_Skin_Object skinObject = skinsCollection[currentMode.Skin];
             //if (skinObject == null)
             //{
             //    skinObject = assistant.Get_HTML_Skin(currentMode, skinsCollection, false, null);
@@ -1290,7 +1280,7 @@ namespace SobekCM.Library
 	    /// <param name="Writer"> Open stream to write the HTML header to </param>
 	    /// <param name="HTMLSkin"> Default html web skin/interface</param>
 	    /// <param name="CurrentItem"> Current item, to include the aggregationPermissions in the breadcrumbs </param>
-	    public void Display_Header(TextWriter Writer, SobekCM_Skin_Object HTMLSkin, SobekCM_Item CurrentItem )
+	    public void Display_Header(TextWriter Writer, Web_Skin_Object HTMLSkin, SobekCM_Item CurrentItem )
         {
 			StringBuilder breadcrumb_builder = new StringBuilder("<a href=\"" + currentMode.Base_URL + "\">" + UI_ApplicationCache_Gateway.Settings.System_Abbreviation + " Home</a>");
 
@@ -1392,7 +1382,7 @@ namespace SobekCM.Library
 		/// <param name="Writer"> Open stream to write the HTML header to </param>
 		/// <param name="HTMLSkin"> Default html web skin/interface</param>
 		/// <param name="Banner"> Banner HTML</param>
-		public void Display_Header(TextWriter Writer, SobekCM_Skin_Object HTMLSkin, string Banner)
+		public void Display_Header(TextWriter Writer, Web_Skin_Object HTMLSkin, string Banner)
 		{
 			string breadcrumbs = "<a href=\"" + currentMode.Base_URL + "\">" + UI_ApplicationCache_Gateway.Settings.System_Name + " Home</a>";
 			Writer.WriteLine(HTMLSkin.Header_Item_HTML.Replace("<%URLOPTS%>", "").Replace("<%?URLOPTS%>", "").Replace("<%&URLOPTS%>", "").Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", "").Replace("<%ENGLISH%>", "").Replace("<%FRENCH%>", "").Replace("<%SPANISH%>", "").Replace("<%LOWGRAPHICS%>", "").Replace("<%HIGHGRAPHICS%>", "").Replace("<%BASEURL%>", currentMode.Base_URL).Replace("<%BANNER%>", Banner));
@@ -1402,7 +1392,7 @@ namespace SobekCM.Library
         /// <summary> Writes the static footer to go at the bottom of the static digital resource page </summary>
         /// <param name="Writer"> Open stream to write the HTML footer to </param>
 		/// <param name="HTMLSkin"> Default html web skin/interface</param>
-		public void Display_Footer(TextWriter Writer, SobekCM_Skin_Object HTMLSkin)
+		public void Display_Footer(TextWriter Writer, Web_Skin_Object HTMLSkin)
         {
             // Get the current contact URL
             Display_Mode_Enum thisMode = currentMode.Mode;

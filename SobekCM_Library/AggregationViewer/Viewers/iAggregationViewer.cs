@@ -31,7 +31,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
     /// During a valid html request, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  For a collection-level request, an instance of the  <see cref="Aggregation_HtmlSubwriter"/> class is created. </li>
     /// <li>To display the requested collection view, the collection subwriter will create one or more collection viewers ( implementing this class )</li>
@@ -49,6 +49,16 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
         /// <summary> Gets flag which indicates whether the secondary text requires controls </summary>
         bool Secondary_Text_Requires_Controls { get; }
+
+        /// <summary> Gets flag which indicates whether this is an internal view, which may have a 
+        /// slightly different design feel </summary>
+        bool Is_Internal_View { get;  }
+
+        /// <summary> Title for the page that displays this viewer, this is shown in the search box at the top of the page, just below the banner </summary>
+        string Viewer_Title { get; }
+
+        /// <summary> Gets the URL for the icon related to this aggregational viewer task </summary>
+        string Viewer_Icon { get; }
 
         /// <summary> Gets the collection of special behaviors which this aggregation viewer
         /// requests from the main HTML subwriter. </summary>

@@ -20,6 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\SobekCM_Engine_Library.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -42,12 +43,14 @@
     <Reference Include="protobuf-net">
       <HintPath>..\..\..\..\..\..\..\GitRepository\SobekCM-Web-Application\DLLs\Protobuf-net\protobuf-net.dll</HintPath>
     </Reference>
-    <Reference Include="SolrNet, Version=0.3.0.0, Culture=neutral, PublicKeyToken=bc21753e8aa334cb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\SolrNet.dll</HintPath>
+    <Reference Include="SolrNet">
+      <HintPath>..\DLLs\SolrNet\SolrNet.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -65,15 +68,61 @@
     <Compile Include="Client\SobekEngineClient.cs" />
     <Compile Include="Client\SobekEngineClient_AggregationEndpoints.cs" />
     <Compile Include="Client\SobekEngineClient_ItemEndpoints.cs" />
+    <Compile Include="Client\SobekEngineClient_NavigationEndpoints.cs" />
     <Compile Include="Client\SobekEngineClient_SearchEndpoints.cs" />
+    <Compile Include="Client\SobekEngineClient_WebContentEndpoints.cs" />
     <Compile Include="Client\SobekEngineClient_WebSkinEndpoints.cs" />
     <Compile Include="Configuration\ContactForm_Configuration_Reader.cs" />
     <Compile Include="Configuration\OAI_PMH_Configuration_Reader.cs" />
     <Compile Include="Configuration\Shibboleth_Configuration_Reader.cs" />
+    <Compile Include="Email\Email_Helper.cs" />
     <Compile Include="Endpoints\AggregationServices.cs" />
+    <Compile Include="Endpoints\ItemServices.cs" />
+    <Compile Include="Endpoints\NavigationServices.cs" />
+    <Compile Include="Endpoints\WebContentServices.cs" />
+    <Compile Include="Endpoints\WebSkinServices.cs" />
+    <Compile Include="ExtensionMethods.cs" />
     <Compile Include="IpRangeUtilities\ComparableIpAddress.cs" />
     <Compile Include="IpRangeUtilities\IpRangeSetV4.cs" />
     <Compile Include="IpRangeUtilities\SingleIpRangeV4.cs" />
+    <Compile Include="Items\BriefItems\BriefItem_Factory.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Abstracts_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Affiliations_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Aggregations_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Classifications_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Containers_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Dates_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Donor_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Edition_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Files_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Frequency_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Genres_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\GeoSpatial_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Holding_Location_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\IBriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Identifiers_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\InternalVarious_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Languages_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\LearningObjectMetadata_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Links_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Manufacturers_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Names_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Notes_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Physical_Description_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Publisher_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Related_Items_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\ResourceType_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Rights_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Rights_MD_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Source_Institution_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Subjects_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Target_Audience_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Temporal_Coverage_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Thesis_Dissertation_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Titles_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\User_Tags_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\VRACore_BriefItemMapper.cs" />
+    <Compile Include="Items\BriefItems\Mappers\Zoological_Taxonomy_BriefItemMapper.cs" />
     <Compile Include="Items\SobekCM_Item_Updater.cs" />
     <Compile Include="Database\Database_Item_Result.cs" />
     <Compile Include="Database\Database_Title_Result.cs" />
@@ -86,6 +135,7 @@
     </Compile>
     <Compile Include="Items\SobekCM_Item_Factory.cs" />
     <Compile Include="Items\SobekCM_METS_Based_ItemBuilder.cs" />
+    <Compile Include="JSON Client Helpers\UploadedFileFolderInfo.cs" />
     <Compile Include="MicroserviceHandler.cs" />
     <Compile Include="MicroserviceRewriter.cs" />
     <Compile Include="Microservices\Microservices_Configuration.cs" />
@@ -96,10 +146,11 @@
     <Compile Include="Microservices\Microservice_Path.cs" />
     <Compile Include="Microservices\Microservice_RestrictionRange.cs" />
     <Compile Include="Navigation\SobekCM_QueryString_Analyzer.cs" />
-    <Compile Include="Navigation\UrlWriterHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings\Builder_Settings_Builder.cs" />
     <Compile Include="Settings\InstanceWide_Settings_Builder.cs" />
     <Compile Include="SiteMap\SobekCM_SiteMap_Reader.cs" />
+    <Compile Include="Skins\Web_Skin_Utilities.cs" />
     <Compile Include="Solr\Solr_Controller.cs" />
     <Compile Include="Solr\Solr_Documents_Searcher.cs" />
     <Compile Include="Solr\Solr_Document_Result.cs" />

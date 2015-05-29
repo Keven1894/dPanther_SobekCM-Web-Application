@@ -4,12 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.UI.WebControls;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.SiteMap;
 using SobekCM.Engine_Library.Navigation;
+using SobekCM.Library.Settings;
 using SobekCM.Tools;
 
 #endregion
@@ -23,6 +25,8 @@ namespace SobekCM.Library.HTML
     public class Web_Content_HtmlSubwriter : abstractHtmlSubwriter
     {
         private string breadcrumbs;
+        private bool canEdit;
+        private bool excludeSiteMap;
 
         /// <summary> Constructor for a new instance of the Web_Content_HtmlSubwriter class </summary>
         /// <param name="RequestSpecificValues"> All the necessary, non-global data specific to the current request </param>
@@ -44,6 +48,28 @@ namespace SobekCM.Library.HTML
                     return;
                 }
             }
+
+            // Look to see if this user can edit the pages
+            canEdit = false;
+            // This is very simple for now, but should change soon
+            if ((RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.LoggedOn))
+            {
+                if ((RequestSpecificValues.Current_User.Is_System_Admin) || (RequestSpecificValues.Current_User.Is_Host_Admin))
+                    canEdit = true;
+                else
+                {
+                    // If this user can edit all items (by regular expression), then they can edit this as well
+                    if (RequestSpecificValues.Current_User.Editable_Regular_Expressions.Any(ThisRegularExpression => ThisRegularExpression == "[A-Z]{2}[A-Z|0-9]{4}[0-9]{4}"))
+                    {
+                        canEdit = true;
+                    }
+                }
+            }
+
+            // In certain modes, the sitemap should not be displayed
+            excludeSiteMap = false;
+            //if (RequestSpecificValues.Current_Mode.WebContent_Type != WebContent_Type_Enum.Display)
+            //    excludeSiteMap = true;
         }
 
         /// <summary> Gets the collection of special behaviors which this subwriter
@@ -60,12 +86,14 @@ namespace SobekCM.Library.HTML
             }
         }
 
+        #region Method to add the sitemap tree controls
+
         /// <summary> Add the sitemap tree-view control, if there is a site map included in this object </summary>
         /// <param name="placeHolder"> Main place holder ( &quot;mainPlaceHolder&quot; ) in the itemNavForm form, widely used throughout the application</param>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering </param>
         public void Add_Controls(PlaceHolder placeHolder, Custom_Tracer Tracer)
         {
-            if ((RequestSpecificValues.Site_Map == null) || (RequestSpecificValues.Current_Mode.Is_Robot))
+            if ((RequestSpecificValues.Site_Map == null) || (RequestSpecificValues.Current_Mode.Is_Robot) || (excludeSiteMap))
                 return;
 
             Tracer.Add_Trace("Web_Content_HtmlSubwriter.Add_Controls", "Adding site map tree nav view");
@@ -191,7 +219,7 @@ namespace SobekCM.Library.HTML
                             {
                                 string text = selectedNodeExpander.Parent.Text.Replace(" Namespace</a>","</a>").Replace(" Sub-Namespace</a>","</a>");
 
-                                breadcrumbBuilder.Insert(0, text + " <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/breadcrumbimg.gif\" alt=\">\" /><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin + "/breadcrumbimg.gif\" alt=\">\" /> ");
+                                breadcrumbBuilder.Insert(0, text + " <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/breadcrumbimg.gif\" alt=\">\" /><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "design/skins/" + RequestSpecificValues.Current_Mode.Base_Skin_Or_Skin + "/breadcrumbimg.gif\" alt=\">\" /> ");
                             }
 
                             // step up another level
@@ -259,7 +287,7 @@ namespace SobekCM.Library.HTML
             Tracer.Add_Trace("Web_Content_HtmlSubwriter.Write_HTML", "Rendering HTML");
 
             // The header is already drawn, so just start the main table here
-            if (RequestSpecificValues.Site_Map != null)
+            if ((RequestSpecificValues.Site_Map != null) && ( !excludeSiteMap ))
             {
                 Output.WriteLine("<table width=\"100%\">");
                 Output.WriteLine("<tr>");
@@ -275,7 +303,7 @@ namespace SobekCM.Library.HTML
                 // If this is a robot, just draw the links
                 if (RequestSpecificValues.Current_Mode.Is_Robot)
                 {
-                    Output.WriteLine("<div class=\"SobekSiteMapTreeView\">");
+                    Output.WriteLine("<div class=\"sbkWchs_SiteMapTree\">");
                     foreach (SobekCM_SiteMap_Node rootNode in RequestSpecificValues.Site_Map.RootNodes)
                     {
                         recursively_draw_sitemap_for_robots(Output, rootNode, String.Empty);
@@ -297,7 +325,7 @@ namespace SobekCM.Library.HTML
             }
             else
             {
-                Output.WriteLine(Indent + "<span Title='" + Node.Description + "' class='SobekSiteMapNoLink' >" + Node.Title + "</span><br />");
+                Output.WriteLine(Indent + "<span Title='" + Node.Description + "' class='sbkWchs_SiteMapNoLink' >" + Node.Title + "</span><br />");
             }
 
             // Add all the children
@@ -310,6 +338,8 @@ namespace SobekCM.Library.HTML
             }
         }
 
+        #endregion
+
 
         /// <summary> Writes the HTML generated by this simple text / CMS html subwriter directly to the response stream </summary>
         /// <param name="Output"> Stream to which to write the HTML for this subwriter </param>
@@ -320,12 +350,29 @@ namespace SobekCM.Library.HTML
             Tracer.Add_Trace("Web_Content_HtmlSubwriter.Write_Final_HTML", "Rendering HTML");
 
             // If there is a sitemap, move to the second part of the table
-            if (RequestSpecificValues.Site_Map != null)
+            if ((RequestSpecificValues.Site_Map != null) && (!excludeSiteMap))
             {
                 Output.WriteLine("</td>");
-                Output.WriteLine("<td valign=\"top\">");
+                Output.WriteLine("<td id=\"sbkWchs_MainTd\">");
             }
 
+            // Depending on mode, display the information
+            switch (RequestSpecificValues.Current_Mode.WebContent_Type)
+            {
+                case WebContent_Type_Enum.Display:
+                    write_standard_display(Output, Tracer);
+                    break;
+
+                case WebContent_Type_Enum.Edit:
+                    write_edit_display(Output, Tracer);
+                    break;
+
+            }
+
+        }
+
+        private void write_banner_and_menu(TextWriter Output, Custom_Tracer Tracer)
+        {
             // Save the current mode and browse
             Display_Mode_Enum thisMode = RequestSpecificValues.Current_Mode.Mode;
 
@@ -333,7 +380,7 @@ namespace SobekCM.Library.HTML
             {
                 if (RequestSpecificValues.Static_Web_Content.Banner.ToUpper().Trim() == "DEFAULT")
                 {
-                    if ((RequestSpecificValues.HTML_Skin != null) && (RequestSpecificValues.HTML_Skin.Banner_HTML.Length > 0))
+                    if ((RequestSpecificValues.HTML_Skin != null) && (!String.IsNullOrEmpty(RequestSpecificValues.HTML_Skin.Banner_HTML)))
                     {
                         Output.WriteLine(RequestSpecificValues.HTML_Skin.Banner_HTML);
                     }
@@ -341,25 +388,223 @@ namespace SobekCM.Library.HTML
                     {
                         if (RequestSpecificValues.Hierarchy_Object != null)
                         {
-                            Output.WriteLine("<img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Hierarchy_Object.Get_Banner_Image( RequestSpecificValues.HTML_Skin) + "\" alt=\"MISSING BANNER\" /><br />");
+                            Output.WriteLine("<img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Hierarchy_Object.Get_Banner_Image(RequestSpecificValues.HTML_Skin) + "\" alt=\"MISSING BANNER\" />");
                         }
                     }
                 }
                 else
                 {
-                    Output.WriteLine("<img id=\"mainBanner\" src=\"" + RequestSpecificValues.Static_Web_Content.Banner.Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL) + "\" alt=\"MISSING BANNER\" /><br />");
+                    Output.WriteLine("<img id=\"mainBanner\" src=\"" + RequestSpecificValues.Static_Web_Content.Banner.Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL) + "\" alt=\"MISSING BANNER\" />");
                 }
             }
+
+            // Should a menu be included, from the sitemaps?
+            if ((RequestSpecificValues.Site_Map != null) && (RequestSpecificValues.Static_Web_Content.IncludeMenu.HasValue) && (RequestSpecificValues.Static_Web_Content.IncludeMenu.Value))
+            {
+                // Determine the base URL
+                string base_url = RequestSpecificValues.Current_Mode.Base_URL;
+                if (RequestSpecificValues.Current_Mode.Writer_Type == Writer_Type_Enum.HTML_LoggedIn)
+                {
+                    base_url = base_url + "l/";
+                }
+
+                // Start the menu
+                Output.WriteLine("<!-- Add the top-level static page menu -->");
+                Output.WriteLine("<nav id=\"sbkAgm_MenuBar\" class=\"sbkMenu_Bar\">");
+                Output.WriteLine("  <ul class=\"sf-menu\" id=\"sbkAgm_Menu\">");
+
+                // Step through each of the root nodes and add it
+                int counter = 1;
+                foreach (SobekCM_SiteMap_Node rootSiteMapNode in RequestSpecificValues.Site_Map.RootNodes)
+                {
+                    if (rootSiteMapNode.Child_Nodes_Count == 0)
+                    {
+                        Output.WriteLine("    <li id=\"sbkAgm_TopMenu{0}\"><a href=\"{1}{2}\">{3}</a></li>", counter, base_url, rootSiteMapNode.URL, rootSiteMapNode.Title);
+                    }
+                    else
+                    {
+                        Output.Write("    <li id=\"sbkAgm_TopMenu{0}\"><a href=\"{1}{2}\">{3}</a><ul id=\"sbkAgm_SubMenu{0}\">", counter, base_url, rootSiteMapNode.URL, rootSiteMapNode.Title);
+                        int middle_counter = 1;
+                        foreach (SobekCM_SiteMap_Node childNode in rootSiteMapNode.Child_Nodes)
+                        {
+                            Output.Write("<li id=\"sbkAgm_MiddleMenu{0}\"><a href=\"{1}{2}\">{3}</a></li>", counter + "_" + middle_counter, base_url, childNode.URL, childNode.Title);
+                            middle_counter++;
+                        }
+
+                        Output.WriteLine("</ul></li>");
+                    }
+                    counter++;
+                }
+
+                Output.WriteLine("  </ul>");
+                Output.WriteLine("</nav>");
+                Output.WriteLine();
+
+                Output.WriteLine("<!-- Initialize the main user menu -->");
+                Output.WriteLine("<script>");
+                Output.WriteLine("  jQuery(document).ready(function () {");
+                Output.WriteLine("     jQuery('ul.sf-menu').superfish({");
+
+                Output.WriteLine("          onBeforeShow: function() { ");
+                Output.WriteLine("               if ( $(this).attr('id') == 'sbkAgm_FinalMenu')");
+                Output.WriteLine("               {");
+                Output.WriteLine("                 var thisWidth = $(this).width();");
+                Output.WriteLine("                 var parent = $('#sbkAgm_Final');");
+                Output.WriteLine("                 var offset = $('#sbkAgm_Final').offset();");
+                Output.WriteLine("                 if ( $(window).width() < offset.left + thisWidth )");
+                Output.WriteLine("                 {");
+                Output.WriteLine("                   var newleft = thisWidth - parent.width();");
+                Output.WriteLine("                   $(this).css('left', '-' + newleft + 'px');");
+                Output.WriteLine("                 }");
+                Output.WriteLine("               }");
+                Output.WriteLine("          }");
+
+                Output.WriteLine("    });");
+                Output.WriteLine("  });");
+                Output.WriteLine("</script>");
+                Output.WriteLine();
+            }
+
 
             // Add the breadcrumbs
             if (!String.IsNullOrEmpty(breadcrumbs))
             {
-                Output.WriteLine( "<span class=\"breadcrumbs\">" + breadcrumbs + "</span><br />");
+                Output.WriteLine("<div class=\"sbkWchs_Breadcrumbs\">" + breadcrumbs + "</div>");
+            }
+        }
+
+
+        private void write_standard_display(TextWriter Output, Custom_Tracer Tracer)
+        {
+            // Start this panel
+            Output.WriteLine("<div id=\"sbkWchs_Panel\">");
+
+            // Write the banner and main menu
+            write_banner_and_menu(Output, Tracer);
+
+            if (canEdit)
+            {
+                Output.WriteLine("<div id=\"sbkWchs_InnerPanelEditable\">");
+            }
+            else
+            {
+                Output.WriteLine("<div id=\"sbkWchs_InnerPanel\">");
             }
 
             // Add the secondary HTML ot the home page
-            Output.WriteLine("<div class=\"SobekResultsPanel\">");
             Output.WriteLine(RequestSpecificValues.Static_Web_Content.Content);
+
+            if (canEdit)
+            {
+                RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Edit;
+                string url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Display;
+
+                Output.WriteLine("<div id=\"sbkWchs_EditableLink\"><a href=\"" + url + "\" title=\"Edit this page\"><img src=\"" + Static_Resources.Edit_Gif + "\" alt=\"\" />edit content</a></div>");
+            }
+            Output.WriteLine("</div>");
+
+            if (canEdit)
+            {
+                Output.WriteLine("<script>");
+                Output.WriteLine("  $(\"#sbkWchs_InnerPanelEditable\").mouseover(function() { $(\"#sbkWchs_EditableLink\").css(\"display\",\"inline-block\"); });");
+                Output.WriteLine("  $(\"#sbkWchs_InnerPanelEditable\").mouseout(function() { $(\"#sbkWchs_EditableLink\").css(\"display\",\"none\"); });");
+                Output.WriteLine("</script>");
+                Output.WriteLine();
+            }
+
+            Output.WriteLine("</div>");
+            Output.WriteLine("<br />");
+            Output.WriteLine();
+
+            // If there is a sitemap, finish the main table
+            if (RequestSpecificValues.Site_Map != null)
+            {
+                Output.WriteLine("</td>");
+                Output.WriteLine("</tr>");
+                Output.WriteLine("</table>");
+            }
+        }
+
+        private void write_edit_display(TextWriter Output, Custom_Tracer Tracer)
+        {
+            // Start this panel
+            Output.WriteLine("<div id=\"sbkWchs_Panel\">");
+
+            // Write the banner and main menu
+            write_banner_and_menu(Output, Tracer);
+
+            string post_url = HttpUtility.HtmlEncode(HttpContext.Current.Items["Original_URL"].ToString());
+            Output.WriteLine("<form name=\"home_edit_form\" method=\"post\" action=\"" + post_url + "\" id=\"addedForm\" >");
+
+            const string TITLE_HELP = "Help for the title place holder";
+            const string AUTHOR_HELP = "Help for the author place holder";
+            const string DATE_HELP = "Help for the date place holder";
+            const string DESCRIPTION_HELP = "Help for the description place holder";
+            const string KEYWORDS_HELP = "Help for the keywords place holder";
+            const string EXTRA_HEAD_HELP = "Help for the extra head place holder";
+
+            Output.WriteLine("  <a href=\"\" onclick=\"return show_header_info()\" id=\"sbkSbia_HeaderInfoDivShowLink\">show header data (advanced)</a><br />");
+            Output.WriteLine("  <div id=\"sbkSbia_HeaderInfoDiv\" style=\"display:none;\">");
+            Output.WriteLine("    <div style=\"font-style:italic; padding:0 5px 5px 5px; text-align:left;\">The data below describes the content of this static child page and is used by some search engine indexing algorithms.  By default, it will not show in text of the page, but will be included in the head tag of the page.</div>");
+
+            Output.WriteLine("    <table id=\"sbkSbia_HeaderTable\">");
+            Output.WriteLine("      <tr>");
+            Output.WriteLine("        <td style=\"width:50px\">&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_title\">Title:</label></td>");
+            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_title\" id=\"admin_childpage_title\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Title) + "\" /></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + TITLE_HELP + "');\"  title=\"" + TITLE_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("      <tr>");
+            Output.WriteLine("        <td>&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_author\">Author:</label></td>");
+            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_author\" id=\"admin_childpage_author\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Author) + "\" /></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + AUTHOR_HELP + "');\"  title=\"" + AUTHOR_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("      <tr>");
+            Output.WriteLine("        <td>&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_date\">Date:</label></td>");
+            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_date\" id=\"admin_childpage_date\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Date) + "\" /></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DATE_HELP + "');\"  title=\"" + DATE_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("      <tr>");
+            Output.WriteLine("        <td>&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_description\">Description:</label></td>");
+            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_description\" id=\"admin_childpage_description\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Description) + "\" /></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DESCRIPTION_HELP + "');\"  title=\"" + DESCRIPTION_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("      <tr>");
+            Output.WriteLine("        <td>&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_keywords\">Keywords:</label></td>");
+            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_keywords\" id=\"admin_childpage_keywords\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Keywords) + "\" /></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + KEYWORDS_HELP + "');\"  title=\"" + KEYWORDS_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("      <tr style=\"vertical-align:top;\">");
+            Output.WriteLine("        <td>&nbsp;</td>");
+            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\" style=\"padding-top:5px\"><label for=\"admin_childpage_extrahead\">HTML Head Info:</label></td>");
+            string extra_head_info = RequestSpecificValues.Static_Web_Content.Extra_Head_Info ?? String.Empty;
+            Output.WriteLine("        <td><textarea rows=\"3\" class=\"sbkSbia_HeaderTextArea sbk_Focusable\" name=\"admin_childpage_extrahead\" id=\"admin_childpage_extrahead\" type=\"text\">" + HttpUtility.HtmlEncode(extra_head_info) + "</textarea></td>");
+            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + EXTRA_HEAD_HELP + "');\"  title=\"" + EXTRA_HEAD_HELP + "\" /></td>");
+            Output.WriteLine("      </tr>");
+            Output.WriteLine("    </table>");
+            Output.WriteLine("    <br />");
+            Output.WriteLine("  </div>");
+
+            Output.WriteLine("  <textarea id=\"sbkWchs_TextEdit\" name=\"sbkWchs_TextEdit\" style=\"height:400px;\" >");
+            Output.WriteLine(RequestSpecificValues.Static_Web_Content.Content.Replace("<%", "[%").Replace("%>", "%]"));
+            Output.WriteLine("  </textarea>");
+            Output.WriteLine();
+
+            Output.WriteLine("<div id=\"sbkAghsw_HomeEditButtons\">");
+            RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Home;
+            Output.WriteLine("  <button title=\"Do not apply changes\" class=\"roundbutton\" onclick=\"window.location.href='" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "';return false;\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"roundbutton_img_left\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
+            Output.WriteLine("  <button title=\"Save changes to this aggregation home page text\" class=\"roundbutton\" type=\"submit\" onclick=\"for(var i in CKEDITOR.instances) { CKEDITOR.instances[i].updateElement(); }\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"roundbutton_img_right\" alt=\"\" /></button>");
+            Output.WriteLine("</div>");
+            Output.WriteLine("</form>");
+            Output.WriteLine("<br /><br /><br />");
+            Output.WriteLine();
+
+ 
             Output.WriteLine("</div>");
             Output.WriteLine("<br />");
             Output.WriteLine();
@@ -410,19 +655,52 @@ namespace SobekCM.Library.HTML
                 }
             }
 
-
 			// Write the style sheet to use 
-#if DEBUG
-            Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Metadata.css\" rel=\"stylesheet\" type=\"text/css\" />");
-#else
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Metadata.min.css\" rel=\"stylesheet\" type=\"text/css\" />");
-#endif
+            /// TODO: Why is this always included?  Just hard code this in the HEAD for the files that need it
+            Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Metadata_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
 
             // If this is the static html web content view, add any special text which came from the original
             // static html file which was already read, which can include style sheets, etc..
             if ((RequestSpecificValues.Static_Web_Content != null) && ( !String.IsNullOrEmpty(RequestSpecificValues.Static_Web_Content.Extra_Head_Info)))
             {
                 Output.WriteLine("  " + RequestSpecificValues.Static_Web_Content.Extra_Head_Info.Trim());
+            }
+
+            if ((canEdit) && (RequestSpecificValues.Current_Mode.WebContent_Type == WebContent_Type_Enum.Edit))
+            {
+                // Determine the aggregation upload directory
+                string directory = Path.GetDirectoryName(RequestSpecificValues.Static_Web_Content.Source);
+
+                //string aggregation_upload_dir = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + "aggregations\\" + RequestSpecificValues.Hierarchy_Object.Code + "\\uploads";
+                //string aggregation_upload_url = UI_ApplicationCache_Gateway.Settings.System_Base_URL + "design/aggregations/" + RequestSpecificValues.Hierarchy_Object.Code + "/uploads/";
+
+                // Create the CKEditor object
+                CKEditor.CKEditor editor = new CKEditor.CKEditor
+                {
+                    BaseUrl = RequestSpecificValues.Current_Mode.Base_URL,
+                    Language = RequestSpecificValues.Current_Mode.Language,
+                    TextAreaID = "sbkWchs_TextEdit",
+                    FileBrowser_ImageUploadUrl = RequestSpecificValues.Current_Mode.Base_URL + "HtmlEditFileHandler.ashx",
+                    UploadPath = directory,
+                    UploadURL = directory
+                };
+
+                //// If there are existing files, add a reference to the URL for the image browser
+                //if ((Directory.Exists(aggregation_upload_dir)) && (Directory.GetFiles(aggregation_upload_dir).Length > 0))
+                //{
+                //    // Is there an endpoint defined for looking at uploaded files?
+                //    string upload_files_json_url = SobekEngineClient.Aggregations.Aggregation_Uploaded_Files_URL;
+                //    if (!String.IsNullOrEmpty(upload_files_json_url))
+                //    {
+                //        editor.ImageBrowser_ListUrl = String.Format(upload_files_json_url, RequestSpecificValues.Hierarchy_Object.Code);
+                //    }
+                //}
+
+                if ((RequestSpecificValues.Static_Web_Content.Content.IndexOf("<script", StringComparison.OrdinalIgnoreCase) >= 0) || (RequestSpecificValues.Static_Web_Content.Content.IndexOf("<input", StringComparison.OrdinalIgnoreCase) >= 0))
+                    editor.Start_In_Source_Mode = true;
+
+                // Add the HTML from the CKEditor object
+                editor.Add_To_Stream(Output);
             }
         }
 

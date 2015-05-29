@@ -6,7 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Caching;
-using SobekCM.Engine_Library.Navigation;
+using SobekCM.Core.Navigation;
+using SobekCM.Library.Settings;
 using SobekCM.Tools;
 
 #endregion
@@ -195,7 +196,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 								if (fkConstraint.Columns[0] == thisColumn)
 								{
 									column_definition = "FK";
-									column_reference = fkConstraint.RelatedColumns[0].Table.TableName + "." + fkConstraint.RelatedColumns[0].ColumnName + " <img src=\"" + CurrentMode.Base_URL + "default/images/leftarrow.png\" alt=\"<--\" />";
+									column_reference = fkConstraint.RelatedColumns[0].Table.TableName + "." + fkConstraint.RelatedColumns[0].ColumnName + " <img src=\"" + Static_Resources.Leftarrow_Png + "\" alt=\"<--\" />";
 								}
 							}
 						}
@@ -254,11 +255,12 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			else
 			{
 				Output.WriteLine("          <td id=\"sbkDcv_DetailsArea\">");
-				DataTable thisTable = itemDataset.Tables[CurrentMode.SubPage - 2];
+                int subpage_index = CurrentMode.SubPage.HasValue ? CurrentMode.SubPage.Value : 0;
+                DataTable thisTable = itemDataset.Tables[subpage_index - 2];
 
 				if (itemDataset.Tables.Count > 1)
 				{
-					ushort subpage = CurrentMode.SubPage;
+					ushort? subpage = CurrentMode.SubPage;
 					CurrentMode.SubPage = 1;
 					Output.WriteLine("<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode) + "\" title=\"Back to full data structure\">&larr; Back</a><br /><br />");
 					CurrentMode.SubPage = subpage;
@@ -307,7 +309,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 							{
 								column_definition = "FK";
 								CurrentMode.SubPage = (ushort) (itemDataset.Tables.IndexOf(fkConstraint.RelatedColumns[0].Table) + 2);
-								column_reference = "<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode) + "\" title=\"View details of linked table\">" + fkConstraint.RelatedColumns[0].Table.TableName + "</a>." + fkConstraint.RelatedColumns[0].ColumnName + " <img src=\"" + CurrentMode.Base_URL + "default/images/leftarrow.png\" alt=\"<--\" />";
+								column_reference = "<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode) + "\" title=\"View details of linked table\">" + fkConstraint.RelatedColumns[0].Table.TableName + "</a>." + fkConstraint.RelatedColumns[0].ColumnName + " <img src=\"" + Static_Resources.Leftarrow_Png + "\" alt=\"<--\" />";
 							}
 						}
 					}

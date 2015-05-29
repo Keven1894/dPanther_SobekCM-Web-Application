@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Text;
 using SobekCM.Core.Aggregations;
@@ -26,13 +27,12 @@ namespace SobekCM.Engine_Library.Aggregations
 	{
 	    /// <summary> Gets a fully built item aggregation object for a particular aggregation code   </summary>
 	    /// <param name="AggregationCode">Code for this aggregation object</param>
-	    /// <param name="IsRobot">Flag tells if this request is from a robot (which will vary cacheing time)</param>
 	    /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
 	    /// <returns>Fully built item aggregation object for the particular aggregation code and language code</returns>
 	    /// <remarks>Item aggregation object is also placed in the cache.<br /><br />
 	    /// Building of an item aggregation always starts by pulling the item from the database ( either <see cref="Engine_Database.Get_Item_Aggregation"/> or <see cref="SobekCM_Database.Get_Main_Aggregation"/> ).<br /><br />
 	    /// Then, either the Item Aggregation XML file is read (if present) or the entire folder hierarchy is analyzed to find the browses, infos, banners, etc..</remarks>
-	    public static Complete_Item_Aggregation Get_Complete_Item_Aggregation(string AggregationCode, bool IsRobot, Custom_Tracer Tracer)
+	    public static Complete_Item_Aggregation Get_Complete_Item_Aggregation(string AggregationCode, Custom_Tracer Tracer)
 	    {
 	        // Does this exist in the cache?
 	        if (Tracer != null)
@@ -43,7 +43,7 @@ namespace SobekCM.Engine_Library.Aggregations
 	        // Get the information about this collection and this entry point
 	        Complete_Item_Aggregation hierarchyObject;
 	        if ((AggregationCode.Length > 0) && (AggregationCode != "all"))
-	            hierarchyObject = Engine_Database.Get_Item_Aggregation(AggregationCode, false, IsRobot, Tracer);
+	            hierarchyObject = Engine_Database.Get_Item_Aggregation(AggregationCode, false, Tracer);
 	        else
 	            hierarchyObject = Engine_Database.Get_Main_Aggregation(Tracer);
 
@@ -75,14 +75,19 @@ namespace SobekCM.Engine_Library.Aggregations
 
 	                Add_HTML(hierarchyObject);
 	                Add_All_New_Browses(hierarchyObject);
-	                if (!IsRobot)
+	                Add_Browse_Files(hierarchyObject, Tracer);
+
+                    // If no HTML found, just add one
+	                if ((hierarchyObject.Home_Page_File_Dictionary == null) || (hierarchyObject.Home_Page_File_Dictionary.Count == 0))
 	                {
-	                    if (Tracer != null)
-	                    {
-	                        Tracer.Add_Trace("Item_Aggregation_Builder.Get_Item_Aggregation", "Scanning Design Directory for browse and info files");
-	                    }
-	                    Add_Browse_Files(hierarchyObject, Tracer);
+	                    hierarchyObject.Add_Home_Page_File("html\\home\\text.html", Web_Language_Enum.DEFAULT, false);
 	                }
+
+                    // If no banner found, just add one
+                    if ((hierarchyObject.Banner_Dictionary == null) || (hierarchyObject.Banner_Dictionary.Count == 0))
+                    {
+                        hierarchyObject.Add_Banner_Image("images/banners/coll.jpg", Web_Language_Enum.DEFAULT);
+                    }
 
 	                // Since there was no configuration file, save one
 	                hierarchyObject.Write_Configuration_File(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + hierarchyObject.ObjDirectory);
@@ -196,15 +201,15 @@ namespace SobekCM.Engine_Library.Aggregations
 		{
 			// Just use the standard home text
             if ( File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "html/home/text.html"))
-    			ThisObject.Add_Home_Page_File(  "html/home/text.html", Engine_ApplicationCache_Gateway.Settings.Default_UI_Language );
+    			ThisObject.Add_Home_Page_File(  "html/home/text.html", Engine_ApplicationCache_Gateway.Settings.Default_UI_Language, false );
             if (File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "html/home/text_en.html"))
-                ThisObject.Add_Home_Page_File("html/home/text_en.html",  Web_Language_Enum.English );
+                ThisObject.Add_Home_Page_File("html/home/text_en.html",  Web_Language_Enum.English, false );
             if (File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "html/home/text_fr.html"))
-                ThisObject.Add_Home_Page_File("html/home/text_fr.html", Web_Language_Enum.French);
+                ThisObject.Add_Home_Page_File("html/home/text_fr.html", Web_Language_Enum.French, false);
             if (File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "html/home/text_es.html"))
-                ThisObject.Add_Home_Page_File("html/home/text_es.html", Web_Language_Enum.Spanish);
+                ThisObject.Add_Home_Page_File("html/home/text_es.html", Web_Language_Enum.Spanish, false);
             if (File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "html/home/text_sp.html"))
-                ThisObject.Add_Home_Page_File("html/home/text_sp.html", Web_Language_Enum.Spanish);
+                ThisObject.Add_Home_Page_File("html/home/text_sp.html", Web_Language_Enum.Spanish, false);
 
 			// Just use the standard banner image
             if (File.Exists(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + ThisObject.ObjDirectory + "images/banners/coll.jpg"))
@@ -344,6 +349,11 @@ namespace SobekCM.Engine_Library.Aggregations
 
 	    public static Item_Aggregation Get_Item_Aggregation(Complete_Item_Aggregation CompAggr, Web_Language_Enum RequestedLanguage, Custom_Tracer Tracer)
 	    {
+            // If the complete aggregation was null, return null
+            if (CompAggr == null)
+                return null;
+
+            // Build the item aggregation
             Item_Aggregation returnValue = new Item_Aggregation(RequestedLanguage, CompAggr.ID, CompAggr.Code)
             {
                 Active = CompAggr.Active,
@@ -351,6 +361,7 @@ namespace SobekCM.Engine_Library.Aggregations
                 Child_Types = CompAggr.Child_Types,
                 Contact_Email = CompAggr.Contact_Email,
                 ContactForm = CompAggr.ContactForm,
+                CSS_File = CompAggr.CSS_File,
                 Default_BrowseBy = CompAggr.Default_BrowseBy,
                 Default_Result_View = CompAggr.Default_Result_View,
                 Default_Skin = CompAggr.Default_Skin,
@@ -368,7 +379,7 @@ namespace SobekCM.Engine_Library.Aggregations
                 Type = CompAggr.Type
             };
 
-            if (CompAggr.Children_Count > 0)
+            if (CompAggr.Active_Children_Count > 0)
             {
                 returnValue.Children = new List<Item_Aggregation_Related_Aggregations>();
                 foreach (Item_Aggregation_Related_Aggregations thisAggr in CompAggr.Children)
@@ -503,18 +514,9 @@ namespace SobekCM.Engine_Library.Aggregations
 
             // Language-specific source page
             returnValue.HomePageSource = String.Empty;
-            if (!String.IsNullOrEmpty(CompAggr.Custom_Home_Page_Source_File))
-            {
-                returnValue.Custom_Home_Page = true;
-                returnValue.HomePageSource = CompAggr.Custom_Home_Page_Source_File;
-            }
-            else
-            {
-                HTML_Based_Content homeHtml = Get_Home_HTML(CompAggr, RequestedLanguage, null);
-
-
-                returnValue.HomePageHtml = homeHtml;
-            }
+            HTML_Based_Content homeHtml = Get_Home_HTML(CompAggr, RequestedLanguage, null);
+            returnValue.HomePageHtml = homeHtml;
+	        returnValue.Custom_Home_Page = (CompAggr.Home_Page_File(RequestedLanguage)==null) ? false : (CompAggr.Home_Page_File(RequestedLanguage).isCustomHome);
 
             return returnValue;
 	    }
@@ -532,8 +534,10 @@ namespace SobekCM.Engine_Library.Aggregations
                 Tracer.Add_Trace("Item_Aggregation.Get_Home_HTML", "Reading home text source file");
             }
 
+            string homeFileSource = "";
             // Get the home file source
-            string homeFileSource = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, CompAggr.ObjDirectory, CompAggr.Home_Page_File(Language));
+            if(!(CompAggr.Home_Page_File(Language)==null))
+               homeFileSource = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, CompAggr.ObjDirectory, CompAggr.Home_Page_File(Language).Source);
 
             // If no home file source even found, return a message to that affect
             if (homeFileSource.Length == 0)
@@ -551,7 +555,7 @@ namespace SobekCM.Engine_Library.Aggregations
                 }
 
                 HTML_Based_Content content = HTML_Based_Content_Reader.Read_HTML_File(homeFileSource, true, Tracer);
-                content.TEMP_Source = homeFileSource;
+                content.Source = homeFileSource;
 
                 return content;
             }
@@ -560,6 +564,79 @@ namespace SobekCM.Engine_Library.Aggregations
                 return new HTML_Based_Content("<div class=\"error_div\">EXCEPTION CAUGHT WHILE TRYING TO READ THE HOME PAGE SOURCE FILE '" + homeFileSource + "'.<br /><br />ERROR: " + ee.Message + "</div>", null, homeFileSource);
             }
         }
+
+        #endregion
+
+        #region Methods related to the item aggrgegation hierarchy
+
+        /// <summary> Adds the entire collection hierarchy under the ALL aggregation object </summary>
+        /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering </param>
+        /// <returns> TRUE if successful, otherwise FALSE </returns>
+        /// <remarks> This is postponed until it is needed for the TREE VIEW on the home page, to allow the system to start
+        /// faster, even with a great number of item aggregationPermissions in the hierarchy </remarks>
+        public static Aggregation_Hierarchy Get_Collection_Hierarchy(Custom_Tracer Tracer)
+        {
+            // Get the database table
+            DataSet childInfo = Engine_Database.Get_Aggregation_Hierarchies(Tracer);
+            if (childInfo == null)
+                return null;
+
+            // Build the return value
+            Aggregation_Hierarchy returnValue = new Aggregation_Hierarchy();
+
+            // Add all the collections
+            add_hierarchy_children(returnValue.Collections, childInfo.Tables[0]);
+
+            // Add all the institutions
+            add_hierarchy_children(returnValue.Institutions, childInfo.Tables[1]);
+
+            //add_children(AllInfoObject, childInfo);
+            return returnValue;
+        }
+
+        /// <summary> Adds the child information to the item aggregation object from the datatable extracted from the database </summary>
+        /// <param name="AggrList"> List into which to populate the hierarchy </param>
+        /// <param name="ChildInfo"> Datatable from database calls with child item aggregation information </param>
+        private static void add_hierarchy_children(List<Item_Aggregation_Related_Aggregations> AggrList, DataTable ChildInfo)
+        {
+            if (ChildInfo.Rows.Count == 0)
+                return;
+
+            // Build a dictionary of nodes while building this tree
+            Dictionary<string, Item_Aggregation_Related_Aggregations> nodes = new Dictionary<string, Item_Aggregation_Related_Aggregations>(ChildInfo.Rows.Count);
+
+            // Step through each row of children
+            foreach (DataRow thisRow in ChildInfo.Rows)
+            {
+                // pull some of the basic data out
+                int hierarchyLevel = Convert.ToInt16(thisRow[5]);
+                string code = thisRow[0].ToString().ToLower();
+                string parentCode = thisRow[1].ToString().ToLower();
+
+                // If this does not already exist, create it
+                if (!nodes.ContainsKey(code))
+                {
+                    // Create the object
+                    Item_Aggregation_Related_Aggregations childObject = new Item_Aggregation_Related_Aggregations(code, thisRow[2].ToString(), thisRow[4].ToString(), Convert.ToBoolean(thisRow[6]), Convert.ToBoolean(thisRow[7]));
+
+                    // Add this object to the node dictionary
+                    nodes.Add(code, childObject);
+
+                    // Check for parent in the node list
+                    if ((parentCode.Length > 0) && (nodes.ContainsKey(parentCode)))
+                    {
+                        nodes[parentCode].Add_Child_Aggregation(childObject);
+                    }
+
+                    // If this is the first hierarchy, add to the main item aggregation object
+                    if (hierarchyLevel == -1)
+                    {
+                        AggrList.Add(childObject);
+                    }
+                }
+            }
+        }
+
 
         #endregion
     }

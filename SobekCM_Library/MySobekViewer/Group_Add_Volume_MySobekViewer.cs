@@ -14,12 +14,13 @@ using SobekCM.Library.Citation;
 using SobekCM.Library.Citation.Template;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Bib_Info;
 using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Metadata_File_ReaderWriters;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -112,10 +113,15 @@ namespace SobekCM.Library.MySobekViewer
             {
                 RequestSpecificValues.Tracer.Add_Trace("Group_Add_Volume_MySobekViewer.Constructor", "Reading CompleteTemplate file");
 
-                // Read this CompleteTemplate
+                // Look in the user-defined templates portion first
+                string user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\user\\standard\\" + template_code + ".xml";
+                if (!File.Exists(user_template))
+                    user_template = UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\default\\standard\\" + template_code + ".xml";
+
+                // Read this template
                 Template_XML_Reader reader = new Template_XML_Reader();
                 completeTemplate = new CompleteTemplate();
-                reader.Read_XML(UI_ApplicationCache_Gateway.Settings.Base_MySobek_Directory + "templates\\defaults\\" + template_code + ".xml", completeTemplate, true);
+                reader.Read_XML(user_template, completeTemplate, true);
 
                 // Add the current codes to this CompleteTemplate
                 completeTemplate.Add_Codes(UI_ApplicationCache_Gateway.Aggregations);
@@ -526,12 +532,12 @@ namespace SobekCM.Library.MySobekViewer
 		    Output.WriteLine("    <div class=\"tabpage\" id=\"tabpage_1\">");
 
 		    Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to top of form -->");
-		    Output.WriteLine("      <script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+		    Output.WriteLine("      <script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
 		    Output.WriteLine();
 
 		    Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-		    Output.WriteLine("        <button onclick=\"addvolume_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-		    Output.WriteLine("        <button onclick=\"addvolume_save_form(''); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button> &nbsp; &nbsp; ");
+		    Output.WriteLine("        <button onclick=\"addvolume_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+		    Output.WriteLine("        <button onclick=\"addvolume_save_form(''); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button> &nbsp; &nbsp; ");
 		    Output.WriteLine("        <button onclick=\"addvolume_save_form('_again'); return false;\" class=\"sbkMySobek_BigButton\">SAVE & ADD ANOTHER</button>");
 		    Output.WriteLine("      </div>");
 		    Output.WriteLine("      <br /><br />");
@@ -560,7 +566,7 @@ namespace SobekCM.Library.MySobekViewer
 		    Output.WriteLine("      </div>");
 		    Output.WriteLine();
 
-		    bool isMozilla = RequestSpecificValues.Current_Mode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0;
+	        bool isMozilla = ((!String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Browser_Type)) && (RequestSpecificValues.Current_Mode.Browser_Type.ToUpper().IndexOf("FIREFOX") >= 0));
 
 		    // Create a new blank item for display purposes
 		    SobekCM_Item displayItem = new SobekCM_Item {BibID = RequestSpecificValues.Current_Item.BibID};
@@ -597,8 +603,8 @@ namespace SobekCM.Library.MySobekViewer
 		    // Add the second buttons at the bottom of the form
 		    Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to bottom of form -->");
 		    Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-		    Output.WriteLine("        <button onclick=\"addvolume_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-		    Output.WriteLine("        <button onclick=\"addvolume_save_form(''); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button> &nbsp; &nbsp; ");
+		    Output.WriteLine("        <button onclick=\"addvolume_cancel_form(); return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+		    Output.WriteLine("        <button onclick=\"addvolume_save_form(''); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button> &nbsp; &nbsp; ");
 		    Output.WriteLine("      </div>");
 		    Output.WriteLine();
 

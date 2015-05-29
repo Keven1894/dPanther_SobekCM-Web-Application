@@ -69,7 +69,7 @@ namespace SobekCM.Library.HTML
             Tracer.Add_Trace("Search_Results_HtmlSubwriter.Write_HTML", "Rendering HTML");
 
             // If this skin has top-level navigation suppressed, skip the top tabs
-            if (RequestSpecificValues.HTML_Skin.Suppress_Top_Navigation)
+            if ((RequestSpecificValues.HTML_Skin.Suppress_Top_Navigation.HasValue) && (RequestSpecificValues.HTML_Skin.Suppress_Top_Navigation.Value))
             {
                 Output.WriteLine("<br />");
             }
@@ -124,6 +124,17 @@ namespace SobekCM.Library.HTML
                     return "{0} Search Results - " + RequestSpecificValues.Hierarchy_Object.Name;
                 }
                 return "{0} Search Results";
+            }
+        }
+
+        /// <summary> Gets the collection of special behaviors which this subwriter
+        /// requests from the main HTML subwriter. </summary>
+        /// <remarks> By default, this returns an empty list </remarks>
+        public override List<HtmlSubwriter_Behaviors_Enum> Subwriter_Behaviors
+        {
+            get
+            {
+                return new List<HtmlSubwriter_Behaviors_Enum> { HtmlSubwriter_Behaviors_Enum.Include_Skip_To_Main_Content_Link };
             }
         }
 

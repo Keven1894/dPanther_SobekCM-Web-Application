@@ -76,6 +76,16 @@ namespace SobekCM.Core.ApplicationState
 			}
 		}
 
+        /// <summary> Gets the aggregation by primary key  </summary>
+        /// <param name="AggregationID"> Aggregation ID for the aggregation to get </param>
+        /// <returns> Either the match, or NULL </returns>
+        /// <remarks> This is not particularly a quick way to do this, since it just loops through all the aggregations, without
+        /// utilizing a dictionary for lookup. </remarks>
+        public Item_Aggregation_Related_Aggregations Aggregation_By_ID(int AggregationID)
+        {
+            return All_Aggregations.FirstOrDefault(ThisAggr => ThisAggr.ID == AggregationID);
+        }
+
         /// <summary> Read-only collection of all the aggregation types </summary>
         public ReadOnlyCollection<string> All_Types
         {
@@ -208,7 +218,7 @@ namespace SobekCM.Core.ApplicationState
             Item_Aggregation_Related_Aggregations thisAggr = aggregationsByCode[Code.ToUpper()];
 
             // If this is NULL, just return
-		    if (!ThematicHeadingID.HasValue)
+		    if ((!ThematicHeadingID.HasValue) || ( ThematicHeadingID.Value < 0 ))
 		    {
                 foreach (KeyValuePair<int, List<Item_Aggregation_Related_Aggregations>> theme in Aggregations_By_Thematic_Heading)
                 {

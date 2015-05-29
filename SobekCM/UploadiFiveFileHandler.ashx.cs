@@ -12,7 +12,7 @@ using SobekCM.Library.UploadiFive;
 
 namespace SobekCM
 {
-	/// <summary> Handler for the uploading files </summary>
+	/// <summary> Handler for the uploading files uploaded with UploadiFive </summary>
 	public class UploadiFiveFileHandler : IHttpHandler, IReadOnlySessionState
 	{
 		/// <summary> Process this request </summary>
@@ -54,11 +54,25 @@ namespace SobekCM
 					// Get the filename for the uploaded file
 					string filename = Path.GetFileName(postedFile.FileName);
 
-					// Should this be overriden?
-					if (!String.IsNullOrEmpty(tokenObj.ServerSideFileName))
-						filename = tokenObj.ServerSideFileName;
+                    // Ensure there is not an additional period in the name being uploaded
+				    string extensionCheck = Path.GetExtension(postedFile.FileName);
+				    string filenameSansExtension = filename.Replace(extensionCheck, "");
+				    if (filenameSansExtension.IndexOf(".") > 0)
+				    {
+				        filenameSansExtension = filenameSansExtension.Replace(".", "_");
+				        filename = filenameSansExtension + extensionCheck;
+				    }
 
-					// Are there file extension restrictions?
+				    // Should this be overriden?
+				    if (!String.IsNullOrEmpty(tokenObj.ServerSideFileName))
+				    {
+				        if (tokenObj.ServerSideFileName.IndexOf(".") > 0)
+				            filename = tokenObj.ServerSideFileName;
+				        else
+				            filename = tokenObj.ServerSideFileName + extensionCheck;
+				    }
+
+				    // Are there file extension restrictions?
 					if ( !String.IsNullOrEmpty(tokenObj.AllowedFileExtensions))
 					{
 						string extension = Path.GetExtension(postedFile.FileName).ToLower();
@@ -78,6 +92,19 @@ namespace SobekCM
 
 					// Save this file locally
 					postedFile.SaveAs(newFileName);
+
+                    // If there was a return token, put this filename in that list
+				    if (!String.IsNullOrEmpty(tokenObj.ReturnToken))
+				    {
+                        if (HttpContext.Current.Session[tokenObj.ReturnToken] != null)
+				        {
+                            HttpContext.Current.Session[tokenObj.ReturnToken] = HttpContext.Current.Session[tokenObj.ReturnToken] + "|" + filename;
+				        }
+				        else
+				        {
+                            HttpContext.Current.Session[tokenObj.ReturnToken] = filename;
+				        }
+				    }
 
 					// Post a successful status
 					Context.Response.Write(filename);

@@ -11,8 +11,8 @@ using SobekCM.Core.Navigation;
 using SobekCM.Core.Settings;
 using SobekCM.Core.Users;
 using SobekCM.Library.Database;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -95,7 +95,7 @@ namespace SobekCM
 			string vid = null;
 
 			// Is this a robot?  They should never get access to files this way
-			if (SobekCM_Navigation_Object.Is_UserAgent_IP_Robot(request.UserAgent, request.UserHostAddress))
+			if (Navigation_Object.Is_UserAgent_IP_Robot(request.UserAgent, request.UserHostAddress))
 			{
 				Response.Clear();
 				Response.Output.WriteLine("RESTRICTED ITEM");

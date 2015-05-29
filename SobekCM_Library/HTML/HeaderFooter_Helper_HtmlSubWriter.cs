@@ -8,8 +8,8 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Navigation;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Behaviors;
-using SobekCM.UI_Library;
 
 namespace SobekCM.Library.HTML
 {
@@ -22,7 +22,7 @@ namespace SobekCM.Library.HTML
         /// <param name="RequestSpecificValues"> All the necessary, non-global data specific to the current request </param>
         /// <param name="Container_CssClass"> Class name for the container around the page </param>
         /// <param name="Behaviors"> List of behaviors from the html subwriters </param>
-        public static void Add_Header(TextWriter Output, RequestCache RequestSpecificValues, string Container_CssClass, List<HtmlSubwriter_Behaviors_Enum> Behaviors)
+        public static void Add_Header(TextWriter Output, RequestCache RequestSpecificValues, string Container_CssClass, string Web_Page_Title, List<HtmlSubwriter_Behaviors_Enum> Behaviors)
         {
             // Get the url options
             string url_options = UrlWriterHelper.URL_Options(RequestSpecificValues.Current_Mode);
@@ -39,13 +39,13 @@ namespace SobekCM.Library.HTML
             RequestSpecificValues.Current_Mode.Mode = thisMode;
 
             // Determine which header and footer to display
-            bool useItemHeader = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter));
+            bool useItemHeader = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || ((Behaviors != null) && (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter)));
 
             // Create the breadcrumbs text
             string breadcrumbs = "&nbsp; &nbsp; ";
             if (useItemHeader)
             {
-                StringBuilder breadcrumb_builder = new StringBuilder("<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>");
+                StringBuilder breadcrumb_builder = new StringBuilder("<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>");
 
                 int codes_added = 0;
                 if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
@@ -151,7 +151,7 @@ namespace SobekCM.Library.HTML
                 switch (RequestSpecificValues.Current_Mode.Mode)
                 {
                     case Display_Mode_Enum.Error:
-                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                         break;
 
                     case Display_Mode_Enum.Aggregation:
@@ -159,12 +159,12 @@ namespace SobekCM.Library.HTML
                         {
                             if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                             {
-                                breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                                breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                             }
                         }
                         else
                         {
-                            breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                            breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                             if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                             {
                                 breadcrumbs = breadcrumbs + " &nbsp;|&nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Current_Mode.Aggregation + modified_url_options + "\">" + UI_ApplicationCache_Gateway.Aggregations.Get_Collection_Short_Name(RequestSpecificValues.Current_Mode.Aggregation) + "</a>";
@@ -173,7 +173,7 @@ namespace SobekCM.Library.HTML
                         break;
 
                     default:
-                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home</a>";
+                        breadcrumbs = "<a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + modified_url_options + "\">" + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home</a>";
                         if ((RequestSpecificValues.Current_Mode.Aggregation.Length > 0) && (RequestSpecificValues.Current_Mode.Aggregation != "all"))
                         {
                             breadcrumbs = breadcrumbs + " &nbsp;|&nbsp; <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Current_Mode.Aggregation + modified_url_options + "\">" + UI_ApplicationCache_Gateway.Aggregations.Get_Collection_Short_Name(RequestSpecificValues.Current_Mode.Aggregation) + "</a>";
@@ -187,7 +187,7 @@ namespace SobekCM.Library.HTML
             string mySobekLinks = String.Empty;
             if (!RequestSpecificValues.Current_Mode.Is_Robot)
             {
-                string mySobekText = "my" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+                string mySobekText = "my" + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
                 string mySobekOptions = url_options;
                 string mySobekLogoutOptions = url_options;
                 string return_url = String.Empty;
@@ -286,11 +286,11 @@ namespace SobekCM.Library.HTML
 
             // Determine the possible banner to display
             string banner = String.Empty;
-            if (!Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Banner))
+            if (( Behaviors != null ) && ( !Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.Suppress_Banner)))
             {
-                if ((RequestSpecificValues.HTML_Skin != null) && (RequestSpecificValues.HTML_Skin.Override_Banner))
+                if ((RequestSpecificValues.HTML_Skin != null) && (RequestSpecificValues.HTML_Skin.Override_Banner.HasValue) && (RequestSpecificValues.HTML_Skin.Override_Banner.Value))
                 {
-                    banner = RequestSpecificValues.HTML_Skin.Banner_HTML;
+                    banner = !String.IsNullOrEmpty(RequestSpecificValues.HTML_Skin.Banner_HTML) ? RequestSpecificValues.HTML_Skin.Banner_HTML : String.Empty;
                 }
                 else
                 {
@@ -300,17 +300,17 @@ namespace SobekCM.Library.HTML
                         if (RequestSpecificValues.Hierarchy_Object.Code != "all")
                         {
                             if (banner_image.Length > 0)
-                                banner = "<div id=\"sbkHmw_BannerDiv\"><a alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Hierarchy_Object.Code + urlOptions1 + "\" style=\"padding-bottom:0px;margin-bottom:0px\"><img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + banner_image + "\" alt=\"\" /></a></div>";
+                                banner = "<section id=\"sbkHmw_BannerDiv\" role=\"banner\" title=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\"><h1 class=\"hidden-element\">" + Web_Page_Title + "</h1><a alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.Hierarchy_Object.Code + urlOptions1 + "\"><img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + banner_image + "\"  alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\" /></a></section>";
                         }
                         else
                         {
                             if (banner_image.Length > 0)
                             {
-                                banner = "<div id=\"sbkHmw_BannerDiv\"><a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + urlOptions1 + "\"  style=\"padding-bottom:0px;margin-bottom:0px\"><img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + banner_image + "\" alt=\"\" /></a></div>";
+                                banner = "<section id=\"sbkHmw_BannerDiv\" role=\"banner\" title=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\"><h1 class=\"hidden-element\">" + Web_Page_Title + "</h1><a alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\"  href=\"" + RequestSpecificValues.Current_Mode.Base_URL + urlOptions1 + "\"><img id=\"mainBanner\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + banner_image + "\"  alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\" /></a></section>";
                             }
                             else
                             {
-                                banner = "<div id=\"sbkHmw_BannerDiv\"><a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + urlOptions1 + "\"  style=\"padding-bottom:0px;margin-bottom:0px\"><img id=\"mainBanner\" src=\"" + skin_url + "default.jpg\" alt=\"\" /></a></div>";
+                                banner = "<section id=\"sbkHmw_BannerDiv\" role=\"banner\" title=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\"><h1 class=\"hidden-element\">" + Web_Page_Title + "</h1><a alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\"  href=\"" + RequestSpecificValues.Current_Mode.Base_URL + urlOptions1 + "\"><img id=\"mainBanner\" src=\"" + skin_url + "default.jpg\" alt=\"" + RequestSpecificValues.Hierarchy_Object.ShortName + "\" /></a></section>";
                             }
                         }
                     }
@@ -320,23 +320,23 @@ namespace SobekCM.Library.HTML
             // Add the appropriate header
             if (useItemHeader)
             {
-                Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_Item_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url));
+                Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_Item_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name));
             }
             else
             {
                 if (container_inner.Length == 0)
                 {
-                    if (RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive)
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", String.Empty));
+                    if ((RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive.HasValue) && (RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive.Value))
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", String.Empty).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name));
                     else
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url));
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name));
                 }
                 else
                 {
-                    if (RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive)
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "<div id=\"" + container_inner + "\">"));
+                    if ((RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive.HasValue) && (RequestSpecificValues.HTML_Skin.Header_Has_Container_Directive.Value))
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "<div id=\"" + container_inner + "\">").Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name));
                     else
-                        Output.WriteLine("<div id=\"" + container_inner + "\">" + Environment.NewLine + RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url));
+                        Output.WriteLine("<div id=\"" + container_inner + "\">" + Environment.NewLine + RequestSpecificValues.HTML_Skin.Header_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%BREADCRUMBS%>", breadcrumbs).Replace("<%MYSOBEK%>", mySobekLinks).Replace("<%ENGLISH%>", english).Replace("<%FRENCH%>", french).Replace("<%SPANISH%>", spanish).Replace("<%BASEURL%>", RequestSpecificValues.Current_Mode.Base_URL).Replace("\"container-inner\"", "\"" + container_inner + "\"").Replace("<%BANNER%>", banner).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name));
 
                 }
             }
@@ -349,7 +349,7 @@ namespace SobekCM.Library.HTML
         public static void Add_Footer(TextWriter Output, RequestCache RequestSpecificValues, List<HtmlSubwriter_Behaviors_Enum> Behaviors)
         {
             // Determine which header and footer to display
-            bool useItemFooter = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter));
+            bool useItemFooter = (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Display) || (RequestSpecificValues.Current_Mode.Mode == Display_Mode_Enum.Item_Print) || ((Behaviors != null) && (Behaviors.Contains(HtmlSubwriter_Behaviors_Enum.MySobek_Subwriter_Mimic_Item_Subwriter)));
 
             // Get the current contact URL
             Display_Mode_Enum thisMode = RequestSpecificValues.Current_Mode.Mode;
@@ -385,23 +385,23 @@ namespace SobekCM.Library.HTML
 
             if (useItemFooter)
             {
-                Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_Item_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Trim());
+                Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_Item_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name).Trim());
             }
             else
             {
-                if (RequestSpecificValues.HTML_Skin.Footer_Has_Container_Directive)
+                if (( RequestSpecificValues.HTML_Skin.Footer_Has_Container_Directive.HasValue) && (RequestSpecificValues.HTML_Skin.Footer_Has_Container_Directive.Value))
                 {
                     if (!end_div)
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "").Trim());
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "").Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name).Trim());
                     else
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "</div>").Trim());
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%CONTAINER%>", "</div>").Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name).Trim());
                 }
                 else
                 {
                     if (!end_div)
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Trim());
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name).Trim());
                     else
-                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Trim() + Environment.NewLine + "</div>");
+                        Output.WriteLine(RequestSpecificValues.HTML_Skin.Footer_HTML.Replace("<%CONTACT%>", contact).Replace("<%URLOPTS%>", url_options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%VERSION%>", VERSION).Replace("<%BASEURL%>", base_url).Replace("<%SKINURL%>", skin_url).Replace("<%INSTANCENAME%>", RequestSpecificValues.Current_Mode.Instance_Name).Trim() + Environment.NewLine + "</div>");
                 }
             }
         }

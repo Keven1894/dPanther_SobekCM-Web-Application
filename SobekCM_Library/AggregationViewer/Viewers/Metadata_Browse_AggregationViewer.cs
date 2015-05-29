@@ -13,8 +13,9 @@ using SobekCM.Engine_Library.Database;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -25,8 +26,8 @@ namespace SobekCM.Library.AggregationViewer.Viewers
     /// Collection viewers are used when displaying collection home pages, searches, browses, and information pages.<br /><br />
     /// During a valid html request to display a static browse or info page, the following steps occur:
     /// <ul>
-    /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation.SobekCM_Navigation_Object"/> </li>
+    /// <li>Application state is built/verified by the <see cref="Application_State_Builder"/> </li>
+    /// <li>Request is analyzed by the <see cref="SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in this case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  For a collection-level request, an instance of the  <see cref="Aggregation_HtmlSubwriter"/> class is created. </li>
     /// <li>To display the requested collection view, the collection subwriter will creates an instance of this class </li>
@@ -40,13 +41,31 @@ namespace SobekCM.Library.AggregationViewer.Viewers
         /// <param name="RequestSpecificValues"> All the necessary, non-global data specific to the current request </param>
         public Metadata_Browse_AggregationViewer(RequestCache RequestSpecificValues) : base(RequestSpecificValues)
         {
-            string defaultBrowseBy = RequestSpecificValues.Hierarchy_Object.Default_BrowseBy ?? String.Empty;
+            
 
             // If there is not info browse mode listed, use the default
-            if (RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 0)
+            if ( String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode))
+            {
+                string defaultBrowseBy = RequestSpecificValues.Hierarchy_Object.Default_BrowseBy ?? String.Empty;
                 RequestSpecificValues.Current_Mode.Info_Browse_Mode = defaultBrowseBy;
 
-            if ((RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 0) && (RequestSpecificValues.Hierarchy_Object.Has_Browse_By_Pages))
+                // Still length of zero?
+                if (String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode))
+                {
+                    // Just look for the first browse by
+                    foreach (Item_Aggregation_Child_Page browse in RequestSpecificValues.Hierarchy_Object.Child_Pages)
+                    {
+                        if (browse.Browse_Type == Item_Aggregation_Child_Visibility_Enum.Metadata_Browse_By)
+                        {
+                            RequestSpecificValues.Current_Mode.Info_Browse_Mode = browse.Code;
+                            break;
+                        }
+                    }
+                }
+
+            }
+
+            if ((String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode)) && (RequestSpecificValues.Hierarchy_Object.Has_Browse_By_Pages))
                 RequestSpecificValues.Current_Mode.Info_Browse_Mode = RequestSpecificValues.Hierarchy_Object.Child_Page_By_Code(RequestSpecificValues.Current_Mode.Info_Browse_Mode).Code;
 
             // Get this browse
@@ -165,7 +184,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             string original_browse_mode = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToLower();
 
             // Get any paging URL and retain original page
-            int current_page = RequestSpecificValues.Current_Mode.Page;
+            int current_page = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value : 1;
             RequestSpecificValues.Current_Mode.Page = 1;
             string page_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode, false);
             string url_options = UrlWriterHelper.URL_Options(RequestSpecificValues.Current_Mode);
@@ -277,7 +296,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
                 Output.WriteLine("</td>");
                 Output.WriteLine("<td>");
             }
-			Output.WriteLine("<div class=\"sbkMebv_ResultsPanel\">");
+			Output.WriteLine("<div class=\"sbkMebv_ResultsPanel\" id=\"main-content\" role=\"main\">");
 
             RequestSpecificValues.Current_Mode.Info_Browse_Mode = original_browse_mode;
 
@@ -285,14 +304,44 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             if ((browseObject != null) && (browseObject.Source_Data_Type == Item_Aggregation_Child_Source_Data_Enum.Static_HTML))
             {
                 // Read the content file for this browse
-                /// TODO: Fix this
-       //         HTML_Based_Content staticBrowseContent = browseObject.Get_Static_Content(RequestSpecificValues.Current_Mode.Language, RequestSpecificValues.Current_Mode.Base_URL, UI_ApplicationCache_Gateway.Settings.Base_Design_Location + RequestSpecificValues.Hierarchy_Object.ObjDirectory, Tracer);
-           
-                // Apply current user settings for this
-        //        string browseInfoDisplayText = staticBrowseContent.Apply_Settings_To_Static_Text(staticBrowseContent.Content, RequestSpecificValues.Hierarchy_Object, RequestSpecificValues.HTML_Skin.Skin_Code, RequestSpecificValues.HTML_Skin.Base_Skin_Code, RequestSpecificValues.Current_Mode.Base_URL, UrlWriterHelper.URL_Options(RequestSpecificValues.Current_Mode), Tracer);
+                string source_file = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + RequestSpecificValues.Hierarchy_Object.ObjDirectory.Replace("/", "\\") + browseObject.Source;
+                HTML_Based_Content staticBrowseContent = HTML_Based_Content_Reader.Read_HTML_File( source_file, true, Tracer );
+                if (staticBrowseContent == null)
+                {
+                    staticBrowseContent = new HTML_Based_Content("Unable to find source file!\n\n" + RequestSpecificValues.Hierarchy_Object.ObjDirectory.Replace("/", "\\") + browseObject.Source, browseObject.Code );
+                }
 
-                // Add this to the output stream
-         //       Output.WriteLine(browseInfoDisplayText);
+                // Apply current user settings for this
+                string browseInfoDisplayText = staticBrowseContent.Apply_Settings_To_Static_Text(staticBrowseContent.Content, RequestSpecificValues.Hierarchy_Object, RequestSpecificValues.HTML_Skin.Skin_Code, RequestSpecificValues.HTML_Skin.Base_Skin_Code, RequestSpecificValues.Current_Mode.Base_URL, UrlWriterHelper.URL_Options(RequestSpecificValues.Current_Mode), Tracer);
+
+                // Is this an admin?
+                bool isAdmin = (RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.Is_Aggregation_Admin(RequestSpecificValues.Hierarchy_Object.Code));
+                Aggregation_Type_Enum aggrType = RequestSpecificValues.Current_Mode.Aggregation_Type;
+
+                // Output the adjusted home html
+                if (isAdmin)
+                {
+                    Output.WriteLine("<div id=\"sbkSbia_MainTextEditable\">");
+                    Output.WriteLine(browseInfoDisplayText);
+                    RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Child_Page_Edit;
+                    Output.WriteLine("  <div id=\"sbkSbia_EditableTextLink\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\" title=\"Edit this page's text\"><img src=\"" + Static_Resources.Edit_Gif + "\" alt=\"\" />edit content</a></div>");
+                    RequestSpecificValues.Current_Mode.Aggregation_Type = aggrType;
+                    Output.WriteLine("</div>");
+                    Output.WriteLine();
+
+                    Output.WriteLine("<script>");
+                    Output.WriteLine("  $(\"#sbkSbia_MainTextEditable\").mouseover(function() { $(\"#sbkSbia_EditableTextLink\").css(\"display\",\"inline-block\"); });");
+                    Output.WriteLine("  $(\"#sbkSbia_MainTextEditable\").mouseout(function() { $(\"#sbkSbia_EditableTextLink\").css(\"display\",\"none\"); });");
+                    Output.WriteLine("</script>");
+                    Output.WriteLine();
+
+                }
+                else
+                {
+                    Output.WriteLine("<div id=\"sbkSbia_MainText\">");
+                    Output.WriteLine(browseInfoDisplayText);
+                    Output.WriteLine("</div>");
+                }
             }
             else
             {

@@ -21,7 +21,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
     /// During a valid html request to display the home page with basic search, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in this case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  For a collection-level request, an instance of the  <see cref="Aggregation_HtmlSubwriter"/> class is created. </li>
     /// <li>To display the requested collection view, the collection subwriter will creates an instance of this class </li>
@@ -63,7 +63,7 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             RequestSpecificValues.Current_Mode.Info_Browse_Mode = "all";
             browse_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
             RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Search;
-            if ((!RequestSpecificValues.Current_Mode.Show_Selection_Panel) || (RequestSpecificValues.Hierarchy_Object.Children_Count == 0))
+            if ((!RequestSpecificValues.Current_Mode.Show_Selection_Panel.HasValue) || (!RequestSpecificValues.Current_Mode.Show_Selection_Panel.Value) || (RequestSpecificValues.Hierarchy_Object.Children_Count == 0))
             {
                 Search_Script_Action = "fulltext_search_sobekcm('" + arg1 + "', '" + browse_url + "');";
             }
@@ -129,15 +129,13 @@ namespace SobekCM.Library.AggregationViewer.Viewers
                 search_collection = "Recherche dans la collection";
             }
 
-			Output.WriteLine("  <table id=\"sbkFtsav_SearchPanel\" >");
-			Output.WriteLine("    <tr>");
-			Output.WriteLine("      <td style=\"text-align:right;width:27%;\" id=\"sbkBsav_SearchPrompt\"><label for=\"SobekHomeSearchBox\">" + search_collection + ":</label></td>");
-			Output.WriteLine("      <td style=\"width:3%;\">&nbsp;</td>");
-			Output.WriteLine("      <td style=\"width:60%;\"><input name=\"u_search\" type=\"text\" class=\"sbkBsav_SearchBox sbk_Focusable\" id=\"SobekHomeSearchBox\" value=\"" + textBoxValue + "\" onkeydown=\"return fnTrapKD(event, 'text', '" + arg1 + "', '" + arg2 + "','" + browse_url + "');\" /></td>");
-			Output.WriteLine("      <td style=\"width:10%;\"><button class=\"sbk_GoButton\" title=\"" + search_collection + "\" onclick=\"" + Search_Script_Action + ";return false;\">Go</button></td>");
-			Output.WriteLine("      <td><div id=\"circular_progress\" name=\"circular_progress\" class=\"hidden_progress\">&nbsp;</div></td>");
-			Output.WriteLine("    </tr>");
-            Output.WriteLine("  </table>");
+
+            Output.WriteLine("  <div id=\"sbkFtsav_SearchPanel\" role=\"search\" >");
+            Output.WriteLine("    <label for=\"SobekHomeSearchBox\" id=\"sbkBsav_SearchPrompt\">" + search_collection + ":</label>");
+            Output.WriteLine("    <input name=\"u_search\" type=\"text\" class=\"sbkBsav_SearchBox sbk_Focusable\" id=\"SobekHomeSearchBox\" value=\"" + textBoxValue + "\" onkeydown=\"return fnTrapKD(event, 'text', '" + arg1 + "', '" + arg2 + "','" + browse_url + "');\" />");
+            Output.WriteLine("    <button id=\"sbkFtsav_SearchButton\" class=\"sbk_GoButton\" title=\"" + search_collection + "\" onclick=\"" + Search_Script_Action + ";return false;\">Go</button>");
+            Output.WriteLine("    <div id=\"circular_progress\" name=\"circular_progress\" class=\"hidden_progress\">&nbsp;</div>");
+            Output.WriteLine("  </div>");
 
             Output.WriteLine();
             Output.WriteLine("<!-- Focus on search box -->");
