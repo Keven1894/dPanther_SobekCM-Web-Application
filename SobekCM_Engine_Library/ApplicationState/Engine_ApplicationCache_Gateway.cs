@@ -9,10 +9,9 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Settings;
 using SobekCM.Core.Skins;
 using SobekCM.Core.Users;
-using SobekCM.EngineLibrary.ApplicationState;
 using SobekCM.Engine_Library.Database;
 using SobekCM.Engine_Library.Settings;
-using SobekCM.Resource_Object.Database;
+using SobekCM.Engine_Library.Skins;
 
 #endregion
 
@@ -181,7 +180,7 @@ namespace SobekCM.Engine_Library.ApplicationState
 
         #region Properties and methods for the web skin collection
 
-        private static SobekCM_Skin_Collection webSkins;
+        private static Web_Skin_Collection webSkins;
         private static readonly Object webSkinsLock = new Object();
 
         /// <summary> Refresh the web skin collection by pulling the data back from the database </summary>
@@ -194,21 +193,10 @@ namespace SobekCM.Engine_Library.ApplicationState
                 {
                     if (webSkins == null)
                     {
-                        webSkins = new SobekCM_Skin_Collection();
+                        webSkins = new Web_Skin_Collection();
                     }
 
-                    // Get the data from the database
-                    DataTable skinData = Engine_Database.Get_All_Web_Skins(null);
-
-                    // Clear existing interfaces
-                    webSkins.Clear();
-
-                    // Just return if the data appears bad..
-                    if ((skinData == null) || (skinData.Rows.Count == 0))
-                        return false;
-
-                    // Set the data table
-                    webSkins.Skin_Table = skinData;
+                    Web_Skin_Utilities.Populate_Default_Skins(webSkins, null);
                 }
 
                 return true;
@@ -220,7 +208,7 @@ namespace SobekCM.Engine_Library.ApplicationState
         }
 
         /// <summary> Get the web skin collection object (or build the object and return it) </summary>
-        public static SobekCM_Skin_Collection Web_Skin_Collection
+        public static Web_Skin_Collection Web_Skin_Collection
         {
             get
             {
@@ -228,16 +216,9 @@ namespace SobekCM.Engine_Library.ApplicationState
                 {
                     if (webSkins == null)
                     {
-                        webSkins = new SobekCM_Skin_Collection();
+                        webSkins = new Web_Skin_Collection();
 
-                        // Get the data from the database
-                        DataTable skinData = Engine_Database.Get_All_Web_Skins(null);
-
-                        // Clear existing interfaces
-                        webSkins.Clear();
-
-                        // Set the data table
-                        webSkins.Skin_Table = skinData;
+                        Web_Skin_Utilities.Populate_Default_Skins(webSkins, null);
                     }
 
                     return webSkins;
@@ -365,7 +346,7 @@ namespace SobekCM.Engine_Library.ApplicationState
                         itemLookup = new Item_Lookup_Object();
                     }
 
-                    Engine_Database.Verify_Item_Lookup_Object(true, itemLookup, null);
+                    Engine_Database.Verify_Item_Lookup_Object(true, true, itemLookup, null);
                 }
 
                 return true;
@@ -386,7 +367,7 @@ namespace SobekCM.Engine_Library.ApplicationState
                     if (itemLookup == null)
                     {
                         itemLookup = new Item_Lookup_Object();
-                        Engine_Database.Verify_Item_Lookup_Object(true, itemLookup, null);
+                        Engine_Database.Verify_Item_Lookup_Object(false, true, itemLookup, null);
                     }
                     
                     return itemLookup;

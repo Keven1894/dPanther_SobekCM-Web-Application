@@ -117,6 +117,9 @@
     /// <remarks> This roughly corresponds to the collection viewer used by the collection html subwriter</remarks>
     public enum Search_Type_Enum : byte
     {
+        /// <summary> No search type specified, not applicable </summary>
+        NONE,
+
         /// <summary> Advanced search type allows boolean searching with four different search fields </summary>
         Advanced,
 
@@ -160,13 +163,12 @@
     /// <remarks> This roughly corresponds to the result viewer used by the results (or collection) html subwriter</remarks>
     public enum Result_Display_Type_Enum : byte
     {
+        /// <summary> No result display type specified, not applicable </summary>
+        NONE,
+
         /// <summary> Default result display type means that not particular type was selected
         /// and the item aggregation default is utilized </summary>
-        Default = 0,
-
-        /// <summary> This is not really a result display, so no type should
-        /// be included </summary>
-        NONE,
+        Default,
 
         /// <summary> Displays the results in the bookshelf view, which allows the user to remove the item
         /// from the bookshelf, move the item, or edit the user notes </summary>
@@ -203,17 +205,20 @@
     /// <summary> Type of administrative information requested for display </summary>
     public enum Internal_Type_Enum : byte
     {
-        /// <summary> Gets the complete list of all aggregationPermissions </summary>
+        /// <summary> No internal type specified, not applicable </summary>
+        NONE,
+
+        /// <summary> Gets the complete list of all aggregations </summary>
         Aggregations_List,
+
+        /// <summary> Display list of aggregations of one particular type</summary>
+        Aggregations_Tree,
 
         /// <summary> Gets list of recent failures encountered during building </summary>
         Build_Failures,
 
         /// <summary> Display list of all items in memory; global, cache, and session </summary>
         Cache,
-
-        /// <summary> Display list of aggregationPermissions of one particular type</summary>
-        Aggregations,
 
         /// <summary> Display list of all new and modified items in last week (or so) </summary>
         New_Items,
@@ -243,17 +248,17 @@
         Personalized,
 
         /// <summary> Display the hierarchical tree view, initially fully collapsed </summary>
-        Tree_Collapsed,
-
-        /// <summary> Display the hierarchical tree view, initially fully expanded </summary>
-        Tree_Expanded
+        Tree,
     };
 
     /// <summary> Type of statistical information to display </summary>
     public enum Statistics_Type_Enum : byte
     {
+        /// <summary> No statistics type specified, not applicable </summary>
+        NONE,
+
         /// <summary> Displays the item count for an arbitrary date and the growth from the first arbitrary date and the second date </summary>
-        Item_Count_Arbitrary_View = 1,
+        Item_Count_Arbitrary_View,
 
         /// <summary> Displays the current number of items in each aggregation, as well as growth during the last FYTD </summary>
         Item_Count_Growth_View,
@@ -298,6 +303,9 @@
     /// <summary> Type of mySobek display or action requested by the user </summary>
     public enum My_Sobek_Type_Enum : byte
     {
+        /// <summary> No mySobek type specified, not applicable </summary>
+        NONE,
+
         /// <summary> Allows system administrators the ability to delete an item online </summary>
         Delete_Item,
 
@@ -371,8 +379,14 @@
     /// <summary> Type of admin display or action requested by the system or portal administrator </summary>
     public enum Admin_Type_Enum : byte
     {
+        /// <summary> No admin type specified, not applicable </summary>
+        NONE,
+
+        /// <summary> Adds a single collection to this instance, via the wizard </summary>
+        Add_Collection_Wizard,
+
         /// <summary> Allows all the information and behaviors for a single aggregation to be viewed / edited </summary>
-        Aggregation_Single = 1,
+        Aggregation_Single,
 
         /// <summary> Provides list of all existing aggregationPermissions and allows admin to enter a new aggregation </summary>
         Aggregations_Mgmt,
@@ -398,8 +412,11 @@
         /// <summary> Allows admins to view and edit system-wide settings from the database </summary>
         Settings,
 
+        /// <summary> Detailed editing of a single web skin </summary>
+        Skins_Single,
+
         /// <summary> Provides list of all existing web skins and allows admin to enter a new web skin or edit an existing web skin </summary>
-        Skins,
+        Skins_Mgmt,
 
         /// <summary> Allows the system administrator to add new thematic headings to the main home page </summary>
         Thematic_Headings,
@@ -413,6 +430,9 @@
         /// <summary> Allows for editing and viewing of user groups </summary>
         User_Groups,
 
+        /// <summary> Provides top-level reports regarding permissions granted to users </summary>
+        User_Permissions_Reports,
+
         /// <summary> Provides list of all existing wordmarks/icons and allows admin to enter a new wordmark or edit an existing wordmark </summary>
         Wordmarks
     };
@@ -420,6 +440,9 @@
     /// <summary> Type of aggregation display </summary>
     public enum Aggregation_Type_Enum : byte
     {
+        /// <summary> No aggregation type specified, not applicable </summary>
+        NONE,
+
         /// <summary>Browse item metadata values within an aggregation </summary>
         Browse_By,
 
@@ -444,11 +467,23 @@
         /// <summary> Display the item count information for a single item aggregation  </summary>
         Item_Count,
 
+        /// <summary> Menu for aggregation curators and admins gives access to all the
+        /// special aggregation views they can use </summary>
+        Manage_Menu,
+
         /// <summary> Display the list of private items for a single item aggregation </summary>
         Private_Items,
 
         /// <summary> Display the usage statistics for a single item aggregation </summary>
         Usage_Statistics,
+
+        /// <summary> Displays all the users with their permissions, either individually assigned 
+        /// or assigned through a group, that have special permissions assigned for this aggregation </summary>
+        User_Permissions,
+
+        /// <summary> List of all changes against the aggregation itself, such as design or
+        /// other administrative changes </summary>
+        Work_History,
     }
 
 
@@ -481,4 +516,23 @@
         /// <remarks> Trace route can be requested either by IP address, or by currently logged on user</remarks>
         Implied
     };
+
+    /// <summary> Type of top-level web content display </summary>
+    public enum WebContent_Type_Enum : byte
+    {
+        /// <summary> No web content display type specified, not applicable </summary>
+        NONE,
+
+        /// <summary> Standard public display of the web content </summary>
+        Display,
+
+        /// <summary> Edit of the web content </summary>
+        Edit,
+
+        /// <summary> Milestones for the web content </summary>
+        Milestones,
+
+        /// <summary> Permissions admin for the web content </summary>
+        Permissions
+    }
 }

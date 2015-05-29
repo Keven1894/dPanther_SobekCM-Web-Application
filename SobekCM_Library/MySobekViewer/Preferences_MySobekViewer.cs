@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Web;
@@ -11,12 +12,14 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Database;
+using SobekCM.Engine_Library.Email;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -98,7 +101,7 @@ namespace SobekCM.Library.MySobekViewer
             validationErrors = new List<string>();
 
 			// Set the text to use for each value (since we use if for the validation errors as well)
-			mySobekText = "my" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+			mySobekText = "my" + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
 
 			// Get the labels to use, by language
 			accountInfoLabel = "Account Information";
@@ -370,6 +373,43 @@ namespace SobekCM.Library.MySobekViewer
 
 				if (validationErrors.Count == 0)
 				{
+                    // Ensure the last name and first name are capitalized somewhat
+                    bool all_caps = true;
+				    bool all_lower = true;
+				    foreach (char thisChar in family_name)
+				    {
+                        if (Char.IsUpper(thisChar))
+                            all_lower = false;
+                        if (Char.IsLower(thisChar))
+                            all_caps = false;
+
+                        if ((!all_caps) && (!all_lower))
+                            break;
+				    }
+				    if ((all_caps) || (all_lower))
+				    {
+                        TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+                        family_name = textInfo.ToTitleCase(family_name.ToLower()); //War And Peace
+				    }
+                    all_lower = true;
+                    all_caps = true;
+                    foreach (char thisChar in given_name)
+                    {
+                        if (Char.IsUpper(thisChar))
+                            all_lower = false;
+                        if (Char.IsLower(thisChar))
+                            all_caps = false;
+
+                        if ((!all_caps) && (!all_lower))
+                            break;
+                    }
+                    if ((all_caps) || (all_lower))
+                    {
+                        TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+                        given_name = textInfo.ToTitleCase(given_name.ToLower()); //War And Peace
+                    }
+
+                    // Now, add this information to the user, so the new user can be saved
 					user.College = college.Trim();
 					user.Department = department.Trim();
 					user.Email = email.Trim();
@@ -428,6 +468,15 @@ namespace SobekCM.Library.MySobekViewer
 
 							// Retrieve the user information again
                             user = SobekCM_Database.Get_User(username, password, RequestSpecificValues.Tracer);
+
+                            // Also, use the current email address for some system emails
+						    if (user.Email.Length > 0)
+						    {
+                                SobekCM_Database.Set_Setting("System Email", user.Email);
+                                SobekCM_Database.Set_Setting("System Error Email", user.Email);
+                                SobekCM_Database.Set_Setting("Privacy Email Address", user.Email);
+                                SobekCM_Database.Set_Setting("Email Default From Address", user.Email);
+						    }
 						}
 
 						user.Is_Just_Registered = true;
@@ -436,17 +485,17 @@ namespace SobekCM.Library.MySobekViewer
 						// If they want to be able to contribue, send an email
 						if (desire_to_upload)
 						{
-							SobekCM_Database.Send_Database_Email(UI_ApplicationCache_Gateway.Settings.System_Email, "Submittal rights requested by " + user.Full_Name, "New user requested ability to submit new items.<br /><br /><blockquote>Name: " + user.Full_Name + "<br />Email: " + user.Email + "<br />Organization: " + user.Organization + "<br />User ID: " + user.UserID + "</blockquote>", true, false, -1, -1);
+                            Email_Helper.SendEmail(UI_ApplicationCache_Gateway.Settings.System_Email, "Submittal rights requested by " + user.Full_Name, "New user requested ability to submit new items.<br /><br /><blockquote>Name: " + user.Full_Name + "<br />Email: " + user.Email + "<br />Organization: " + user.Organization + "<br />User ID: " + user.UserID + "<br />System Name: " + RequestSpecificValues.Current_Mode.Instance_Name + "<br />System URL: " + RequestSpecificValues.Current_Mode.Base_URL + "</blockquote>", true, RequestSpecificValues.Current_Mode.Instance_Name);
 						}
 
 						// Email the user their registation information
 						if (desire_to_upload)
 						{
-							SobekCM_Database.Send_Database_Email(email, "Welcome to " + mySobekText, "<strong>Thank you for registering for " + mySobekText + "</strong><br /><br />You can access this directly through the following link: <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/my\">" + RequestSpecificValues.Current_Mode.Base_URL + "/my</a><br /><br />Full Name: " + user.Full_Name + "<br />User Name: " + user.UserName + "<br /><br />You will receive an email when your request to submit items has been processed.", true, false, -1, -1);
+                            Email_Helper.SendEmail(email, "Welcome to " + mySobekText, "<strong>Thank you for registering for " + mySobekText + "</strong><br /><br />You can access this directly through the following link: <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/my\">" + RequestSpecificValues.Current_Mode.Base_URL + "/my</a><br /><br />Full Name: " + user.Full_Name + "<br />User Name: " + user.UserName + "<br /><br />You will receive an email when your request to submit items has been processed.", true, RequestSpecificValues.Current_Mode.Instance_Name);
 						}
 						else
 						{
-							SobekCM_Database.Send_Database_Email(email, "Welcome to " + mySobekText, "<strong>Thank you for registering for " + mySobekText + "</strong><br /><br />You can access this directly through the following link: <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/my\">" + RequestSpecificValues.Current_Mode.Base_URL + "/my</a><br /><br />Full Name: " + user.Full_Name + "<br />User Name: " + user.UserName, true, false, -1, -1);
+                            Email_Helper.SendEmail(email, "Welcome to " + mySobekText, "<strong>Thank you for registering for " + mySobekText + "</strong><br /><br />You can access this directly through the following link: <a href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/my\">" + RequestSpecificValues.Current_Mode.Base_URL + "/my</a><br /><br />Full Name: " + user.Full_Name + "<br />User Name: " + user.UserName, true, RequestSpecificValues.Current_Mode.Instance_Name);
 						}
 
 						// Now, forward back to the My Sobek home page
@@ -499,7 +548,7 @@ namespace SobekCM.Library.MySobekViewer
             {
                 if (HttpContext.Current.Session["user"] == null)
                 {
-                    return "Register for My" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+                    return "Register for My" + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
                 }
                 return "Edit Your Account Preferences";
             }
@@ -519,7 +568,7 @@ namespace SobekCM.Library.MySobekViewer
 
 			Output.WriteLine("<h1>" + Web_Title + "</h1>");
 			Output.WriteLine();
-			Output.WriteLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+            Output.WriteLine("<script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
 			Output.WriteLine("<div class=\"SobekHomeText\" >");
 			Output.WriteLine("<blockquote>");
 			if (registration)
@@ -653,13 +702,13 @@ namespace SobekCM.Library.MySobekViewer
 				Output.WriteLine("    <td>");
 				Output.WriteLine("      " + rightsInstructionLabel + "<br />");
 				Output.WriteLine("      <table cellpadding=\"3px\" cellspacing=\"3px\" >");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc0] The author dedicated the work to the Commons by waiving all of his or her rights to the work worldwide under copyright law and all related or neighboring legal rights he or she had in the work, to the extent allowable by law.');\"><img title=\"You dedicate the work to the Commons by waiving all of your rights to the work worldwide under copyright law and all related or neighboring legal rights you had in the work, to the extent allowable by law.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_zero.png\" /></a></td><td><b>No Copyright</b><br /><i>cc0</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by] This item is licensed with the Creative Commons Attribution License.  This license lets others distribute, remix, tweak, and build upon this work, even commercially, as long as they credit the author for the original creation.');\"><img title=\"This license lets others distribute, remix, tweak, and build upon your work, even commercially, as long as they credit you for the original creation.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by.png\" /></a></td><td><b>Attribution</b><br /><i>cc by</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-sa] This item is licensed with the Creative Commons Attribution Share Alike License.  This license lets others remix, tweak, and build upon this work even for commercial reasons, as long as they credit the author and license their new creations under the identical terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work even for commercial reasons, as long as they credit you and license their new creations under the identical terms.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by_sa.png\" /></a></td><td><b>Attribution Share Alike</b><br /><i>cc by-sa</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nd] This item is licensed with the Creative Commons Attribution No Derivatives License.  This license allows for redistribution, commercial and non-commercial, as long as it is passed along unchanged and in whole, with credit to the author.');\"><img title=\"This license allows for redistribution, commercial and non-commercial, as long as it is passed along unchanged and in whole, with credit to you.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by_nd.png\" /></a></td><td><b>Attribution No Derivatives</b><br /><i>cc by-nd</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc] This item is licensed with the Creative Commons Attribution Non-Commerical License.  This license lets others remix, tweak, and build upon this work non-commercially, and although their new works must also acknowledge the author and be non-commercial, they don’t have to license their derivative works on the same terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work non-commercially, and although their new works must also acknowledge you and be non-commercial, they don’t have to license their derivative works on the same terms.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by_nc.png\" /></a></td><td><b>Attribution Non-Commercial</b><br /><i>cc by-nc</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc-sa] This item is licensed with the Creative Commons Attribution Non-Commercial Share Alike License.  This license lets others remix, tweak, and build upon this work non-commercially, as long as they credit the author and license their new creations under the identical terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work non-commercially, as long as they credit you and license their new creations under the identical terms.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by_nc_sa.png\" /></a></td><td><b>Attribution Non-Commercial Share Alike</b><br /><i>cc by-nc-sa</i></td></tr>");
-				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc-nd] This item is licensed with the Creative Commons Attribution Non-Commercial No Derivative License.  This license allows others to download this work and share them with others as long as they mention the author and link back to the author, but they can’t change them in any way or use them commercially.');\"><img title=\"This license allows others to download your works and share them with others as long as they mention you and link back to you, but they can’t change them in any way or use them commercially.\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/cc_by_nc_nd.png\" /></a></td><td><b>Attribution Non-Commercial No Derivatives</b><br /><i>cc by-nc-nd</i></td></tr>");
+                Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc0] The author dedicated the work to the Commons by waiving all of his or her rights to the work worldwide under copyright law and all related or neighboring legal rights he or she had in the work, to the extent allowable by law.');\"><img title=\"You dedicate the work to the Commons by waiving all of your rights to the work worldwide under copyright law and all related or neighboring legal rights you had in the work, to the extent allowable by law.\" src=\"" + Static_Resources.Cc_Zero_Img + "\" /></a></td><td><b>No Copyright</b><br /><i>cc0</i></td></tr>");
+                Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by] This item is licensed with the Creative Commons Attribution License.  This license lets others distribute, remix, tweak, and build upon this work, even commercially, as long as they credit the author for the original creation.');\"><img title=\"This license lets others distribute, remix, tweak, and build upon your work, even commercially, as long as they credit you for the original creation.\" src=\"" + Static_Resources.Cc_By_Img + "\" /></a></td><td><b>Attribution</b><br /><i>cc by</i></td></tr>");
+                Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-sa] This item is licensed with the Creative Commons Attribution Share Alike License.  This license lets others remix, tweak, and build upon this work even for commercial reasons, as long as they credit the author and license their new creations under the identical terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work even for commercial reasons, as long as they credit you and license their new creations under the identical terms.\" src=\"" + Static_Resources.Cc_By_Sa_Img + "\" /></a></td><td><b>Attribution Share Alike</b><br /><i>cc by-sa</i></td></tr>");
+                Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nd] This item is licensed with the Creative Commons Attribution No Derivatives License.  This license allows for redistribution, commercial and non-commercial, as long as it is passed along unchanged and in whole, with credit to the author.');\"><img title=\"This license allows for redistribution, commercial and non-commercial, as long as it is passed along unchanged and in whole, with credit to you.\" src=\"" + Static_Resources.Cc_By_Nd_Img + "\" /></a></td><td><b>Attribution No Derivatives</b><br /><i>cc by-nd</i></td></tr>");
+                Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc] This item is licensed with the Creative Commons Attribution Non-Commerical License.  This license lets others remix, tweak, and build upon this work non-commercially, and although their new works must also acknowledge the author and be non-commercial, they don’t have to license their derivative works on the same terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work non-commercially, and although their new works must also acknowledge you and be non-commercial, they don’t have to license their derivative works on the same terms.\" src=\"" + Static_Resources.Cc_By_Nc_Img + "\" /></a></td><td><b>Attribution Non-Commercial</b><br /><i>cc by-nc</i></td></tr>");
+				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc-sa] This item is licensed with the Creative Commons Attribution Non-Commercial Share Alike License.  This license lets others remix, tweak, and build upon this work non-commercially, as long as they credit the author and license their new creations under the identical terms.');\"><img title=\"This license lets others remix, tweak, and build upon your work non-commercially, as long as they credit you and license their new creations under the identical terms.\" src=\"" + Static_Resources.Cc_By_Nc_Sa_Img + "\" /></a></td><td><b>Attribution Non-Commercial Share Alike</b><br /><i>cc by-nc-sa</i></td></tr>");
+				Output.WriteLine("        <tr><td> &nbsp; <a href=\"\" onclick=\"return set_cc_rights('prefRights','[cc by-nc-nd] This item is licensed with the Creative Commons Attribution Non-Commercial No Derivative License.  This license allows others to download this work and share them with others as long as they mention the author and link back to the author, but they can’t change them in any way or use them commercially.');\"><img title=\"This license allows others to download your works and share them with others as long as they mention you and link back to you, but they can’t change them in any way or use them commercially.\" src=\"" + Static_Resources.Cc_By_Nc_Nd_Img + "\" /></a></td><td><b>Attribution Non-Commercial No Derivatives</b><br /><i>cc by-nc-nd</i></td></tr>");
 				Output.WriteLine("      </table>");
 				Output.WriteLine("    </td>");
 				Output.WriteLine("  </tr>");

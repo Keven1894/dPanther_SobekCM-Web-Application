@@ -7,14 +7,15 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using SobekCM.Core.ApplicationState;
+using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Resource_Object.Tracking;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -118,7 +119,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
             // If this is an internal user or can edit this item, ensure the extra information 
             // has been pulled for this item
-            if ((userCanEditItem) || (CurrentMode.Internal_User) || (CurrentMode.ViewerCode == "tracking") || (CurrentMode.ViewerCode == "media") || (CurrentMode.ViewerCode == "archive"))
+            if ((userCanEditItem) || ((CurrentUser != null) && (CurrentUser.LoggedOn) && (CurrentUser.Is_Internal_User)) || (CurrentMode.ViewerCode == "tracking") || (CurrentMode.ViewerCode == "media") || (CurrentMode.ViewerCode == "archive"))
             {
                 if (!CurrentItem.Tracking.Tracking_Info_Pulled)
                 {
@@ -204,7 +205,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
                     }
                 }
 
-                if ((citationType == Tracking_Type.Archives) || ((CurrentItem.Tracking.hasArchiveInformation) && ((CurrentMode.Internal_User) || (userCanEditItem))))
+                if ((citationType == Tracking_Type.Archives) || ((CurrentItem.Tracking.hasArchiveInformation) && (((CurrentUser != null) && (CurrentUser.LoggedOn) && (CurrentUser.Is_Internal_User)) || (userCanEditItem))))
                 {
                     if (citationType == Tracking_Type.Archives)
                     {
@@ -216,7 +217,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
                     }
                 }
 
-                if ((citationType == Tracking_Type.Directory_List) || (CurrentMode.Internal_User) || (userCanEditItem))
+                if ((citationType == Tracking_Type.Directory_List) || ((CurrentUser != null) && (CurrentUser.LoggedOn) && (CurrentUser.Is_Internal_User)) || (userCanEditItem))
                 {
                     if (citationType == Tracking_Type.Directory_List)
                     {

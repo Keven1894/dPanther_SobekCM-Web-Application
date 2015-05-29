@@ -9,10 +9,13 @@ using System.Reflection;
 using System.Xml;
 using SobekCM.Core.Configuration;
 using SobekCM.Core.Database;
+using SobekCM.Core.Navigation;
 using SobekCM.Core.Search;
 using SobekCM.Core.Settings;
 using SobekCM.Engine_Library.Configuration;
 using SobekCM.Engine_Library.Database;
+using SobekCM.Engine_Library.Items.BriefItems;
+using SobekCM.Engine_Library.Navigation;
 using SobekCM.Resource_Object.OAI.Writer;
 
 #endregion
@@ -27,10 +30,11 @@ namespace SobekCM.Engine_Library.Settings
         private const string BACKUP_FILES_FOLDER_NAME = "sobek_files";
 
         /// <summary> Current version number associated with this SobekCM digital repository web application </summary>
-        private const string CURRENT_WEB_VERSION = "4.7.1";
+        // DO NOT CHANGE THIS LINE.. THIS IS READ BY THE CODE DOCUMENTATION BUILDING TASK
+        private const string CURRENT_WEB_VERSION = "4.8.10b";
 
         /// <summary> Current version number associated with this SobekCM builder application </summary>
-        private const string CURRENT_BUILDER_VERSION = "4.7.1";
+        private const string CURRENT_BUILDER_VERSION = "4.8.10b"; 
 
         /// <summary> Number of ticks that a complete package must age before being processed </summary>
         /// <value> This is currently set to 15 minutes (in ticks) </value>
@@ -49,16 +53,29 @@ namespace SobekCM.Engine_Library.Settings
         /// <returns> A fully builder instance-wide setting object </returns>
         public static InstanceWide_Settings Build_Settings()
         {
+            string configFile = AppDomain.CurrentDomain.BaseDirectory + "\\config\\sobekcm.config";
+            return Build_Settings(configFile);
+
+        }
+
+        /// <summary> Refreshes the values from the database settings </summary>
+        /// <returns> A fully builder instance-wide setting object </returns>
+        public static InstanceWide_Settings Build_Settings( string ConfigFileLocation )
+        {
             InstanceWide_Settings returnValue = new InstanceWide_Settings();
 
-            // Should we read the configuration file?
+            // Read the main configuration file, with database and error information
+           // returnValue.Base_Directory = AppDomain.CurrentDomain.BaseDirectory;
+            Read_Configuration_File(returnValue, ConfigFileLocation);
 
-            returnValue.Base_Directory = AppDomain.CurrentDomain.BaseDirectory;
-            Read_Configuration_File(returnValue, returnValue.Base_Directory + "\\config\\sobekcm.config");
+            // Set the error URL
+            UrlWriterHelper.Unhandled_Error_URL = returnValue.System_Error_URL;
 
+            // Set the connection string to the database
             Engine_Database.Connection_String = returnValue.Database_Connections[0].Connection_String;
             Resource_Object.Database.SobekCM_Database.Connection_String = returnValue.Database_Connections[0].Connection_String;
 
+            // Get the settings
             DataSet sobekCMSettings = Engine_Database.Get_Settings_Complete(null);
             Refresh(returnValue, sobekCMSettings);
 
@@ -82,6 +99,26 @@ namespace SobekCM.Engine_Library.Settings
                 returnValue.ContactForm = ContactForm_Configuration_Reader.Read_Config(returnValue.Base_Directory + "\\config\\default\\sobekcm_contactform.config");
             }
 
+            // Try to read the QUALITY CONTROL configuration file
+            if (File.Exists(returnValue.Base_Directory + "\\config\\user\\sobekcm_qc.config"))
+            {
+                QualityControl_Configuration.Read_Metadata_Configuration(returnValue.Base_Directory + "\\config\\user\\sobekcm_qc.config");
+            }
+            else if (File.Exists(returnValue.Base_Directory + "\\config\\default\\sobekcm_qc.config"))
+            {
+                QualityControl_Configuration.Read_Metadata_Configuration(returnValue.Base_Directory + "\\config\\default\\sobekcm_qc.config");
+            }
+
+            // Try to read the BRIEF ITEM MAPPING configuration file
+            if (File.Exists(returnValue.Base_Directory + "\\config\\user\\sobekcm_brief_item_mapping.config"))
+            {
+                BriefItem_Factory.Read_Config(returnValue.Base_Directory + "\\config\\user\\sobekcm_brief_item_mapping.config");
+            }
+            else if (File.Exists(returnValue.Base_Directory + "\\config\\default\\sobekcm_brief_item_mapping.config"))
+            {
+                BriefItem_Factory.Read_Config(returnValue.Base_Directory + "\\config\\default\\sobekcm_brief_item_mapping.config");
+            }
+
             // Try to read the OAI-PMH configuration file
             if (File.Exists(returnValue.Base_Directory + "\\config\\user\\sobekcm_oaipmh.config"))
             {
@@ -94,16 +131,17 @@ namespace SobekCM.Engine_Library.Settings
 
             // Load the OAI-PMH configuration file info into the OAI writer class ( in the resource object library )
             if (returnValue.OAI_PMH == null)
-                OAI_PMH_Metadata_Writers.Set_Default_Values();
-            else
             {
-                OAI_PMH_Metadata_Writers.Clear();
-                foreach (OAI_PMH_Metadata_Format thisWriter in returnValue.OAI_PMH.Metadata_Prefixes)
+                returnValue.OAI_PMH = new OAI_PMH_Configuration();
+                returnValue.OAI_PMH.Set_Default();
+            }
+
+            OAI_PMH_Metadata_Writers.Clear();
+            foreach (OAI_PMH_Metadata_Format thisWriter in returnValue.OAI_PMH.Metadata_Prefixes)
+            {
+                if (thisWriter.Enabled)
                 {
-                    if (thisWriter.Enabled)
-                    {
-                        OAI_PMH_Metadata_Writers.Add_Writer(thisWriter.Prefix, thisWriter.Assembly, thisWriter.Namespace, thisWriter.Class);
-                    }
+                    OAI_PMH_Metadata_Writers.Add_Writer(thisWriter.Prefix, thisWriter.Assembly, thisWriter.Namespace, thisWriter.Class);
                 }
             }
 
@@ -183,7 +221,8 @@ namespace SobekCM.Engine_Library.Settings
                     "dataset", "dataprovider", "xml", "textonly", "shibboleth", "internal",
                     "contact", "folder", "admin", "preferences", "stats", "statistics", "adminhelp",
                     "partners", "tree", "brief", "personalized", "all", "new", "map", "advanced",
-                    "text", "results", "contains", "exact", "resultslike", "browseby", "info", "sobekcm", "inprocess", "engine"  };
+                    "text", "results", "contains", "exact", "resultslike", "browseby", "info", "sobekcm", 
+                    "inprocess", "engine", "register", "xyzzyxyzzy", "aggrmanage", "aggrpermissions", "aggrhistory"  };
 
             SettingsObject.Page_Image_Extensions = new List<string> { "JPG", "JP2", "JPX", "GIF", "PNG", "BMP", "JPEG" };
             SettingsObject.Backup_Files_Folder_Name = BACKUP_FILES_FOLDER_NAME;
@@ -213,8 +252,11 @@ namespace SobekCM.Engine_Library.Settings
                 Get_String_Value(settingsDictionary, "Application Server Network", SettingsObject, X => X.Application_Server_Network, ref error);
                 Get_String_Value(settingsDictionary, "Application Server URL", SettingsObject, X => X.Application_Server_URL, ref error);
                 Get_String_Value(settingsDictionary, "Archive DropBox", SettingsObject, X => X.Archive_DropBox, ref error);
+                Get_Boolean_Value(settingsDictionary, "Builder Add PageTurner ItemViewer", SettingsObject, X => X.Builder_Add_PageTurner_ItemViewer, ref error, false);
+                Get_String_Value(settingsDictionary, "Builder IIS Logs Directory", SettingsObject, X => X.Builder_IIS_Logs_Directory, ref error);
                 Get_Integer_Value(settingsDictionary, "Builder Log Expiration in Days", SettingsObject, X => X.Builder_Log_Expiration_Days, ref error, 10);
                 Get_Integer_Value(settingsDictionary, "Builder Seconds Between Polls", SettingsObject, X => X.Builder_Seconds_Between_Polls, ref error, 60);
+                Get_Boolean_Value(settingsDictionary, "Builder Send Usage Emails", SettingsObject, X => X.Builder_Send_Usage_Emails, ref error, false);
                 Get_Boolean_Value(settingsDictionary, "Builder Verbose Flag", SettingsObject, X => X.Builder_Verbose_Flag, ref error, false);
                 Get_String_Value(settingsDictionary, "Caching Server", SettingsObject, X => X.Caching_Server, ref error);
                 Get_Boolean_Value(settingsDictionary, "Can Remove Single Search Term", SettingsObject, X => X.Can_Remove_Single_Term, ref error, true);
@@ -222,11 +264,16 @@ namespace SobekCM.Engine_Library.Settings
                 Get_Boolean_Value(settingsDictionary, "Convert Office Files to PDF", SettingsObject, X => X.Convert_Office_Files_To_PDF, ref error, false);
                 Get_Boolean_Value(settingsDictionary, "Detailed User Permissions", SettingsObject, X => X.Detailed_User_Aggregation_Permissions, ref error, false);
                 Get_String_Value(settingsDictionary, "Document Solr Index URL", SettingsObject, X => X.Document_Solr_Index_URL, ref error);
+                Get_String_Value(settingsDictionary, "Email Default From Address", SettingsObject, X => X.EmailDefaultFromAddress, ref error);
+                Get_String_Value(settingsDictionary, "Email Default From Name", SettingsObject, X => X.EmailDefaultFromDisplay, ref error);
+                Get_String_Value(settingsDictionary, "Email Method", SettingsObject, X => X.EmailMethodString, "DATABASE MAIL");
+                Get_Integer_Value(settingsDictionary, "Email SMTP Port", SettingsObject, X => X.EmailSmtpPort, ref error, 25);
+                Get_String_Value(settingsDictionary, "Email SMTP Server", SettingsObject, X => X.EmailSmtpServer, ref error);
                 Get_Boolean_Value(settingsDictionary, "Facets Collapsible", SettingsObject, X => X.Facets_Collapsible, ref error, false);
                 Get_String_Value(settingsDictionary, "FDA Report DropBox", SettingsObject, X => X.FDA_Report_DropBox, ref error);
                 Get_String_Value(settingsDictionary, "Files To Exclude From Downloads", SettingsObject, X => X.Files_To_Exclude_From_Downloads, ref error);
-                Get_String_Value(settingsDictionary, "Help URL", SettingsObject, X => X.Help_URL_Base, "http://ufdc.ufl.edu/");
-                Get_String_Value(settingsDictionary, "Help Metadata URL", SettingsObject, X => X.Metadata_Help_URL_Base, "http://ufdc.ufl.edu/");
+                Get_String_Value(settingsDictionary, "Help URL", SettingsObject, X => X.Help_URL_Base, "http://sobekrepository.org/");
+                Get_String_Value(settingsDictionary, "Help Metadata URL", SettingsObject, X => X.Metadata_Help_URL_Base, "http://sobekrepository.org/");
                 Get_String_Value(settingsDictionary, "Image Server Network", SettingsObject, X => X.Image_Server_Network, ref error);
                 //add by Keven for FIU dPanther's separate image server
                 Get_String_Value(settingsDictionary, "Image Server Root", SettingsObject, X => X.Image_Server_Root, ref error);
@@ -249,10 +296,12 @@ namespace SobekCM.Engine_Library.Settings
                 Get_String_Value(settingsDictionary, "PostArchive Files To Delete", SettingsObject, X => X.PostArchive_Files_To_Delete, String.Empty);
                 Get_String_Value(settingsDictionary, "PreArchive Files To Delete", SettingsObject, X => X.PreArchive_Files_To_Delete, String.Empty);
                 Get_String_Value(settingsDictionary, "Privacy Email Address", SettingsObject, X => X.Privacy_Email_Address, String.Empty);
+                Get_String_Value(settingsDictionary, "Send Email On Added Aggregation", SettingsObject, X => X.Send_Email_On_Added_Aggregation, "Always");
                 Get_Boolean_Value(settingsDictionary, "Show Florida SUS Settings", SettingsObject, X => X.Show_Florida_SUS_Settings, ref error, false);
                 Get_String_Value(settingsDictionary, "SobekCM Image Server", SettingsObject, X => X.SobekCM_ImageServer, String.Empty);
                 Get_String_Value(settingsDictionary, "SobekCM Web Server IP", SettingsObject, X => X.SobekCM_Web_Server_IP, String.Empty);
                 Get_String_Value(settingsDictionary, "Static Pages Location", SettingsObject, X => X.Static_Pages_Location, ref error);
+                Get_String_Value(settingsDictionary, "Static Resources Source", SettingsObject, X => X.Static_Resources_Config_File, "CDN");          
                 Get_Boolean_Value(settingsDictionary, "Statistics Caching Enabled", SettingsObject, X => X.Statistics_Caching_Enabled, ref error, false);
                 Get_String_Value(settingsDictionary, "System Base Abbreviation", SettingsObject, X => X.System_Abbreviation, String.Empty);
                 Get_String_Value(settingsDictionary, "System Base Name", SettingsObject, X => X.System_Name, SettingsObject.System_Abbreviation);
@@ -296,14 +345,12 @@ namespace SobekCM.Engine_Library.Settings
                     SettingsObject.Additional_Settings[thisSetting.Key] = thisSetting.Value;
                 }
 
-                // Set the builder folder information
-                Set_Builder_Folders(SettingsObject, SobekCM_Settings.Tables[1]);
 
                 // Save the metadata types
-                Set_Metadata_Types(SettingsObject, SobekCM_Settings.Tables[2]);
+                Set_Metadata_Types(SettingsObject, SobekCM_Settings.Tables[1]);
 
                 // Set the workflow and disposition options
-                Set_Workflow_And_Disposition_Types(SettingsObject, SobekCM_Settings.Tables[3], SobekCM_Settings.Tables[4]);
+                Set_Workflow_And_Disposition_Types(SettingsObject, SobekCM_Settings.Tables[2], SobekCM_Settings.Tables[3]);
 
                 // This fills some dictionaries and such used for easy lookups
                 SettingsObject.PostUnSerialization();
@@ -417,35 +464,7 @@ namespace SobekCM.Engine_Library.Settings
 
         #endregion
 
-        private static void Set_Builder_Folders(InstanceWide_Settings SettingsObject, DataTable BuilderFoldersTable)
-        {
-            SettingsObject.Incoming_Folders.Clear();
-            foreach (DataRow thisRow in BuilderFoldersTable.Rows)
-            {
-                Builder_Source_Folder newFolder = new Builder_Source_Folder
-                {
-                    Folder_Name = thisRow["FolderName"].ToString(), 
-                    Inbound_Folder = thisRow["NetworkFolder"].ToString(), 
-                    Failures_Folder = thisRow["ErrorFolder"].ToString(), 
-                    Processing_Folder = thisRow["ProcessingFolder"].ToString(), 
-                    Perform_Checksum = Convert.ToBoolean(thisRow["Perform_Checksum_Validation"]), 
-                    Archive_TIFFs = Convert.ToBoolean(thisRow["Archive_TIFF"]), 
-                    Archive_All_Files = Convert.ToBoolean(thisRow["Archive_All_Files"]), 
-                    Allow_Deletes = Convert.ToBoolean(thisRow["Allow_Deletes"]), 
-                    Allow_Folders_No_Metadata = Convert.ToBoolean(thisRow["Allow_Folders_No_Metadata"]), 
-                    Allow_Metadata_Updates = Convert.ToBoolean(thisRow["Allow_Metadata_Updates"]), 
-                    BibID_Roots_Restrictions = thisRow["BibID_Roots_Restrictions"].ToString()
-                };
 
-                if (thisRow["Can_Move_To_Content_Folder"] == DBNull.Value)
-                    newFolder.Can_Move_To_Content_Folder = null;
-                else
-                    newFolder.Can_Move_To_Content_Folder = Convert.ToBoolean(thisRow["Can_Move_To_Content_Folder"]);
-                newFolder.Module_Configuration_Raw = thisRow["ModuleConfig"].ToString();
-
-                SettingsObject.Incoming_Folders.Add(newFolder);
-            }
-        }
 
 
         /// <summary> Saves all the metadata types from the database, to be treated as constant settings

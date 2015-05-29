@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Navigation;
+using SobekCM.Library.Settings;
 using SobekCM.Resource_Object.Bib_Info;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Resource_Object.Metadata_Modules;
@@ -94,7 +95,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
             // If coordinates were passed in, pull the actual coordinates out of the URL
             validCoordinateSearchFound = false;
-            if (CurrentMode.Coordinates.Length > 0)
+            if (!String.IsNullOrEmpty(CurrentMode.Coordinates))
             {
                 string[] splitter = CurrentMode.Coordinates.Split(",".ToCharArray());
                 if (((splitter.Length > 1) && (splitter.Length < 4)) || ((splitter.Length == 4) && (splitter[2].Length == 0) && (splitter[3].Length == 0)))
@@ -114,8 +115,8 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
             // Get the google map API
             mapBuilder.AppendLine("<script type=\"text/javascript\" src=\"http://maps.google.com/maps/api/js?sensor=false\"></script>");
-            mapBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/sobekcm_map_search.js\"></script>");
-            mapBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/sobekcm_map_tool.js\"></script>");
+            mapBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Sobekcm_Map_Search_Js + "\"></script>");
+            mapBuilder.AppendLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Sobekcm_Map_Tool_Js + "\"></script>");
 
             // Set some values for the map key
             string search_type = "geographic";

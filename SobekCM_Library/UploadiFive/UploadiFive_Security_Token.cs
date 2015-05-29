@@ -7,7 +7,7 @@ using System;
 namespace SobekCM.Library.UploadiFive
 {
 	/// <summary> Token used to add security, via adding a key to the session
-	/// state, for uploading documents through this system </summary>
+	/// state, for uploading documents using UploadiFive through this system </summary>
 	public class UploadiFive_Security_Token
 	{
 		/// <summary> Path where the uploaded files should go </summary>
@@ -27,15 +27,19 @@ namespace SobekCM.Library.UploadiFive
 		/// <remarks> This can be used to avoid having to manually rename the file after upload </remarks>
 		public readonly string ServerSideFileName;
 
+	    /// <summary> Return token is used to pass back the information about which file(s) were uploaded </summary>
+	    public readonly string ReturnToken;
+
 		/// <summary> Constructor for a new instance of the UploadiFive_Security_Token class </summary>
 		/// <param name="UploadPath"> Path where the uploaded files should go </param>
 		/// <param name="AllowedFileExtensions"> List of file extensions allowed </param>
 		/// <param name="FileObjName"> The name of the file object to use in your server-side script </param>
-		public UploadiFive_Security_Token(string UploadPath, string AllowedFileExtensions, string FileObjName )
+		public UploadiFive_Security_Token(string UploadPath, string AllowedFileExtensions, string FileObjName, string ReturnToken)
 		{
 			this.UploadPath = UploadPath;
 			this.AllowedFileExtensions = AllowedFileExtensions;
 			this.FileObjName = FileObjName;
+		    this.ReturnToken = ReturnToken;
 			ThisGuid = Guid.NewGuid();
 		}
 
@@ -45,12 +49,13 @@ namespace SobekCM.Library.UploadiFive
 		/// <param name="FileObjName"> The name of the file object to use in your server-side script </param>
 		/// <param name="ServerSideFileName"> Name for the final server-side file, which allows overriding the default name,
 		/// which would otherwise match the uploaded name</param>
-		public UploadiFive_Security_Token(string UploadPath, string AllowedFileExtensions, string FileObjName, string ServerSideFileName )
+        public UploadiFive_Security_Token(string UploadPath, string AllowedFileExtensions, string FileObjName, string ServerSideFileName, string ReturnToken)
 		{
 			this.UploadPath = UploadPath;
 			this.AllowedFileExtensions = AllowedFileExtensions;
 			this.FileObjName = FileObjName;
 			this.ServerSideFileName = ServerSideFileName;
+		    this.ReturnToken = ReturnToken;
 			ThisGuid = Guid.NewGuid();
 		}
 	}

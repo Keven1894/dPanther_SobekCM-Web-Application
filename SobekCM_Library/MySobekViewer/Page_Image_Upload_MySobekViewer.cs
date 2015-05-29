@@ -12,15 +12,17 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using SobekCM.Core.MemoryMgmt;
 using SobekCM.Core.Navigation;
+using SobekCM.Engine_Library.Email;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Library.UploadiFive;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Behaviors;
 using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 using Image = System.Drawing.Image;
 
 #endregion
@@ -243,40 +245,32 @@ namespace SobekCM.Library.MySobekViewer
                     SobekCM_File_Info newFile = new SobekCM_File_Info(fileInfo.Name);
 
                     // Copy this file
-                    if (File.Exists(final_destination + "\\" + fileInfo.Name))
+                    File.Copy(thisFile, final_destination + "\\" + fileInfo.Name, true);
+                    RequestSpecificValues.Current_Item.Divisions.Physical_Tree.Add_File(newFile, "New Page");
+
+                    // Seperate code for JP2 and JPEG type files
+                    string extension = fileInfo.Extension.ToUpper();
+                    if (extension.IndexOf("JP2") >= 0)
                     {
-                        File.Copy(thisFile, final_destination + "\\" + fileInfo.Name, true);
+                        if (!error_reading_file_occurred)
+                        {
+                            if (!newFile.Compute_Jpeg2000_Attributes(RequestSpecificValues.Current_Item.Source_Directory))
+                                error_reading_file_occurred = true;
+                        }
+                        jp2_added = true;
                     }
-                    else
+                    else if (extension.IndexOf("JPG") >= 0)
                     {
-                        File.Copy(thisFile, final_destination + "\\" + fileInfo.Name, true);
-                        RequestSpecificValues.Current_Item.Divisions.Physical_Tree.Add_File(newFile, "New Page");
-
-
-                        // Seperate code for JP2 and JPEG type files
-                        string extension = fileInfo.Extension.ToUpper();
-                        if (extension.IndexOf("JP2") >= 0)
+                        if (!error_reading_file_occurred)
                         {
-                            if (!error_reading_file_occurred)
-                            {
-                                if (!newFile.Compute_Jpeg2000_Attributes(RequestSpecificValues.Current_Item.Source_Directory))
-                                    error_reading_file_occurred = true;
-                            }
-                            jp2_added = true;
+                            if (!newFile.Compute_Jpeg_Attributes(RequestSpecificValues.Current_Item.Source_Directory))
+                                error_reading_file_occurred = true;
                         }
-                        else if (extension.IndexOf("JPG") >= 0)
-                        {
-                            if (!error_reading_file_occurred)
-                            {
-                                if (!newFile.Compute_Jpeg_Attributes(RequestSpecificValues.Current_Item.Source_Directory))
-                                    error_reading_file_occurred = true;
-                            }
-                            jpeg_added = true;
-                        }
+                        jpeg_added = true;
                     }
                 }
 
-				// Add the JPEG2000 and JPEG-specific viewers
+                // Add the JPEG2000 and JPEG-specific viewers
 				//RequestSpecificValues.Current_Item.Behaviors.Clear_Views();
 				if (jpeg_added) 
 				{
@@ -423,7 +417,7 @@ namespace SobekCM.Library.MySobekViewer
                 string email_to = UI_ApplicationCache_Gateway.Settings.System_Error_Email;
                 if (email_to.Length == 0)
                     email_to = UI_ApplicationCache_Gateway.Settings.System_Email;
-                Database.SobekCM_Database.Send_Database_Email(email_to, error_subject, error_body, true, false, -1, -1);
+                Email_Helper.SendEmail(email_to, error_subject, error_body, true, String.Empty);
             }
 
 
@@ -465,7 +459,7 @@ namespace SobekCM.Library.MySobekViewer
         {
             Tracer.Add_Trace("File_Management_MySobekViewer.Write_HTML", "Add instructions");
 
-            Output.WriteLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+            Output.WriteLine("<script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
 
 			// Write the top RequestSpecificValues.Current_Item mimic html portion
 			Write_Item_Type_Top(Output, RequestSpecificValues.Current_Item);
@@ -502,7 +496,7 @@ namespace SobekCM.Library.MySobekViewer
             Output.WriteLine("<!-- Hidden field is used for postbacks to indicate what to save and reset -->");
             Output.WriteLine("<input type=\"hidden\" id=\"action\" name=\"action\" value=\"\" />");
             Output.WriteLine("<input type=\"hidden\" id=\"phase\" name=\"phase\" value=\"\" />");
-            Output.WriteLine("<script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" ></script>");
+            Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" ></script>");
 
             Output.WriteLine("<hr />");
             Output.WriteLine("<br />");
@@ -628,7 +622,7 @@ namespace SobekCM.Library.MySobekViewer
             Tracer.Add_Trace("New_Group_And_Item_MySobekViewer.add_upload_controls", String.Empty);
 
             StringBuilder filesBuilder = new StringBuilder(2000);
-            filesBuilder.AppendLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+            filesBuilder.AppendLine("<script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
             filesBuilder.AppendLine("Add a new page image for this package:");
             filesBuilder.AppendLine("<blockquote>");
 
@@ -642,7 +636,7 @@ namespace SobekCM.Library.MySobekViewer
 			uploadControl.AllowedFileExtensions = UI_ApplicationCache_Gateway.Settings.Upload_Image_Types;
 			uploadControl.SubmitWhenQueueCompletes = true;
 	        uploadControl.RemoveCompleted = true;
-			uploadControl.Swf = RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/uploadify/uploadify.swf";
+			uploadControl.Swf = Static_Resources.Uploadify_Swf;
 			uploadControl.RevertToFlashVersion = true;
 			placeHolder.Controls.Add(uploadControl);
 

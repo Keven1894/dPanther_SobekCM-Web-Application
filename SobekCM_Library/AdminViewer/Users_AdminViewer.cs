@@ -13,12 +13,14 @@ using SobekCM.Core.Aggregations;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Engine_Library.Database;
+using SobekCM.Engine_Library.Email;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -52,7 +54,7 @@ namespace SobekCM.Library.AdminViewer
 		{
             RequestSpecificValues.Tracer.Add_Trace("Users_AdminViewer.Constructor", String.Empty);
 
-			// Ensure the RequestSpecificValues.Current_User is the system admin
+			// Ensure the user is the system admin
 			if ((RequestSpecificValues.Current_User == null) || (!RequestSpecificValues.Current_User.Is_System_Admin))
 			{
 				RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
@@ -66,7 +68,7 @@ namespace SobekCM.Library.AdminViewer
 
 			// Get the user to edit, if there was a user id in the submode
 			editUser = null;
-			if (RequestSpecificValues.Current_Mode.My_Sobek_SubMode.Length > 0)
+			if ( !String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.My_Sobek_SubMode))
 			{
 				try
 				{
@@ -151,8 +153,7 @@ namespace SobekCM.Library.AdminViewer
 							}
 							else
 							{
-
-								if (SobekCM_Database.Send_Database_Email(reset_user.Email, "my" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation.ToUpper() + " Password Reset", reset_user.Full_Name + ",\n\nYour my" + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation.ToUpper() + " password has been reset to a temporary password.  The first time you logon, you will be required to change it.\n\n\tUsername: " + reset_user.UserName + "\n\tPassword: " + password + "\n\nYour password is case-sensitive and must be entered exactly as it appears above when logging on.\n\nIf you have any questions or problems logging on, feel free to contact us at " + UI_ApplicationCache_Gateway.Settings.System_Email + ", or reply to this email.\n\n" + RequestSpecificValues.Current_Mode.Base_URL + "my/home\n", false, false, -1, -1))
+                                if ( Email_Helper.SendEmail(reset_user.Email, "my" + RequestSpecificValues.Current_Mode.Instance_Abbreviation.ToUpper() + " Password Reset", reset_user.Full_Name + ",\n\nYour my" + RequestSpecificValues.Current_Mode.Instance_Abbreviation.ToUpper() + " password has been reset to a temporary password.  The first time you logon, you will be required to change it.\n\n\tUsername: " + reset_user.UserName + "\n\tPassword: " + password + "\n\nYour password is case-sensitive and must be entered exactly as it appears above when logging on.\n\nIf you have any questions or problems logging on, feel free to contact us at " + UI_ApplicationCache_Gateway.Settings.System_Email + ", or reply to this email.\n\n" + RequestSpecificValues.Current_Mode.Base_URL + "my/home\n", false, RequestSpecificValues.Current_Mode.Instance_Name))
 								{
 									if ((RequestSpecificValues.Current_User.UserID == 1) || (RequestSpecificValues.Current_User.UserID == 2))
 										actionMessage = "Reset of password (" + password + ") for '" + reset_user.Full_Name + "' complete";
@@ -245,8 +246,14 @@ namespace SobekCM.Library.AdminViewer
 							editUser.Is_System_Admin = false;
 							editUser.Is_Portal_Admin = false;
 							editUser.Include_Tracking_In_Standard_Forms = false;
+                            editUser.Can_Delete_All = false;
 
-							// Step through each key
+					        if ((UI_ApplicationCache_Gateway.Settings.isHosted) && (RequestSpecificValues.Current_User.Is_Host_Admin))
+					        {
+                                editUser.Is_Host_Admin = false;
+					        }
+
+					        // Step through each key
 							foreach (string thisKey in getKeys)
 							{
 								switch (thisKey)
@@ -267,9 +274,13 @@ namespace SobekCM.Library.AdminViewer
 										editUser.Can_Delete_All = true;
 										break;
 
-									case "admin_user_sysadmin":
-										editUser.Is_System_Admin = true;
+									case "admin_user_host":
+										editUser.Is_Host_Admin = true;
 										break;
+
+                                    case "admin_user_sysadmin":
+                                        editUser.Is_System_Admin = true;
+                                        break;
 
 									case "admin_user_portaladmin":
 										editUser.Is_Portal_Admin = true;
@@ -614,10 +625,10 @@ namespace SobekCM.Library.AdminViewer
 					// Should this be saved to the database?
 					if (action == "save")
 					{
-						// Save this RequestSpecificValues.Current_User
+						// Save this user
                         SobekCM_Database.Save_User(editUser, String.Empty, RequestSpecificValues.Current_User.Authentication_Type, RequestSpecificValues.Tracer);
 
-						// Update the basic RequestSpecificValues.Current_User information
+						// Update the basic user information
                         SobekCM_Database.Update_SobekCM_User(editUser.UserID, editUser.Can_Submit, editUser.Is_Internal_User, editUser.Should_Be_Able_To_Edit_All_Items, editUser.Can_Delete_All, editUser.Is_System_Admin, editUser.Is_Portal_Admin, editUser.Include_Tracking_In_Standard_Forms, editUser.Edit_Template_Code_Simple, editUser.Edit_Template_Code_Complex, true, true, true, RequestSpecificValues.Tracer);
 
 						// Update projects, if necessary
@@ -638,7 +649,7 @@ namespace SobekCM.Library.AdminViewer
 							}
 						}
 
-						// Save the aggregationPermissions linked to this RequestSpecificValues.Current_User
+						// Save the aggregationPermissions linked to this user
 					    if (editUser.PermissionedAggregations_Count > 0)
 					    {
 					        if (!SobekCM_Database.Update_SobekCM_User_Aggregations(editUser.UserID, editUser.PermissionedAggregations, RequestSpecificValues.Tracer))
@@ -647,7 +658,7 @@ namespace SobekCM.Library.AdminViewer
 					        }
 					    }
 
-					    // Save the RequestSpecificValues.Current_User group links
+					    // Save the user group links
 						List<User_Group> userGroup = Engine_Database.Get_All_User_Groups(RequestSpecificValues.Tracer);
 						Dictionary<string, int> groupnames_to_id = new Dictionary<string, int>();
 						foreach (User_Group thisRow in userGroup)
@@ -721,6 +732,13 @@ namespace SobekCM.Library.AdminViewer
             }
         }
 
+
+        /// <summary> Gets the URL for the icon related to this administrative task </summary>
+        public override string Viewer_Icon
+        {
+            get { return Static_Resources.Users_Img; }
+        }
+
         /// <summary> Add the HTML to be displayed in the main SobekCM viewer area </summary>
         /// <param name="Output"> Textwriter to write the HTML for this viewer</param>
         /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
@@ -749,7 +767,7 @@ namespace SobekCM.Library.AdminViewer
             Tracer.Add_Trace("Users_AdminViewer.Write_ItemNavForm_Closing", "Add the rest of the form");
 
             Output.WriteLine("<!-- Users_AdminViewer.Write_ItemNavForm_Closing -->");
-            Output.WriteLine("<script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_admin.js\" type=\"text/javascript\"></script>");
+            Output.WriteLine("<script src=\"" + Static_Resources.Sobekcm_Admin_Js + "\" type=\"text/javascript\"></script>");
 
 
             // Is this for a single RequestSpecificValues.Current_User edit more, or to list all the users
@@ -808,6 +826,9 @@ namespace SobekCM.Library.AdminViewer
 
             if (editUser.Is_System_Admin)
                 text_builder.Append("Is system administrator<br />");
+
+            if (( UI_ApplicationCache_Gateway.Settings.isHosted ) && ( editUser.Is_Host_Admin ))
+                text_builder.Append("Is host administrator<br />");
 
             if (editUser.Include_Tracking_In_Standard_Forms)
                 text_builder.Append("Tracking data should be included in standard input forms<br />");
@@ -1115,8 +1136,8 @@ namespace SobekCM.Library.AdminViewer
 
             // Add the buttons
 			Output.WriteLine("  <div class=\"sbkSeav_ButtonsDiv\">");
-            Output.WriteLine("    <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return cancel_user_edits();return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
-			Output.WriteLine("    <button title=\"Save changes to this user group\" class=\"sbkAdm_RoundButton\" onclick=\"return save_user_edits();return false;\">SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
+            Output.WriteLine("    <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return cancel_user_edits();return false;\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
+			Output.WriteLine("    <button title=\"Save changes to this user group\" class=\"sbkAdm_RoundButton\" onclick=\"return save_user_edits();return false;\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
 			Output.WriteLine("  </div>");
 			Output.WriteLine();
 
@@ -1189,6 +1210,14 @@ namespace SobekCM.Library.AdminViewer
                     Output.WriteLine(editUser.Is_System_Admin
                                          ? "    <input class=\"admin_user_checkbox\" type=\"checkbox\" name=\"admin_user_sysadmin\" id=\"admin_user_sysadmin\" checked=\"checked\" /> <label for=\"admin_user_sysadmin\">Is system administrator</label> <br />"
                                          : "    <input class=\"admin_user_checkbox\" type=\"checkbox\" name=\"admin_user_sysadmin\" id=\"admin_user_sysadmin\" /> <label for=\"admin_user_sysadmin\">Is system administrator</label> <br />");
+
+                    if ((UI_ApplicationCache_Gateway.Settings.isHosted) && ( RequestSpecificValues.Current_User.Is_Host_Admin ))
+                    {
+                        Output.WriteLine(editUser.Is_Host_Admin
+                                ? "    <input class=\"admin_user_checkbox\" type=\"checkbox\" name=\"admin_user_host\" id=\"admin_user_host\" checked=\"checked\" /> <label for=\"admin_user_host\">Is HOST administrator</label> <br />"
+                                : "    <input class=\"admin_user_checkbox\" type=\"checkbox\" name=\"admin_user_host\" id=\"admin_user_host\" /> <label for=\"admin_user_host\">Is HOST administrator</label> <br />");
+
+                    }
 
                     Output.WriteLine(editUser.Include_Tracking_In_Standard_Forms
                                          ? "    <input class=\"admin_user_checkbox\" type=\"checkbox\" name=\"admin_user_includetracking\" id=\"admin_user_includetracking\" checked=\"checked\" /> <label for=\"admin_user_includetracking\">Tracking data should be included in standard input forms</label> <br />"
@@ -1690,8 +1719,8 @@ namespace SobekCM.Library.AdminViewer
 			// Add the buttons
 			RequestSpecificValues.Current_Mode.My_Sobek_SubMode = String.Empty;
 			Output.WriteLine("  <div class=\"sbkSeav_ButtonsDiv\">");
-            Output.WriteLine("    <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return cancel_user_edits();return false;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
-			Output.WriteLine("    <button title=\"Save changes to this user\" class=\"sbkAdm_RoundButton\" onclick=\"return save_user_edits();return false;\">SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
+            Output.WriteLine("    <button title=\"Do not apply changes\" class=\"sbkAdm_RoundButton\" onclick=\"return cancel_user_edits();return false;\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkAdm_RoundButton_LeftImg\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
+			Output.WriteLine("    <button title=\"Save changes to this user\" class=\"sbkAdm_RoundButton\" onclick=\"return save_user_edits();return false;\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkAdm_RoundButton_RightImg\" alt=\"\" /></button>");
 			Output.WriteLine("  </div>");
 
 			Output.WriteLine();

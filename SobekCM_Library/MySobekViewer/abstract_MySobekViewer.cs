@@ -1,5 +1,6 @@
 ﻿#region Using directives
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Web.UI.WebControls;
@@ -7,9 +8,9 @@ using SobekCM.Core.Navigation;
 using SobekCM.Library.AdminViewer;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -36,7 +37,7 @@ namespace SobekCM.Library.MySobekViewer
     /// During a valid html request, the following steps occur:
     /// <ul>
     /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="SobekCM_Navigation_Object"/> </li>
+    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  If the action requires authentication, an instance of the  <see cref="MySobek_HtmlSubwriter"/> class is created. </li>
     /// <li>To allow the requested action, the mySobek subwriter will create one of the mySobek viewers( implementing this class )</li>
@@ -60,6 +61,10 @@ namespace SobekCM.Library.MySobekViewer
         /// <summary> Title for the page that displays this viewer, this is shown in the search box at the top of the page, just below the banner </summary>
         /// <remarks> Abstract property must be implemented by all extending classes </remarks>
         public abstract string Web_Title { get; }
+
+        /// <summary> Gets the URL for the icon related to this mySobek task </summary>
+        /// <remarks> Abstract property must be implemented by all extending classes </remarks>
+        public virtual string Viewer_Icon { get { return String.Empty; }}
 
         /// <summary> Property indicates the standard navigation to be included at the top of the page by the
         /// main MySobek html subwriter. </summary>

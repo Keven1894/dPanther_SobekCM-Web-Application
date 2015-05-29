@@ -10,8 +10,9 @@ using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -51,11 +52,11 @@ namespace SobekCM.Library.HTML
             }
 
             // Add the banner
-            Add_Banner(Output, "sbkShs_BannerDiv", RequestSpecificValues.Current_Mode, RequestSpecificValues.HTML_Skin, RequestSpecificValues.Hierarchy_Object);
+            Add_Banner(Output, "sbkShs_BannerDiv", WebPage_Title.Replace("{0} ", ""), RequestSpecificValues.Current_Mode, RequestSpecificValues.HTML_Skin, RequestSpecificValues.Hierarchy_Object);
 
             #region Code to add the statistics menu
 
-            string sobek_home_text = RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " Home";
+            string sobek_home_text = RequestSpecificValues.Current_Mode.Instance_Abbreviation + " Home";
             const string list_view_text = "List View";
             const string brief_view_text = "Brief View";
             const string tree_view_text = "Tree View";
@@ -76,20 +77,20 @@ namespace SobekCM.Library.HTML
             const string definitions_text = "Definitions";
             const string recent_searches_text = "Recent Searches";
 
-			string item_count_title = "Resource Count in " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
-			string recent_searches_title = "Recent Searches in " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
-			string usage_title = "Usage Statistics for " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+			string item_count_title = "Resource Count in " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
+			string recent_searches_title = "Recent Searches in " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
+			string usage_title = "Usage Statistics for " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
 
 			if (RequestSpecificValues.Current_Mode.Language == Web_Language_Enum.Spanish)
 			{
-				item_count_title = "Numero de Recursos en " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
-				recent_searches_title = "Búsquedas Recientes en " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+				item_count_title = "Numero de Recursos en " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
+				recent_searches_title = "Búsquedas Recientes en " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
 			}
 
 			if (RequestSpecificValues.Current_Mode.Language == Web_Language_Enum.French)
 			{
-				item_count_title = "Nombre de Ressources en " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
-				recent_searches_title = "Recherches Récentes en " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation;
+				item_count_title = "Nombre de Ressources en " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
+				recent_searches_title = "Recherches Récentes en " + RequestSpecificValues.Current_Mode.Instance_Abbreviation;
 			}
 
             Output.WriteLine("<!-- Add the statistics menu -->");
@@ -104,13 +105,13 @@ namespace SobekCM.Library.HTML
             RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Aggregation;
 			RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Home; 
             RequestSpecificValues.Current_Mode.Home_Type = Home_Type_Enum.List;
-            Output.WriteLine("\t\t<li id=\"sbkShs_Home\" class=\"sbkMenu_Home\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\" class=\"sbkMenu_NoPadding\"><img src=\"" + RequestSpecificValues.Current_Mode.Default_Images_URL + "home.png\" /> <div class=\"sbkMenu_HomeText\">" + sobek_home_text + "</div></a><ul id=\"sbkShs_HomeSubMenu\">");
+            Output.WriteLine("\t\t<li id=\"sbkShs_Home\" class=\"sbkMenu_Home\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\" class=\"sbkMenu_NoPadding\"><img src=\"" + Static_Resources.Home_Png + "\" /> <div class=\"sbkMenu_HomeText\">" + sobek_home_text + "</div></a><ul id=\"sbkShs_HomeSubMenu\">");
             Output.WriteLine("\t\t\t<li id=\"sbkShs_HomeListView\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + list_view_text + "</a></li>");
             RequestSpecificValues.Current_Mode.Home_Type = Home_Type_Enum.Descriptions;
             Output.WriteLine("\t\t\t<li id=\"sbkShs_HomeBriefView\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + brief_view_text + "</a></li>");
             if (UI_ApplicationCache_Gateway.Settings.Include_TreeView_On_System_Home)
             {
-                RequestSpecificValues.Current_Mode.Home_Type = Home_Type_Enum.Tree_Collapsed;
+                RequestSpecificValues.Current_Mode.Home_Type = Home_Type_Enum.Tree;
                 Output.WriteLine("\t\t\t<li id=\"sbkShs_HomeTreeView\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + tree_view_text + "</a></li>");
             }
             if (UI_ApplicationCache_Gateway.Settings.Include_Partners_On_System_Home)
@@ -138,7 +139,7 @@ namespace SobekCM.Library.HTML
             RequestSpecificValues.Current_Mode.Statistics_Type = Statistics_Type_Enum.Item_Count_Growth_View;
             Output.WriteLine("\t\t\t<li id=\"sbkShs_ItemCountFytd\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + fytd_view_text + "</a></li>");
 
-            if (RequestSpecificValues.Current_Mode.Internal_User)
+            if ((RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.LoggedOn) && (RequestSpecificValues.Current_User.Is_Internal_User))
             {
                 RequestSpecificValues.Current_Mode.Statistics_Type = Statistics_Type_Enum.Item_Count_Arbitrary_View;
                 Output.WriteLine("\t\t\t<li id=\"sbkShs_ItemCountArbitrary\"><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + arbitrary_view_text + "</a></li>");
@@ -266,7 +267,7 @@ namespace SobekCM.Library.HTML
 					RequestSpecificValues.Current_Mode.Statistics_Type = type;
 				}
 
-				if (RequestSpecificValues.Current_Mode.Internal_User)
+                if ((RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.LoggedOn) && (RequestSpecificValues.Current_User.Is_Internal_User))
 				{
 					if (type == Statistics_Type_Enum.Item_Count_Arbitrary_View)
 					{
@@ -315,14 +316,7 @@ namespace SobekCM.Library.HTML
 					else
 					{
 						RequestSpecificValues.Current_Mode.Statistics_Type = Statistics_Type_Enum.Usage_Collections_By_Date;
-						if ((RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 12) && (type == Statistics_Type_Enum.Usage_Item_Views_By_Date))
-						{
-							Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + collections_date_text + "</a></li>");
-						}
-						else
-						{
-							Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + collections_date_text + "</a></li>");
-						}
+    					Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + collections_date_text + "</a></li>");
 						RequestSpecificValues.Current_Mode.Statistics_Type = type;
 					}
 
@@ -333,15 +327,7 @@ namespace SobekCM.Library.HTML
 					else
 					{
 						RequestSpecificValues.Current_Mode.Statistics_Type = Statistics_Type_Enum.Usage_Item_Views_By_Date;
-						if ((RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 12) && (type == Statistics_Type_Enum.Usage_Collections_By_Date))
-						{
-							Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + items_date_text + "</a></li>");
-						}
-						else
-						{
-							Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + items_date_text + "</a></li>");
-						}
-
+    					Output.WriteLine("    <li><a href=\"" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "\">" + items_date_text + "</a></li>");
 						RequestSpecificValues.Current_Mode.Statistics_Type = type;
 					}
 
@@ -394,7 +380,7 @@ namespace SobekCM.Library.HTML
             int end_year = UI_ApplicationCache_Gateway.Stats_Date_Range.Latest_Year;
             if ((type == Statistics_Type_Enum.Usage_Collections_By_Date) || (type == Statistics_Type_Enum.Usage_Item_Views_By_Date) || (type == Statistics_Type_Enum.Usage_By_Date_Text))
             {
-                if (RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 12)
+                if (( !String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode)) && ( RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 12))
                 {
                     Int32.TryParse(RequestSpecificValues.Current_Mode.Info_Browse_Mode.Substring(0, 4), out start_year);
                     Int32.TryParse(RequestSpecificValues.Current_Mode.Info_Browse_Mode.Substring(4, 2), out start_month);
@@ -463,28 +449,28 @@ namespace SobekCM.Library.HTML
                     break;
 
                 case Statistics_Type_Enum.Usage_Collection_History:
-                    string collection = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
+                    string collection = String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode) ? String.Empty : RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
                     if ((collection.Length == 0) || (!UI_ApplicationCache_Gateway.Aggregations.isValidCode(collection)))
 						collection = UI_ApplicationCache_Gateway.Aggregations.All_Aggregations[0].Code;
                     add_collection_history(Output, collection, SobekCM_Database.Get_Aggregation_Statistics_History(collection, Tracer), Tracer);
                     break;
 
                 case Statistics_Type_Enum.Usage_Items_By_Collection:
-                    string collection2 = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
+                    string collection2 = String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode) ? String.Empty : RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
                     if ((collection2.Length == 0) || (!UI_ApplicationCache_Gateway.Aggregations.isValidCode(collection2)))
 						collection2 = UI_ApplicationCache_Gateway.Aggregations.All_Aggregations[0].Code;
                     add_items_by_collection(Output, collection2, Tracer);
                     break;
 
                 case Statistics_Type_Enum.Usage_Titles_By_Collection:
-                    string collection5 = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
+                    string collection5 = String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode) ? String.Empty : RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
                     if ((collection5.Length == 0) || (!UI_ApplicationCache_Gateway.Aggregations.isValidCode(collection5)))
 						collection5 = UI_ApplicationCache_Gateway.Aggregations.All_Aggregations[0].Code;
                     add_titles_by_collection(Output, collection5, Tracer);
                     break;
 
                 case Statistics_Type_Enum.Usage_Collection_History_Text:
-                    string collection_text = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
+                    string collection_text = String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode) ? String.Empty : RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper();
 		            if (((collection_text.Length == 0) || (!UI_ApplicationCache_Gateway.Aggregations.isValidCode(collection_text))) && (collection_text.ToUpper() != "ALL"))
 			            collection_text = UI_ApplicationCache_Gateway.Aggregations.All_Aggregations[0].Code;
                     add_collection_history_text(Output, collection_text, SobekCM_Database.Get_Aggregation_Statistics_History(collection_text, Tracer), Tracer);
@@ -674,7 +660,7 @@ namespace SobekCM.Library.HTML
 			}
 			Output.WriteLine("    </select>");
 			Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 			Output.WriteLine("<br /><br />");
 
 			Output.WriteLine("    By Code: <select name=\"collection_selector2\" class=\"sbkShw_CollectionSelector2\">");
@@ -692,7 +678,7 @@ namespace SobekCM.Library.HTML
             }
             Output.WriteLine("    </select>");
             Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
             Output.WriteLine("  </blockquote>");
             Output.WriteLine("</form>");
             Output.WriteLine("<p>To change the collection shown, choose the collection above and hit the GO button.</p>");
@@ -807,7 +793,7 @@ namespace SobekCM.Library.HTML
 			}
 			Output.WriteLine("    </select>");
 			Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"GO\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"GO\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 			Output.WriteLine("<br /><br />");
 
 			Output.WriteLine("    By Code: <select name=\"collection_selector2\" class=\"sbkShw_CollectionSelector2\">");
@@ -825,7 +811,7 @@ namespace SobekCM.Library.HTML
 			}
 			Output.WriteLine("    </select>");
 			Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"GO\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"GO\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 			Output.WriteLine("  </blockquote>");
 			Output.WriteLine("</form>");
             Output.WriteLine("<p>To change the collection shown, choose the collection above and hit the GO button.</p>");
@@ -985,8 +971,8 @@ namespace SobekCM.Library.HTML
 
                 Output.WriteLine("<a name=\"Views\" ></a>");
                 Output.WriteLine("<h3>VIEWS</h3>");
-                Output.WriteLine("<p>Views are the actual page hits. Each time a person goes to " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " it counts as a view. The " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " statistics are cleaned so that views from robots, which search engines use to index websites, are removed. If they were not removed, the views on all collections and items would be much higher. Web usage statistics are always somewhat fallible, and this is one of the means for ensuring better quality usage statistics. <br /><br />");
-                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each “page item download” as a hit, each single view to the main page would be counted as over 30 “page item downloads.” To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
+                Output.WriteLine("<p>Views are the actual page hits. Each time a person goes to " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " it counts as a view. The " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " statistics are cleaned so that views from robots, which search engines use to index websites, are removed. If they were not removed, the views on all collections and items would be much higher. Web usage statistics are always somewhat fallible, and this is one of the means for ensuring better quality usage statistics. <br /><br />");
+                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each “page item download” as a hit, each single view to the main page would be counted as over 30 “page item downloads.” To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
 
                 Output.WriteLine("<a name=\"Visits\" ></a>");
                 Output.WriteLine("<h3>VISITS</h3>");
@@ -1091,7 +1077,7 @@ namespace SobekCM.Library.HTML
                             if (Convert.ToInt32(thisRow[11]) > 0)
                             {
                                 Output.Write(Month_From_Int(FirstMonth) + " " + FirstYear + "," + Month_From_Int(SecondMonth) + " " + SecondYear + ",");
-                                Output.WriteLine(RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ",,," + RequestSpecificValues.Current_Mode.SobekCM_Instance_Name + "," + thisRow[5] + "," + thisRow[6] + "," + main_page_total + "," + browses_total + "," + search_results_total + "," + thisRow[11] + "," + thisRow[12] + "," + thisRow[13] + "," + thisRow[14] + "," + thisRow[15] + "," + thisRow[16] + "," + thisRow[17] + "," + thisRow[18] + "," + thisRow[19] + "," + thisRow[20] + "," + thisRow[21]);
+                                Output.WriteLine(RequestSpecificValues.Current_Mode.Instance_Abbreviation + ",,," + RequestSpecificValues.Current_Mode.Instance_Name + "," + thisRow[5] + "," + thisRow[6] + "," + main_page_total + "," + browses_total + "," + search_results_total + "," + thisRow[11] + "," + thisRow[12] + "," + thisRow[13] + "," + thisRow[14] + "," + thisRow[15] + "," + thisRow[16] + "," + thisRow[17] + "," + thisRow[18] + "," + thisRow[19] + "," + thisRow[20] + "," + thisRow[21]);
                             }
                             break;
                     }
@@ -1203,7 +1189,7 @@ namespace SobekCM.Library.HTML
 
             Output.WriteLine("    </select>");
             Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"date_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"date_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
             Output.WriteLine("  </blockquote>");
             Output.WriteLine("</form>");
             Output.WriteLine("<p>To change the date shown, choose your dates above and hit the GO button.</p>");
@@ -1497,7 +1483,7 @@ namespace SobekCM.Library.HTML
 
             Output.WriteLine("    </select>");
             Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"date_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"date_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
             Output.WriteLine("  </blockquote>");
             Output.WriteLine("</form>");
             Output.WriteLine("<p>To change the date shown, choose your dates above and hit the GO button.</p>");
@@ -1737,7 +1723,7 @@ namespace SobekCM.Library.HTML
 			}
 			Output.WriteLine("    </select>");
 			Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 			Output.WriteLine("<br /><br />");
 
 			Output.WriteLine("    By Code: <select name=\"collection_selector2\" class=\"sbkShw_CollectionSelector2\">");
@@ -1755,7 +1741,7 @@ namespace SobekCM.Library.HTML
 			}
 			Output.WriteLine("    </select>");
 			Output.WriteLine("    &nbsp; &nbsp;");
-			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("    <button title=\"Select Collection\" class=\"sbkShw_RoundButton\" onclick=\"collection_jump_sobekcm2('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 
             Output.WriteLine("  </blockquote>");
             Output.WriteLine("</form>");
@@ -2198,6 +2184,14 @@ namespace SobekCM.Library.HTML
             {
                 Tracer.Add_Trace("Statistics_HtmlSubwriter.add_overall_usage", "Rendering HTML read from source file");
                 Output.WriteLine(overall_stats_header);
+
+     //              //Now add the JQuery chart to display the count
+     //           string chart_element = String.Empty;
+    //             Output.WriteLine("<canvas id=\"sbk_statsChart\" width=\"400\" height=\"400\"></canvas>");
+
+                //Create the total hits data subset to pass to the JavaScript method
+
+             
             }
             else
             {
@@ -2208,7 +2202,7 @@ namespace SobekCM.Library.HTML
                 Output.WriteLine("<p>Below are the overall statistics.  Additionally, the tabs above show statistics for:</p>");
                 Output.WriteLine("<ul>");
                 Output.WriteLine("  <li><b>Collections by date</b> provides the usage reports at the collection group, collection, and subcollection level for a provided date range.  This records views on the collection main pages, searches, and browses.  Total number of title and item views are also displayed by collection.</li>");
-                Output.WriteLine("  <li><b>Item Views by date</b> provides the usage reports on the specialized item-level views for all items in " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ".  The item statistics are aggregated at the collection level for easy analysis.</li>");
+                Output.WriteLine("  <li><b>Item Views by date</b> provides the usage reports on the specialized item-level views for all items in " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ".  The item statistics are aggregated at the collection level for easy analysis.</li>");
                 Output.WriteLine("  <li><b>Collection history</b> displays information about a single collection or subcollection over time.</li>");
                 Output.WriteLine("</ul>");
                 Output.WriteLine("<p>These statistics are generally updated monthly.</p>");
@@ -2225,7 +2219,7 @@ namespace SobekCM.Library.HTML
             }
             
             Output.WriteLine();
-            Output.WriteLine("<p>Below are the most up to date numbers for overall utilization of " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ".  The first table shows the summary of views against all collections.  The second table includes the details for specialized item-level views.</p>");
+            Output.WriteLine("<p>Below are the most up to date numbers for overall utilization of " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ".  The first table shows the summary of views against all collections.  The second table includes the details for specialized item-level views.</p>");
             Output.WriteLine("</div>");
  
 			Output.WriteLine("  <table id=\"sbkShw_OverallStatsTbl\">");
@@ -2580,7 +2574,7 @@ namespace SobekCM.Library.HTML
                 }
 
 				Output.WriteLine("<div class=\"sbkShw_MainText\">");
-                Output.WriteLine("<p>The " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Name + " ( " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " ) is comprised of collections, organized into collection groups and subdivided into subcollections.  Currently, there are " + items + " total items in " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ", which make up " + titles + " different titles.   In all, there are over " + page_string + " million pages in " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ".</p>");
+                Output.WriteLine("<p>The " + RequestSpecificValues.Current_Mode.Instance_Name + " ( " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " ) is comprised of collections, organized into collection groups and subdivided into subcollections.  Currently, there are " + items + " total items in " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ", which make up " + titles + " different titles.   In all, there are over " + page_string + " million pages in " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ".</p>");
 
                 if ((IncludesFytd) && ( total_row[0] != null ))
                 {
@@ -2588,7 +2582,7 @@ namespace SobekCM.Library.HTML
                     ytd_items = items - Convert.ToInt32(total_row[0][10]);
                     ytd_pages = pages - Convert.ToInt32(total_row[0][11]);
 
-                    Output.WriteLine("<p>During the current fiscal year (which starts on July 1st), " + ytd_items + " items in " + ytd_titles + " titles have been added to " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ".  This has added " + ytd_pages + " pages to this digital collection.</p>");
+                    Output.WriteLine("<p>During the current fiscal year (which starts on July 1st), " + ytd_items + " items in " + ytd_titles + " titles have been added to " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ".  This has added " + ytd_pages + " pages to this digital collection.</p>");
                 }
 
                 Output.WriteLine("<p>Below are the number of items in each collection and subcollection.</p>");
@@ -2896,7 +2890,7 @@ namespace SobekCM.Library.HTML
                         break;
 
                     case "z":
-                        Output.WriteLine(RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ",,," + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + "," + thisRow[7] + "," + thisRow[8] + "," + thisRow[9] + "," + ytd_titles + "," + ytd_items + "," + ytd_pages);
+                        Output.WriteLine(RequestSpecificValues.Current_Mode.Instance_Abbreviation + ",,," + RequestSpecificValues.Current_Mode.Instance_Abbreviation + "," + thisRow[7] + "," + thisRow[8] + "," + thisRow[9] + "," + ytd_titles + "," + ytd_items + "," + ytd_pages);
                         break;
                 }
             }
@@ -3027,7 +3021,7 @@ namespace SobekCM.Library.HTML
 		    {
                 Output.WriteLine("        <td><input type=\"text\" name=\"date1input\" id=\"date1input\" class=\"sbkShw_smallinput_initial\" value=\"mm/dd/yyyy\" onblur=\"textbox_leave_default_value(this, 'sbkShw_smallinput','mm/dd/yyyy');\" /></td>");
 		    }
-		    Output.WriteLine("        <td style=\"width:50px;\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/calendar_button.png\" title=\"Show a calendar to select this date\"  onclick=\"return false;\" name=\"calendar1img\" ID=\"calendar1img\" class=\"calendar_button\" /></td>");
+            Output.WriteLine("        <td style=\"width:50px;\"><img src=\"" + Static_Resources.Calendar_Button_Img + "\" title=\"Show a calendar to select this date\"  onclick=\"return false;\" name=\"calendar1img\" ID=\"calendar1img\" class=\"calendar_button\" /></td>");
 		    Output.WriteLine("        <td>&nbsp;</td>");
 		    Output.WriteLine("      </tr>");
 
@@ -3042,9 +3036,9 @@ namespace SobekCM.Library.HTML
 		    {
                 Output.WriteLine("        <td><input type=\"text\" name=\"date2input\" id=\"date2input\" class=\"sbkShw_smallinput_initial\" value=\"mm/dd/yyyy\" onblur=\"textbox_leave_default_value(this, 'sbkShw_smallinput','mm/dd/yyyy');\" /></td>");
 		    }
-		    Output.WriteLine("        <td><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/calendar_button.png\" title=\"Show a calendar to select this date\" onclick=\"return false;\" name=\"calendar2img\" ID=\"calendar2img\" class=\"calendar_button\" /></td>");
+		    Output.WriteLine("        <td><img src=\"" + Static_Resources.Calendar_Button_Img + "\" title=\"Show a calendar to select this date\" onclick=\"return false;\" name=\"calendar2img\" ID=\"calendar2img\" class=\"calendar_button\" /></td>");
 		    Output.WriteLine("        <td>");
-			Output.WriteLine("          <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"arbitrary_item_count('" + redirect_url + "'); return false;\">GO <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class\"roundbutton_img_right\" alt=\"\" /></button>");
+			Output.WriteLine("          <button title=\"Select Range\" class=\"sbkShw_RoundButton\" onclick=\"arbitrary_item_count('" + redirect_url + "'); return false;\">GO <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class\"roundbutton_img_right\" alt=\"\" /></button>");
 		    Output.WriteLine("        <td>");
 		    Output.WriteLine("      </tr>");
 		    Output.WriteLine("    </table>");
@@ -3261,16 +3255,18 @@ namespace SobekCM.Library.HTML
         {
             Output.WriteLine("  <meta name=\"robots\" content=\"index, follow\" />");
 
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_Stats.css\" rel=\"stylesheet\" type=\"text/css\" />");
-			Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/SobekCM_DataTables.css\" rel=\"stylesheet\" type=\"text/css\" />");
-			Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/datatables/js/jquery.dataTables.js\" ></script>");
-		//	Output.WriteLine("  <script type=\"text/javascript\" src=\"" + currentMode.Base_URL + "default/scripts/datatables/js/ColReorderWithResize.js\" />");
+			Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Stats_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
+			Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Datatables_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
+            //Output.WriteLine("    <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_1_10_2_Js + "\"></script>");
+            Output.WriteLine("  <script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Datatables_Js + "\" ></script>");
+            Output.WriteLine("   <script type = \"text/javascript\" src=\"" + Static_Resources.Chart_Js + "\"></script>");
+            Output.WriteLine("    <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobek_stats_chart.js\"></script>");
 
             // Add the code for the calendar pop-up if it may be required
             if (RequestSpecificValues.Current_Mode.Statistics_Type == Statistics_Type_Enum.Item_Count_Arbitrary_View)
             {
-                Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/jsDatePick_ltr.css\" />");
-                Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/datepicker/jsDatePick.full.1.3.js\"></script>");
+                Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"" + Static_Resources.Jsdatepick_Ltr_Css + "\" />");
+                Output.WriteLine("  <script type=\"text/javascript\" src=\"" + Static_Resources.Jsdatepick_Min_1_3_Js + "\"></script>");
             }
         }
 

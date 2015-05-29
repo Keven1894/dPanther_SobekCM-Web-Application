@@ -67,10 +67,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Worker_BulkLoader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Worker_Controller.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Sobek_Builder.ico" />

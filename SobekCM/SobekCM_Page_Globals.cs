@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Web;
 using SobekCM.Core.Aggregations;
@@ -17,14 +19,17 @@ using SobekCM.Core.SiteMap;
 using SobekCM.Core.Skins;
 using SobekCM.Core.Users;
 using SobekCM.Core.WebContent;
+using SobekCM.Engine_Library;
+using SobekCM.Engine_Library.Email;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library;
 using SobekCM.Library.Database;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -36,11 +41,11 @@ namespace SobekCM
 
 		public string browse_info_display_text;
 		public SobekCM_Item currentItem;
-		public SobekCM_Navigation_Object currentMode;
+		public Navigation_Object currentMode;
 		public Page_TreeNode currentPage;
 		public User_Object currentUser;
 		public Item_Aggregation hierarchyObject;
-		public SobekCM_Skin_Object htmlSkin;
+		public Web_Skin_Object htmlSkin;
 		public SobekCM_Items_In_Title itemsInTitle;
 		public abstractMainWriter mainWriter;
 		public List<iSearch_Title_Result> pagedSearchResults;
@@ -50,6 +55,7 @@ namespace SobekCM
 		public HTML_Based_Content staticWebContent;
 		public Item_Aggregation_Child_Page thisBrowseObject;
 		public Custom_Tracer tracer;
+	    private string defaultSkin;
 
 		#endregion
 
@@ -64,6 +70,7 @@ namespace SobekCM
 			string base_url = request.Url.AbsoluteUri.ToLower().Replace("sobekcm.aspx", "");
 			if (base_url.IndexOf("?") > 0)
 				base_url = base_url.Substring(0, base_url.IndexOf("?"));
+            
 
 			try
 			{
@@ -71,13 +78,43 @@ namespace SobekCM
 				tracer.Add_Trace("SobekCM_Page_Globals.Constructor", String.Empty);
 			    SobekCM_Database.Connection_String = UI_ApplicationCache_Gateway.Settings.Database_Connections[0].Connection_String;
 
-                // Ensure the settings base directory is set correctly (TEMPORARY FOR UF)
-			    if (UI_ApplicationCache_Gateway.Settings.System_Abbreviation.IndexOf("UFDC") == 0)
+                // If this is running on localhost, and in debug, set base directory to this one
+#if DEBUG
+			    if (base_url.IndexOf("localhost:") > 0)
+			    {
+			        UI_ApplicationCache_Gateway.Settings.System_Base_URL = base_url;
+			        UI_ApplicationCache_Gateway.Settings.Base_URL = base_url;
+			    }
+#endif
+
+                // Ensure the settings base directory is set correctly 
+			    if ( String.IsNullOrEmpty(UI_ApplicationCache_Gateway.Settings.Base_Directory))
+			    {
+                    string baseDir = System.Web.HttpContext.Current.Server.MapPath("~");
+                    UI_ApplicationCache_Gateway.Settings.Base_Directory = baseDir;
+
+                    SobekCM_Database.Set_Setting("Application Server Network", baseDir);
+			    }
+
+                // Ensure the web server IP address is set correctly
+			    if (String.IsNullOrEmpty(UI_ApplicationCache_Gateway.Settings.SobekCM_Web_Server_IP))
+			    {
+			        string ip = get_local_ip();
+			        if (ip.Length > 0)
+			        {
+                        UI_ApplicationCache_Gateway.Settings.SobekCM_Web_Server_IP = ip;
+
+                        SobekCM_Database.Set_Setting("SobekCM Web Server IP", ip);
+			        }
+			    }
+
+
+                // (TEMPORARY FOR UF)
+			    if (( !String.IsNullOrEmpty(UI_ApplicationCache_Gateway.Settings.System_Abbreviation)) && ( UI_ApplicationCache_Gateway.Settings.System_Abbreviation.IndexOf("UFDC") == 0))
 			    {
                     string baseDir = System.Web.HttpContext.Current.Server.MapPath("~");
                     UI_ApplicationCache_Gateway.Settings.Base_Directory = baseDir;
 			    }
-
 
 				// Check that something is saved for the original requested URL (may not exist if not forwarded)
 				if (!HttpContext.Current.Items.Contains("Original_URL"))
@@ -137,13 +174,17 @@ namespace SobekCM
 			// Analyze the response and get the mode
 			try
 			{
-			    currentMode = new SobekCM_Navigation_Object();
-			    SobekCM_QueryString_Analyzer.Parse_Query(request.QueryString, currentMode, base_url, request.UserLanguages, UI_ApplicationCache_Gateway.Aggregations, UI_ApplicationCache_Gateway.Collection_Aliases, UI_ApplicationCache_Gateway.Items, UI_ApplicationCache_Gateway.URL_Portals, tracer);
+			    currentMode = new Navigation_Object();
+			    NameValueCollection queryString = request.QueryString;
+
+			    SobekCM_QueryString_Analyzer.Parse_Query(queryString, currentMode, base_url, request.UserLanguages, UI_ApplicationCache_Gateway.Aggregations, UI_ApplicationCache_Gateway.Collection_Aliases, UI_ApplicationCache_Gateway.Items, UI_ApplicationCache_Gateway.URL_Portals, tracer);
 
                 currentMode.Base_URL=base_url;
 			    currentMode.isPostBack = isPostBack;
                 currentMode.Browser_Type = request.Browser.Type.ToUpper();
 				currentMode.Set_Robot_Flag(request.UserAgent, request.UserHostAddress);
+
+                defaultSkin = currentMode.Skin;
 			}
 			catch
 			{
@@ -225,6 +266,9 @@ namespace SobekCM
 					if ((currentMode.Mode == Display_Mode_Enum.Administrative) && (currentMode.Admin_Type == Admin_Type_Enum.Reset))
 					{
 						Reset_Memory();
+
+                        // Also re-read the configuration file for static resources
+                        Static_Resources.Config_Read_Attempted = false;
 
 						// Since this reset, send to the admin, memory management portion
 						currentMode.Mode = Display_Mode_Enum.Internal;
@@ -312,7 +356,7 @@ namespace SobekCM
 
 		#region Special checks for search engine robot URL behaviors
 
-		private void Perform_Search_Engine_Robot_Checks(SobekCM_Navigation_Object CurrentModeCheck, NameValueCollection QueryString)
+		private void Perform_Search_Engine_Robot_Checks(Navigation_Object CurrentModeCheck, NameValueCollection QueryString)
 		{
 			// Some writers should not be selected yet
 			if ((CurrentModeCheck.Writer_Type != Writer_Type_Enum.HTML) && (CurrentModeCheck.Writer_Type != Writer_Type_Enum.HTML_Echo) && (CurrentModeCheck.Writer_Type != Writer_Type_Enum.OAI))
@@ -336,7 +380,7 @@ namespace SobekCM
 			}
 
 			// Browse are okay, except when it is the NEW
-			if ((CurrentModeCheck.Mode == Display_Mode_Enum.Aggregation) && (CurrentModeCheck.Aggregation_Type == Aggregation_Type_Enum.Browse_Info) && (CurrentModeCheck.Info_Browse_Mode == "new"))
+            if ((CurrentModeCheck.Mode == Display_Mode_Enum.Aggregation) && (CurrentModeCheck.Aggregation_Type == Aggregation_Type_Enum.Browse_Info) && (!String.IsNullOrEmpty(CurrentModeCheck.Info_Browse_Mode)) && (CurrentModeCheck.Info_Browse_Mode == "new"))
 			{
 				CurrentModeCheck.Info_Browse_Mode = "all";
 
@@ -436,7 +480,7 @@ namespace SobekCM
 						}
 						else if (url_relative_depth == 2)
 						{
-							if (url_relative_info[1] != "itemcount")
+							if (( url_relative_info != null ) && (url_relative_info.Length > 1 ) && ( url_relative_info[1] != "itemcount"))
 							{
 								HttpContext.Current.Response.Status = "301 Moved Permanently";
 								HttpContext.Current.Response.AddHeader("Location", UrlWriterHelper.Redirect_URL(CurrentModeCheck));
@@ -453,7 +497,7 @@ namespace SobekCM
 			if ((CurrentModeCheck.Mode == Display_Mode_Enum.Aggregation) && ((currentMode.Aggregation_Type == Aggregation_Type_Enum.Home) || (currentMode.Aggregation_Type == Aggregation_Type_Enum.Home_Edit)))
 			{
 				// Different code depending on if this is an aggregation or not
-				if ((CurrentModeCheck.Aggregation.Length == 0) || (CurrentModeCheck.Aggregation == "all"))
+				if (( String.IsNullOrEmpty(CurrentModeCheck.Aggregation)) || (CurrentModeCheck.Aggregation == "all"))
 				{
 					switch (CurrentModeCheck.Home_Type)
 					{
@@ -469,7 +513,7 @@ namespace SobekCM
 							break;
 
 						case Home_Type_Enum.Descriptions:
-						case Home_Type_Enum.Tree_Collapsed:
+						case Home_Type_Enum.Tree:
 						case Home_Type_Enum.Partners_List:
 							if (url_relative_depth > 1)
 							{
@@ -481,7 +525,6 @@ namespace SobekCM
 							}
 							break;
 
-						case Home_Type_Enum.Tree_Expanded:
 						case Home_Type_Enum.Partners_Thumbnails:
 							if (url_relative_depth > 2)
 							{
@@ -506,7 +549,8 @@ namespace SobekCM
 			// Ensure this is requesting the item without a viewercode and without extraneous information
 			if (CurrentModeCheck.Mode == Display_Mode_Enum.Item_Display)
 			{
-				if ((CurrentModeCheck.ViewerCode.Length > 0) || (url_relative_depth > 2))
+				if (( !String.IsNullOrEmpty(CurrentModeCheck.ViewerCode)) || (url_relative_depth > 2))
+
 				{
 					CurrentModeCheck.ViewerCode = String.Empty;
 
@@ -548,12 +592,17 @@ namespace SobekCM
 				HttpContext.Current.Session["user"] = null;
 
 				// Determine new redirect location
-				string redirect = currentMode.Base_URL + currentMode.Return_URL;
-				if (((currentMode.Return_URL.IndexOf("admin") >= 0) && (currentMode.Return_URL.IndexOf("admin") <= 1)) ||
-				    ((currentMode.Return_URL.IndexOf("mysobek") >= 0) && (currentMode.Return_URL.IndexOf("mysobek") <= 1)))
-					redirect = currentMode.Base_URL;
+			    string redirect = currentMode.Base_URL;
+			    if (!String.IsNullOrEmpty(currentMode.Return_URL))
+			    {
+			        redirect = currentMode.Base_URL + currentMode.Return_URL;
 
-				HttpContext.Current.Response.Redirect(redirect, false);
+			        if (((currentMode.Return_URL.IndexOf("admin") >= 0) && (currentMode.Return_URL.IndexOf("admin") <= 1)) ||
+			            ((currentMode.Return_URL.IndexOf("mysobek") >= 0) && (currentMode.Return_URL.IndexOf("mysobek") <= 1)))
+			            redirect = currentMode.Base_URL;
+			    }
+
+			    HttpContext.Current.Response.Redirect(redirect, false);
 				HttpContext.Current.ApplicationInstance.CompleteRequest();
 				currentMode.Request_Completed = true;
 				return;
@@ -860,7 +909,6 @@ namespace SobekCM
 			if (HttpContext.Current.Session["user"] != null) 
 			{
 				currentUser = (User_Object) HttpContext.Current.Session["user"];
-				currentMode.Internal_User = currentUser.Is_Internal_User;
 
 				// Check if this is an administrative task that the current user does not have access to
 				if ((!currentUser.Is_System_Admin) && (!currentUser.Is_Portal_Admin) && (currentMode.Mode == Display_Mode_Enum.Administrative) && (currentMode.Admin_Type != Admin_Type_Enum.Aggregation_Single))
@@ -939,10 +987,14 @@ namespace SobekCM
 				// Check if a differente skin should be used if this is a collection display
 				if ((hierarchyObject != null) && ( hierarchyObject.Web_Skins != null ) && (hierarchyObject.Web_Skins.Count > 0))
 				{
-					if (!hierarchyObject.Web_Skins.Contains(current_skin_code.ToLower()))
-					{
-						current_skin_code = hierarchyObject.Web_Skins[0];
-					}
+                    // Do NOT do this replacement if the web skin is in the URL and this is admin mode
+				    if ((!currentMode.Skin_In_URL) || (currentMode.Mode != Display_Mode_Enum.Administrative))
+				    {
+				        if (!hierarchyObject.Web_Skins.Contains(current_skin_code.ToLower()))
+				        {
+				            current_skin_code = hierarchyObject.Web_Skins[0];
+				        }
+				    }
 				}
 
 				SobekCM_Assistant assistant = new SobekCM_Assistant();
@@ -950,24 +1002,27 @@ namespace SobekCM
 				// Try to get the web skin from the cache or skin collection, otherwise build it
 				htmlSkin = assistant.Get_HTML_Skin(current_skin_code, currentMode, UI_ApplicationCache_Gateway.Web_Skin_Collection, true, tracer);
 
-				// If there was no web skin returned, forward user to URL with no web skin. 
+                // If the skin was somehow overriden, default back to the default skin
+                if (( htmlSkin == null ) && ( !String.IsNullOrEmpty(defaultSkin)))
+			    {
+			        if (String.Compare(current_skin_code, defaultSkin, StringComparison.InvariantCultureIgnoreCase) != 0)
+			        {
+			            currentMode.Skin = defaultSkin;
+                        htmlSkin = assistant.Get_HTML_Skin(defaultSkin, currentMode, UI_ApplicationCache_Gateway.Web_Skin_Collection, true, tracer);
+			        }
+			    }
+
+			    // If there was no web skin returned, forward user to URL with no web skin. 
 				// This happens if the web skin code is invalid.  If a robot, just return a bad request 
 				// value though.
 				if (htmlSkin == null)
 				{
-					if ((currentMode == null) || (currentMode.Is_Robot))
-					{
+
 						HttpContext.Current.Response.StatusCode = 404;
 						HttpContext.Current.Response.Output.WriteLine("404 - INVALID URL");
+                        HttpContext.Current.Response.Output.WriteLine("Web skin indicated is invalid, default web skin invalid");
 						HttpContext.Current.ApplicationInstance.CompleteRequest();
 						currentMode.Request_Completed = true;
-					}
-					else
-					{
-						currentMode.Skin = String.Empty;
-						UrlWriterHelper.Redirect(currentMode);
-						return;
-					}
 
 					return;
 				}
@@ -1031,7 +1086,9 @@ namespace SobekCM
 			tracer.Add_Trace("SobekCM_Page_Globals.Public_Folder", "Retrieving public folder information and browse");
 
 			SobekCM_Assistant assistant = new SobekCM_Assistant();
-			bool result = assistant.Get_Public_User_Folder(currentMode.FolderID, currentMode.Page, tracer, out publicFolder, out searchResultStatistics, out pagedSearchResults);
+		    int currentPageIndex = currentMode.Page.HasValue ? currentMode.Page.Value : 1;
+		    int currentFolderId = currentMode.FolderID.HasValue ? currentMode.FolderID.Value : -1;
+            bool result = assistant.Get_Public_User_Folder(currentFolderId, currentPageIndex, tracer, out publicFolder, out searchResultStatistics, out pagedSearchResults);
 
 			if ((!result) || (!publicFolder.IsPublic))
 			{
@@ -1064,7 +1121,7 @@ namespace SobekCM
                 if (!assistant.Get_Item(currentMode, UI_ApplicationCache_Gateway.Items, UI_ApplicationCache_Gateway.Settings.Image_URL,
                                         UI_ApplicationCache_Gateway.Icon_List, UI_ApplicationCache_Gateway.Item_Viewer_Priority, currentUser, tracer, out currentItem, out currentPage, out itemsInTitle))
 				{
-					if ((currentMode.Mode == Display_Mode_Enum.Legacy_URL) || (currentMode.Invalid_Item))
+					if ((currentMode.Mode == Display_Mode_Enum.Legacy_URL) || (currentMode.Invalid_Item.HasValue && currentMode.Invalid_Item.Value ))
 					{
 						if (currentMode.Mode != Display_Mode_Enum.Legacy_URL)
 						{
@@ -1144,7 +1201,7 @@ namespace SobekCM
 			try
 			{
 				// If there is no search term, forward back to the collection
-				if ((currentMode.Search_String.Length == 0) && (currentMode.Coordinates.Length == 0))
+				if (( String.IsNullOrEmpty(currentMode.Search_String)) && ( String.IsNullOrEmpty(currentMode.Coordinates)))
 				{
 					currentMode.Mode = Display_Mode_Enum.Aggregation;
 					currentMode.Aggregation_Type = Aggregation_Type_Enum.Home;
@@ -1170,7 +1227,7 @@ namespace SobekCM
 			}
 		}
 
-	    private Recent_Searches.Search Get_Search_From_Mode(SobekCM_Navigation_Object currentMode, string SessionIP, Search_Type_Enum Search_Type, string Aggregation, string Search_Terms)
+	    private Recent_Searches.Search Get_Search_From_Mode(Navigation_Object currentMode, string SessionIP, Search_Type_Enum Search_Type, string Aggregation, string Search_Terms)
 	    {
 	        Recent_Searches.Search returnValue = new Recent_Searches.Search();
 
@@ -1220,7 +1277,7 @@ namespace SobekCM
 
 		private void MySobekCM_Block()
 		{
-			if ((currentMode.My_Sobek_Type == My_Sobek_Type_Enum.Folder_Management) && (HttpContext.Current.Session["user"] != null) && (currentMode.My_Sobek_SubMode.Length > 0))
+			if ((currentMode.My_Sobek_Type == My_Sobek_Type_Enum.Folder_Management) && (HttpContext.Current.Session["user"] != null) && (!String.IsNullOrEmpty(currentMode.My_Sobek_SubMode)))
 			{
 				tracer.Add_Trace("SobekCM_Page_Globals.MySobekCM_Block", "Retrieiving Browse/Info Object");
 
@@ -1228,7 +1285,7 @@ namespace SobekCM
 
 				// For EXPORT option, include ALL the items
 				int results_per_page = 20;
-				int current_page = currentMode.Page;
+				int current_page = currentMode.Page.HasValue ? currentMode.Page.Value : 1;
 				if (currentMode.Result_Display_Type == Result_Display_Type_Enum.Export)
 				{
 					results_per_page = 10000;
@@ -1364,8 +1421,7 @@ namespace SobekCM
 					      "Error Message: " + EmailTitle;
 				}
 
-                SobekCM_Database.Send_Database_Email(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err, true, false, -1, -1);
-
+                Email_Helper.SendEmail(UI_ApplicationCache_Gateway.Settings.System_Error_Email, EmailTitle, err, true, String.Empty);
 			}
 			catch (Exception)
 			{
@@ -1430,7 +1486,7 @@ namespace SobekCM
 				// Send this email
 				try
 				{
-                    SobekCM_Database.Send_Database_Email(UI_ApplicationCache_Gateway.Settings.System_Error_Email, "SobekCM Exception Caught  [Invalid Item Requested]", builder.ToString(), false, false, -1, -1);
+                    Email_Helper.SendEmail(UI_ApplicationCache_Gateway.Settings.System_Error_Email, "SobekCM Exception Caught  [Invalid Item Requested]", builder.ToString(), false, String.Empty);
 				}
 				catch (Exception)
 				{
@@ -1451,6 +1507,32 @@ namespace SobekCM
 		}
 
 		#endregion
-	}
+
+        #region Helper method to find this server's IP address, if necessary
+
+        private string get_local_ip()
+        {
+            try
+            {
+                IPHostEntry host;
+                string localIP = "?";
+                host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (IPAddress ip in host.AddressList)
+                {
+                    if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        localIP = ip.ToString();
+                    }
+                }
+                return localIP;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        #endregion
+    }
 
 }

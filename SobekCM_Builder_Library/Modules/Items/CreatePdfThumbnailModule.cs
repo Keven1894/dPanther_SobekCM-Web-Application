@@ -1,7 +1,9 @@
 ﻿#region Using directives
 
+using System;
 using System.IO;
-
+using SobekCM.Builder_Library.Settings;
+using SobekCM.Builder_Library.Tools;
 
 #endregion
 
@@ -14,8 +16,8 @@ namespace SobekCM.Builder_Library.Modules.Items
             string resourceFolder = Resource.Resource_Folder;
 
             // Get the executable path/file for ghostscript and imagemagick
-            string ghostscript_executable = Settings.Ghostscript_Executable;
-            string imagemagick_executable = Settings.ImageMagick_Executable;
+            string ghostscript_executable = MultiInstance_Builder_Settings.Ghostscript_Executable;
+            string imagemagick_executable = MultiInstance_Builder_Settings.ImageMagick_Executable;
 
             // Preprocess each PDF
             string[] pdfs = Directory.GetFiles(resourceFolder, "*.pdf");
@@ -26,7 +28,7 @@ namespace SobekCM.Builder_Library.Modules.Items
                 string fileName = thisPdfInfo.Name.Replace(thisPdfInfo.Extension, "");
 
                 // Does the thumbnail exist for this item?
-                if ((ghostscript_executable.Length > 0) && (imagemagick_executable.Length > 0))
+                if (( !String.IsNullOrEmpty(ghostscript_executable)) && (!String.IsNullOrEmpty(imagemagick_executable)))
                 {
                     if (!File.Exists(resourceFolder + "\\" + fileName + "thm.jpg"))
                     {

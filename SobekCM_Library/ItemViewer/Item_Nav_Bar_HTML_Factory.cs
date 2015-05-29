@@ -1,5 +1,6 @@
 ﻿#region Using directives
 
+using System;
 using System.Collections.Generic;
 using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Navigation;
@@ -25,7 +26,7 @@ namespace SobekCM.Library.ItemViewer
         /// <param name="Show_Zoomable"> Flag indicates if the zoomable server is online and should be displayable </param>
         /// <returns> Collection of the html for the navigation bar (one view could have multiple tabs)</returns>
         public static List<string> Get_Nav_Bar_HTML(View_Object Item_View, string Resource_Type, 
-            string Skin_Code, SobekCM_Navigation_Object Current_Mode, int Page_Sequence,
+            string Skin_Code, Navigation_Object Current_Mode, int Page_Sequence,
             Language_Support_Info Translator, bool Show_Zoomable, SobekCM_Item Current_Item )
         {
             List<string> returnVal = new List<string>();
@@ -88,13 +89,13 @@ namespace SobekCM.Library.ItemViewer
                     break;
 
                 case View_Enum.FLASH:
-                    returnVal.Add(Item_View.Label.Length == 0
+                    returnVal.Add( String.IsNullOrEmpty(Item_View.Label)
                                       ? HTML_Helper(Skin_Code, "flash", Translator.Get_Translation("Flash View", Current_Mode.Language), Current_Mode)
                                       : HTML_Helper(Skin_Code, "flash", Translator.Get_Translation(Item_View.Label.ToUpper(), Current_Mode.Language), Current_Mode));
                     break;
 
                 case View_Enum.GOOGLE_MAP:
-                    if (Current_Mode.Coordinates.Length > 0)
+                    if ( !String.IsNullOrEmpty(Current_Mode.Coordinates))
                     {
                         if (Current_Mode.ViewerCode == "mapsearch")
                         {
@@ -120,7 +121,7 @@ namespace SobekCM.Library.ItemViewer
                     break;
 
                 case View_Enum.GOOGLE_MAP_BETA:
-                    if (Current_Mode.Coordinates.Length > 0)
+                    if (!String.IsNullOrEmpty(Current_Mode.Coordinates))
                     {
                         if (Current_Mode.ViewerCode == "mapsearchbeta")
                         {
@@ -146,7 +147,7 @@ namespace SobekCM.Library.ItemViewer
                     break;
 
                 case View_Enum.HTML:
-                    returnVal.Add(Item_View.Label.Length > 0
+                    returnVal.Add(!String.IsNullOrEmpty(Item_View.Label)
                                       ? HTML_Helper(Skin_Code, "html", Item_View.Label.ToUpper(), Current_Mode)
                                       : HTML_Helper(Skin_Code, "html", "HTML LINK", Current_Mode));
                     break;
@@ -238,7 +239,7 @@ namespace SobekCM.Library.ItemViewer
             return returnVal;
         }
 
-        private static string HTML_Helper_PageView(string interface_code, string Viewer_Code, string Display_Text, SobekCM_Navigation_Object Current_Mode)
+        private static string HTML_Helper_PageView(string interface_code, string Viewer_Code, string Display_Text, Navigation_Object Current_Mode)
         {
             string previousViewerCode = Current_Mode.ViewerCode;
             Current_Mode.ViewerCode = Viewer_Code;
@@ -247,11 +248,11 @@ namespace SobekCM.Library.ItemViewer
             return returnValue;
         }
 
-        private static string HTML_Helper(string interface_code, string Viewer_Code, string Display_Text, SobekCM_Navigation_Object Current_Mode)
+        private static string HTML_Helper(string interface_code, string Viewer_Code, string Display_Text, Navigation_Object Current_Mode)
         {
             if (Current_Mode.ViewerCode == Viewer_Code)
             {
-                return "<li id=\"selected-sf-menu-item\">" + Display_Text + "</li>";
+                return "<li class=\"selected-sf-menu-item\">" + Display_Text + "</li>";
             }
 
             // When rendering for robots, provide the text and image, but not the text

@@ -5,12 +5,14 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using SobekCM.Core.Aggregations;
+using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.MainWriters;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -65,45 +67,70 @@ namespace SobekCM.Library.AggregationViewer.Viewers
             get { return Item_Aggregation_Views_Searches_Enum.Usage_Statistics; }
         }
 
+        /// <summary> Gets flag which indicates whether this is an internal view, which may have a 
+        /// slightly different design feel </summary>
+        /// <remarks> This returns FALSE by default, but can be overriden by individual viewer implementations</remarks>
+        public override bool Is_Internal_View
+        {
+            get { return true; }
+        }
+
+        /// <summary> Title for the page that displays this viewer, this is shown in the search box at the top of the page, just below the banner </summary>
+        public override string Viewer_Title
+        {
+            get
+            {
+                // Normalize the submode
+                string submode = "views";
+                if (!String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode))
+                    submode = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToLower();
+
+                if ((submode != "views") && (submode != "itemviews") && (submode != "titles") && (submode != "items") && (submode != "definitions"))
+                {
+                    submode = "views";
+                }
+
+                // Show the next data, depending on type
+                switch (submode)
+                {
+                    case "views":
+                        return "History of Collection-Level Usage";
+
+                    case "itemviews":
+                        return "History of Item Usage";
+
+                    case "titles":
+                        return "Most Accessed Titles";
+
+                    case "items":
+                        return "Most Accessed Items";
+
+                    case "definitions":
+                        return "Definitions of Terms Used";
+
+                    default:
+                        return "History of Collection-Level Usage";
+                }
+            }
+        }
+
+        /// <summary> Gets the URL for the icon related to this aggregational viewer task </summary>
+        public override string Viewer_Icon
+        {
+            get { return Static_Resources.Usage_Img; }
+        }
+
         /// <summary> Add the HTML to be displayed in the search box </summary>
         /// <param name="Output"> Textwriter to write the HTML for this viewer</param>
         /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
         /// <remarks> This adds the title of the into the box </remarks>
         public override void Add_Search_Box_HTML(TextWriter Output, Custom_Tracer Tracer)
         {
-            // Normalize the submode
-            string submode = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToLower();
-            if ((submode != "views") && (submode != "itemviews") && (submode != "titles") && (submode != "items") && (submode != "definitions"))
-            {
-                submode = "views";
-            }
-
-            // Show the next data, depending on type
-            switch (submode)
-            {
-                case "views":
-                    Output.WriteLine("<h1>History of Collection-Level Usage</h1>");
-                    break;
-
-                case "itemviews":
-                    Output.WriteLine("<h1>History of Item Usage</h1>");
-                    break;
-
-                case "titles":
-                    Output.WriteLine("<h1>Most Accessed Titles</h1>");
-                    break;
-
-                case "items":
-                    Output.WriteLine("<h1>Most Accessed Items</h1>");
-                    break;
-
-                case "definitions":
-                    Output.WriteLine("<h1>Definitions of Terms Used</h1>");
-                    break;
-            }
+            // Do nothing
         }
 
-                /// <summary> Add the HTML to be displayed below the search box </summary>
+
+        /// <summary> Add the HTML to be displayed below the search box </summary>
         /// <param name="Output"> Textwriter to write the HTML for this viewer</param>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering</param>
         /// <remarks> This writes the HTML from the static browse or info page here  </remarks>
@@ -124,7 +151,9 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 			Output.WriteLine("  <ul class=\"sbk_FauxUpwardTabsList\">");
 
             // Save and normalize the submode
-            string submode = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToLower();
+            string submode = "views";
+            if (!String.IsNullOrEmpty(RequestSpecificValues.Current_Mode.Info_Browse_Mode))
+                submode = RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToLower();
             if ((submode != "views") && (submode != "itemviews") && (submode != "titles") && (submode != "items") && (submode != "definitions"))
             {
                 submode = "views";
@@ -640,8 +669,8 @@ namespace SobekCM.Library.AggregationViewer.Viewers
 
                 Output.WriteLine("<a name=\"Views\" ></a>");
                 Output.WriteLine("<h3>VIEWS</h3>");
-                Output.WriteLine("<p>Views are the actual page hits. Each time a person goes to " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " it counts as a view. The " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + " statistics are cleaned so that views from robots, which search engines use to index websites, are removed. If they were not removed, the views on all collections and items would be much higher. Web usage statistics are always somewhat fallible, and this is one of the means for ensuring better quality usage statistics. <br /><br />");
-                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.SobekCM_Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each “page item download” as a hit, each single view to the main page would be counted as over 30 “page item downloads.” To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
+                Output.WriteLine("<p>Views are the actual page hits. Each time a person goes to " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " it counts as a view. The " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " statistics are cleaned so that views from robots, which search engines use to index websites, are removed. If they were not removed, the views on all collections and items would be much higher. Web usage statistics are always somewhat fallible, and this is one of the means for ensuring better quality usage statistics. <br /><br />");
+                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each “page item download” as a hit, each single view to the main page would be counted as over 30 “page item downloads.” To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
 
                 Output.WriteLine("<a name=\"Visits\" ></a>");
                 Output.WriteLine("<h3>VISITS</h3>");

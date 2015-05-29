@@ -8,9 +8,10 @@ using System.IO;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Users;
 using SobekCM.Library.HTML;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 using Zen.Barcode;
 
 #endregion
@@ -34,7 +35,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
         /// <param name="Current_Object"></param>
         /// <param name="Current_User"></param>
         /// <param name="Current_Mode"></param>
-        public TrackingSheet_ItemViewer(SobekCM_Item Current_Object, User_Object Current_User, SobekCM_Navigation_Object Current_Mode)
+        public TrackingSheet_ItemViewer(SobekCM_Item Current_Object, User_Object Current_User, Navigation_Object Current_Mode)
         {
             CurrentMode = Current_Mode;
             CurrentUser = Current_User;
@@ -104,10 +105,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering </param>
         public override void Write_Within_HTML_Head(TextWriter Output, Custom_Tracer Tracer)
         {
-            Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + CurrentMode.Base_URL + "default/SobekCM_TrackingSheet.css\" /> ");
-            Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + CurrentMode.Base_URL + "default/scrollbars.css\" />");
-            Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + CurrentMode.Base_URL + "default/scrollbars-black.css\" />");
-
+            Output.WriteLine("  <link rel=\"stylesheet\" type=\"text/css\" href=\"" + Static_Resources.Sobekcm_Trackingsheet_Css + "\" /> ");
         }
 
         /// <summary> Gets the collection of special behaviors which this item viewer

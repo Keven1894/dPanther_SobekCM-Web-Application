@@ -6,7 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Web;
 using SobekCM.Core.Configuration;
-using SobekCM.Engine_Library.Navigation;
+using SobekCM.Core.Navigation;
+using SobekCM.Library.Settings;
 using SobekCM.Resource_Object.Divisions;
 using SobekCM.Tools;
 
@@ -167,8 +168,8 @@ namespace SobekCM.Library.ItemViewer.Viewers
             Output.WriteLine("\t\t<!-- RELATED IMAGES VIEWER TOP NAV ROW -->");
 
 			//Include the js files
- 			Output.WriteLine("<script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery-ui-1.10.3.custom.min.js\"></script>");
-			Output.WriteLine("<script type=\"text/javascript\" src=\"" + CurrentMode.Base_URL + "default/scripts/jquery/jquery.color-2.1.1.js\"></script>");
+ 			Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Ui_1_10_3_Custom_Js + "\"></script>");
+			Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jquery_Color_2_1_1_Js + "\"></script>");
 		    Output.WriteLine("<table style=\"width: 100%\">");
             Output.WriteLine("\t<tr>");
 
@@ -231,30 +232,28 @@ namespace SobekCM.Library.ItemViewer.Viewers
 			//Add the control for the thumbnail size
 
 			//Get the icons for the thumbnail sizes
-			string image_location = CurrentMode.Default_Images_URL;
-
             Output.WriteLine("\t\t<td id=\"sbkRi_Thumbnailsizeselect\">");
 			if (thumbnailSize == 1)
-                Output.Write("\t\t\t<img src=\"" + image_location + "thumbs3_selected.gif\" alt=\"Small\" />");
+                Output.Write("\t\t\t<img src=\"" + Static_Resources.Thumbs3_Selected_Gif + "\" alt=\"Small\" />");
 			else
 			{
 				CurrentMode.Size_Of_Thumbnails = 1;
-                Output.Write("\t\t\t<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + SMALL_THUMBNAILS + "\"><img src=\"" + image_location + "thumbs3.gif\" alt=\"Small\" /></a>");
+                Output.Write("\t\t\t<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + SMALL_THUMBNAILS + "\"><img src=\"" + Static_Resources.Thumbs3_Gif + "\" alt=\"Small\" /></a>");
 			}
 
 			if (thumbnailSize == 2)
-                Output.Write("<img src=\"" + image_location + "thumbs2_selected.gif\" alt=\"Medium\" />");
+                Output.Write("<img src=\"" + Static_Resources.Thumbs2_Selected_Gif + "\" alt=\"Medium\" />");
 			else
 			{
 				CurrentMode.Size_Of_Thumbnails = 2;
-                Output.Write("<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + MEDIUM_THUMBNAILS + "\"><img src=\"" + image_location + "thumbs2.gif\" alt=\"Medium\" /></a>");
+                Output.Write("<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + MEDIUM_THUMBNAILS + "\"><img src=\"" + Static_Resources.Thumbs2_Gif + "\" alt=\"Medium\" /></a>");
 			}
 			if (thumbnailSize == 3)
-                Output.Write("<img src=\"" + image_location + "thumbs1_selected.gif\" alt=\"Large\" />");
+                Output.Write("<img src=\"" + Static_Resources.Thumbs2_Selected_Gif + "\" alt=\"Large\" />");
 			else
 			{
 				CurrentMode.Size_Of_Thumbnails = 3;
-                Output.Write("<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + LARGE_THUMBNAILS + "\"><img src=\"" + image_location + "thumbs1.gif\" alt=\"Large\" /></a>");
+                Output.Write("<a href=\"" + UrlWriterHelper.Redirect_URL(CurrentMode, "1thumbs") + "\" title=\"" + LARGE_THUMBNAILS + "\"><img src=\"" + Static_Resources.Thumbs1_Gif + "\" alt=\"Large\" /></a>");
 			}
 			//Reset the current mode
 			CurrentMode.Size_Of_Thumbnails = -1;
@@ -317,7 +316,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
 			// Save the current viewer code
 			string current_view_code = CurrentMode.ViewerCode;
-			ushort current_view_page = CurrentMode.Page;
+		    ushort current_view_page = CurrentMode.Page.HasValue ? CurrentMode.Page.Value : ((ushort) 1);
 
 			// Start the citation table
 			Output.WriteLine("\t\t<td>" );
@@ -334,7 +333,7 @@ namespace SobekCM.Library.ItemViewer.Viewers
 
             // Get any search terms for highlighting purposes
             List<string> terms = new List<string>();
-            if (CurrentMode.Text_Search.Trim().Length > 0)
+            if ( !String.IsNullOrWhiteSpace(CurrentMode.Text_Search))
             {
                 string[] splitter = CurrentMode.Text_Search.Replace("\"", "").Split(" ".ToCharArray());
                 terms.AddRange(from thisSplit in splitter where thisSplit.Trim().Length > 0 select thisSplit.Trim());
@@ -447,10 +446,10 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				thumbnailsPerPage = CurrentUser.Get_Setting("Related_Images_ItemViewer:ThumbnailsPerPage", 50);
 
 				// Or was there a new value in the URL?
-				if (CurrentMode.Thumbnails_Per_Page >= -1)
+				if (( CurrentMode.Thumbnails_Per_Page.HasValue ) && ( CurrentMode.Thumbnails_Per_Page.Value >= -1))
 				{
 					CurrentUser.Add_Setting("Related_Images_ItemViewer:ThumbnailsPerPage", CurrentMode.Thumbnails_Per_Page);
-					thumbnailsPerPage = CurrentMode.Thumbnails_Per_Page;
+                    thumbnailsPerPage = CurrentMode.Thumbnails_Per_Page.Value;
 				}
 			}
 			else
@@ -464,10 +463,10 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				thumbnailsPerPage = tempValue;
 
 				// Or was there a new value in the URL?
-				if (CurrentMode.Thumbnails_Per_Page >= -1)
+				if ((CurrentMode.Thumbnails_Per_Page.HasValue ) && ( CurrentMode.Thumbnails_Per_Page.Value >= -1 ))
 				{
 					HttpContext.Current.Session["Related_Images_ItemViewer:ThumbnailsPerPage"] = CurrentMode.Thumbnails_Per_Page;
-					thumbnailsPerPage = CurrentMode.Thumbnails_Per_Page;
+					thumbnailsPerPage = CurrentMode.Thumbnails_Per_Page.Value;
 				}
 			}
 
@@ -485,10 +484,10 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				thumbnailSize = CurrentUser.Get_Setting("Related_Images_ItemViewer:ThumbnailSize", 1);
 
 				// Or was there a new value in the URL?
-				if (CurrentMode.Size_Of_Thumbnails > -1)
+				if (( CurrentMode.Size_Of_Thumbnails.HasValue ) && (CurrentMode.Size_Of_Thumbnails.Value > -1))
 				{
 					CurrentUser.Add_Setting("Related_Images_ItemViewer:ThumbnailSize", CurrentMode.Size_Of_Thumbnails);
-					thumbnailSize = CurrentMode.Size_Of_Thumbnails;
+                    thumbnailSize = CurrentMode.Size_Of_Thumbnails.Value;
 				}
 			}
 			else
@@ -502,10 +501,10 @@ namespace SobekCM.Library.ItemViewer.Viewers
 				thumbnailSize = tempValue;
 
 				// Or was there a new value in the URL?
-				if (CurrentMode.Size_Of_Thumbnails > -1)
+				if (( CurrentMode.Size_Of_Thumbnails.HasValue ) && ( CurrentMode.Size_Of_Thumbnails.Value > -1))
 				{
 					HttpContext.Current.Session["Related_Images_ItemViewer:ThumbnailSize"] = CurrentMode.Size_Of_Thumbnails;
-					thumbnailSize = CurrentMode.Size_Of_Thumbnails;
+					thumbnailSize = CurrentMode.Size_Of_Thumbnails.Value;
 				}
 			}
 

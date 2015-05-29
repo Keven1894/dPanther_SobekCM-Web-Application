@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reflection;
 using System.Web;
+using SobekCM.Engine_Library.IpRangeUtilities;
 
 namespace SobekCM.Engine_Library.Microservices
 {
@@ -34,6 +35,12 @@ namespace SobekCM.Engine_Library.Microservices
 
         /// <summary> Output of this endpoint is Protocol Buffer octet-stream </summary>
         PROTOBUF,
+
+        /// <summary> Serve the object, via SOAP </summary>
+        SOAP,
+
+        /// <summary> Output in XML format </summary>
+        XML
     }
 
     /// <summary> Class defines an microservice endpoint within a collection of path or URI segments </summary>
@@ -41,8 +48,9 @@ namespace SobekCM.Engine_Library.Microservices
     {
         private MethodInfo methodInfo;
         private object restApiObject;
+        private IpRangeSetV4 rangeTester;
 
-        public void Invoke(HttpResponse Response, List<string> UrlSegments, NameValueCollection RequestForm )
+        public void Invoke(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, NameValueCollection RequestForm )
         {
             if ((methodInfo == null) || (restApiObject == null))
             {
@@ -55,7 +63,7 @@ namespace SobekCM.Engine_Library.Microservices
 
             // Invokation is different, dependingon whether this is a PUT or POST
             if ( RequestType == Microservice_Endpoint_RequestType_Enum.GET )
-                methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, Protocol });
+                methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, QueryString, Protocol });
             else
                 methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, Protocol, RequestForm });
         }
@@ -103,6 +111,38 @@ namespace SobekCM.Engine_Library.Microservices
         public override bool IsEndpoint
         {
             get { return true; }
+        }
+
+        /// <summary> Check to see if this endpoint can be invoked from this IP address </summary>
+        /// <returns> TRUE if permitted, otherwise FALSE </returns>
+        public bool AccessPermitted( string IpAddress )
+        {
+            // If no restriction exists, return TRUE
+            if ((RestrictionRanges == null) || (RestrictionRanges.Count == 0))
+                return true;
+
+            // Was the comparison set built?
+            if (rangeTester == null)
+            {
+                rangeTester = new IpRangeSetV4();
+                foreach (Microservice_RestrictionRange thisRangeSet in RestrictionRanges)
+                {
+                    foreach (Microservice_IpRange thisRange in thisRangeSet.IpRanges)
+                    {
+                        if ( !String.IsNullOrEmpty(thisRange.EndIp))
+                            rangeTester.AddIpRange(thisRange.StartIp, thisRange.EndIp);
+                        else
+                            rangeTester.AddIpRange(thisRange.StartIp);
+                    }
+                }
+            }
+
+            // You can always acess from the same machine (first may only be relevant in Visual Studio while debugging)
+            if ((IpAddress == "::1") || (IpAddress == "127.0.0.1"))
+                return true;
+
+            // Now, test the IP against the tester
+            return rangeTester.Contains(new ComparableIpAddress(IpAddress));
         }
     }
 }

@@ -9,10 +9,11 @@ using SobekCM.Core.MemoryMgmt;
 using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.HTML;
+using SobekCM.Library.Settings;
+using SobekCM.Library.UI;
 using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Metadata_Modules;
 using SobekCM.Tools;
-using SobekCM.UI_Library;
 
 #endregion
 
@@ -228,9 +229,9 @@ namespace SobekCM.Library.MySobekViewer
             Output.WriteLine("<!-- Edit_Item_Permissions_MySobekViewer.Write_ItemNavForm_Closing -->");
             Output.WriteLine("<div class=\"sbkMySobek_HomeText\">");
             Output.WriteLine("  <br />");
-            Output.WriteLine("  <h2>Edit item-level permissions for this RequestSpecificValues.Current_Item</h2>");
+            Output.WriteLine("  <h2>Edit item-level permissions for this item</h2>");
             Output.WriteLine("  <ul>");
-            Output.WriteLine("    <li>Use this form to change visibility (and related embargo dates) on this RequestSpecificValues.Current_Item </li>");
+            Output.WriteLine("    <li>Use this form to change visibility (and related embargo dates) on this item </li>");
             Output.WriteLine("    <li>This form also allows ip restriction and user group permissions to be set </li>");
             Output.WriteLine("    <li>Click <a href=\"" + UI_ApplicationCache_Gateway.Settings.Help_URL(RequestSpecificValues.Current_Mode.Base_URL) + "help/itempermissions\" target=\"_EDIT_INSTRUCTIONS\">here for detailed instructions</a> on editing permissions online.</li>");
             Output.WriteLine("  </ul>");
@@ -248,11 +249,11 @@ namespace SobekCM.Library.MySobekViewer
             Output.WriteLine("    <div class=\"tabpage\" id=\"tabpage_1\">");
 
             Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to top of form -->");
-            Output.WriteLine("      <script src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/scripts/sobekcm_metadata.js\" type=\"text/javascript\"></script>");
+            Output.WriteLine("      <script src=\"" + Static_Resources.Sobekcm_Metadata_Js + "\" type=\"text/javascript\"></script>");
             Output.WriteLine();
             Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-            Output.WriteLine("        <button onclick=\"window.location.href='" + item_url + "';return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-            Output.WriteLine("        <button onclick=\"behaviors_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
+            Output.WriteLine("        <button onclick=\"window.location.href='" + item_url + "';return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+            Output.WriteLine("        <button onclick=\"behaviors_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
             Output.WriteLine("      </div>");
             Output.WriteLine("      <br /><br />");
             Output.WriteLine();
@@ -355,8 +356,8 @@ namespace SobekCM.Library.MySobekViewer
             Output.WriteLine();
             Output.WriteLine("      <!-- Add SAVE and CANCEL buttons to bottom of form -->");
             Output.WriteLine("      <div class=\"sbkMySobek_RightButtons\">");
-            Output.WriteLine("        <button onclick=\"window.location.href='" + item_url + "';return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_previous_arrow.png\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
-            Output.WriteLine("        <button onclick=\"behaviors_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "default/images/button_next_arrow.png\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
+            Output.WriteLine("        <button onclick=\"window.location.href='" + item_url + "';return false;\" class=\"sbkMySobek_BigButton\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_LeftImg\" alt=\"\" /> CANCEL </button> &nbsp; &nbsp; ");
+            Output.WriteLine("        <button onclick=\"behaviors_save_form(); return false;\" class=\"sbkMySobek_BigButton\"> SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"sbkMySobek_RoundButton_RightImg\" alt=\"\" /></button>");
             Output.WriteLine("      </div>");
             Output.WriteLine("      <br />");
             Output.WriteLine("    </div>");
