@@ -13,7 +13,7 @@ This package includes two Visual Studio 2012 solutions at the top level.
 
 
 In addition, a third Visual Studio 2012 solution for the installer appears
-under the Installer folder.
+under the Installer folder. TREAESTASETAWET
 
 
 -----------------------------------------------------------------------
