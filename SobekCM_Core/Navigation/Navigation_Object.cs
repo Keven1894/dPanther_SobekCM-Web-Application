@@ -210,7 +210,6 @@ namespace SobekCM.Core.Navigation
 
         /// <summary> Beginning of a date range, if the search includes
         /// a date range between two arbitrary dates </summary>
-        /// <value>-1 if no year range</value>
         [DataMember(EmitDefaultValue = false, Name = "dateRangeDate1")]
         [XmlElement("dateRangeDate1")]
         [ProtoMember(11)]
@@ -218,7 +217,6 @@ namespace SobekCM.Core.Navigation
 
         /// <summary> End of a date range, if the search includes
         /// a date range between two arbitrary dates </summary>
-        /// <value>-1 if no year range</value>
         [DataMember(EmitDefaultValue = false, Name = "dateRangeDate2")]
         [XmlElement("dateRangeDate2")]
         [ProtoMember(12)]
@@ -226,7 +224,6 @@ namespace SobekCM.Core.Navigation
 
         /// <summary> Beginning of the year range, if the search includes
         /// a date range between two years </summary>
-        /// <value>-1 if no year range</value>
         [DataMember(EmitDefaultValue = false, Name = "dateRangeYear1")]
         [XmlElement("dateRangeYear1")]
         [ProtoMember(13)]
@@ -234,7 +231,6 @@ namespace SobekCM.Core.Navigation
 
         /// <summary> End of the year range, if the search includes
         /// a date range between two years </summary>
-        /// <value>-1 if no year range</value>
         [DataMember(EmitDefaultValue = false, Name = "dateRangeYear2")]
         [XmlElement("dateRangeYear2")]
         [ProtoMember(14)]
@@ -355,6 +351,19 @@ namespace SobekCM.Core.Navigation
         [ProtoMember(32)]
         public bool Logon_Required { get; set; }
 
+        /// <summary> Flag indicates if the requested web content page (or item) is not present (possibly a bad URL) </summary>
+        [DataMember(EmitDefaultValue = false, Name = "missing")]
+        [XmlElement("missing")]
+        [ProtoMember(75)]
+        public bool? Missing { get; set; }
+
+        /// <summary> Method suppresses XML Serialization of the Missing flag property if it is NULL </summary>
+        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
+        public bool ShouldSerializeMissing()
+        {
+            return  Missing.HasValue;
+        }
+
         /// <summary> Mode determined by parsing the query string </summary>
         [DataMember(EmitDefaultValue = false, Name = "mode")]
         [XmlAttribute("mode")]
@@ -391,6 +400,12 @@ namespace SobekCM.Core.Navigation
         [XmlElement("portalPurl")]
         [ProtoMember(38)]
         public string Portal_PURL { get; set; }
+
+        /// <summary> If this found a web content redirect in the system, the URL that this should be redirected to </summary>
+        [DataMember(EmitDefaultValue = false, Name = "redirect")]
+        [XmlElement("redirect")]
+        [ProtoMember(63)]
+        public string Redirect { get; set; }
 
 		/// <summary> Name of the report requested from the reporting module </summary>
         [DataMember(EmitDefaultValue = false, Name = "reportName")]
@@ -551,6 +566,12 @@ namespace SobekCM.Core.Navigation
         [ProtoMember(60)]
         public string ViewerCode { get; set; }
 
+        /// <summary> Primary key to the web content object selected </summary>
+        [DataMember(EmitDefaultValue = false, Name = "webContentId")]
+        [XmlElement("webContentId")]
+        [ProtoMember(64)]
+        public int? WebContentID { get; set; }
+
         /// <summary> Webcontent type of display for the current request </summary>
         [DataMember(EmitDefaultValue = false, Name = "webContentType")]
         [XmlElement("webContentType")]
@@ -564,76 +585,6 @@ namespace SobekCM.Core.Navigation
         public Writer_Type_Enum Writer_Type { get; set; }
 
 		#endregion
-
-        #region Legacy properties used for UF's Aware JPEG2000 server
-
-        /// <summary>Viewport size for the zoomable image display </summary>
-        [DataMember(EmitDefaultValue = false, Name = "jp2ViewportSize")]
-        [XmlElement("jp2ViewportSize")]
-        [ProtoMember(70)]
-        public ushort? Viewport_Size { get; set; }
-
-        /// <summary>Viewport zoom for the zoomable image display </summary>
-        [DataMember(EmitDefaultValue = false, Name = "jp2ViewportZoom")]
-        [XmlElement("jp2ViewportZoom")]
-        [ProtoMember(71)]
-        public ushort? Viewport_Zoom { get; set; }
-
-        /// <summary> Viewport horizontal location for the zoomable image display </summary>
-        [DataMember(EmitDefaultValue = false, Name = "jp2ViewportX")]
-        [XmlElement("jp2ViewportX")]
-        [ProtoMember(72)]
-        public int? Viewport_Point_X { get; set; }
-
-        /// <summary> Viewport vertical location for the zoomable image display </summary>
-        [DataMember(EmitDefaultValue = false, Name = "jp2ViewportY")]
-        [XmlElement("jp2ViewportY")]
-        [ProtoMember(73)]
-        public int? Viewport_Point_Y { get; set; }
-
-        /// <summary> Viewport rotation for the zoomable image display </summary>
-        [DataMember(EmitDefaultValue = false, Name = "jp2ViewportRotation")]
-        [XmlElement("jp2ViewportRotation")]
-        [ProtoMember(74)]
-        public ushort? Viewport_Rotation { get; set; }
-
-        /// <summary> Method suppresses XML Serialization of the Viewport_Size property if it is NULL </summary>
-        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
-        public bool ShouldSerializeViewport_Size()
-        {
-            return Viewport_Size != null;
-        }
-
-        /// <summary> Method suppresses XML Serialization of the Viewport_Zoom property if it is NULL </summary>
-        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
-        public bool ShouldSerializeViewport_Zoom()
-        {
-            return Viewport_Zoom != null;
-        }
-
-        /// <summary> Method suppresses XML Serialization of the Viewport_Point_X property if it is NULL </summary>
-        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
-        public bool ShouldSerializeViewport_Point_X()
-        {
-            return Viewport_Point_X != null;
-        }
-
-        /// <summary> Method suppresses XML Serialization of the Viewport_Point_Y property if it is NULL </summary>
-        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
-        public bool ShouldSerializeViewport_Point_Y()
-        {
-            return Viewport_Point_Y != null;
-        }
-
-        /// <summary> Method suppresses XML Serialization of the Viewport_Rotation property if it is NULL </summary>
-        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
-        public bool ShouldSerializeViewport_Rotation()
-        {
-            return Viewport_Rotation != null;
-        }
-
-
-        #endregion
 
         #region Methods for XML serialization
 
@@ -726,6 +677,13 @@ namespace SobekCM.Core.Navigation
         public bool ShouldSerializeThumbnails_Per_Page()
         {
             return Thumbnails_Per_Page != null;
+        }
+
+        /// <summary> Method suppresses XML Serialization of the WebContentID property if it is NULL </summary>
+        /// <returns> TRUE if the property should be serialized, otherwise FALSE </returns>
+        public bool ShouldSerializeWebContentID()
+        {
+            return WebContentID != null;
         }
 
         #endregion

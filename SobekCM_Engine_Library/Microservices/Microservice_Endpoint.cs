@@ -1,9 +1,13 @@
-﻿using System;
+﻿#region Using directives
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reflection;
 using System.Web;
 using SobekCM.Engine_Library.IpRangeUtilities;
+
+#endregion
 
 namespace SobekCM.Engine_Library.Microservices
 {
@@ -50,7 +54,13 @@ namespace SobekCM.Engine_Library.Microservices
         private object restApiObject;
         private IpRangeSetV4 rangeTester;
 
-        public void Invoke(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, NameValueCollection RequestForm )
+        /// <summary> Invoke the method in the class specified for this endpoint, from the configuration XML file </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="QueryString"></param>
+        /// <param name="RequestForm"></param>
+        /// <param name="IsDebug"></param>
+        public void Invoke(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, NameValueCollection RequestForm, bool IsDebug )
         {
             if ((methodInfo == null) || (restApiObject == null))
             {
@@ -63,7 +73,7 @@ namespace SobekCM.Engine_Library.Microservices
 
             // Invokation is different, dependingon whether this is a PUT or POST
             if ( RequestType == Microservice_Endpoint_RequestType_Enum.GET )
-                methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, QueryString, Protocol });
+                methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, QueryString, Protocol, IsDebug });
             else
                 methodInfo.Invoke(restApiObject, new object[] { Response, UrlSegments, Protocol, RequestForm });
         }

@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web;
-using System.Web.Caching;
 using SobekCM.Core.Aggregations;
 using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Client;
@@ -21,15 +20,13 @@ using SobekCM.Core.SiteMap;
 using SobekCM.Core.Skins;
 using SobekCM.Core.Users;
 using SobekCM.Core.WebContent;
-using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Engine_Library.Aggregations;
+using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Engine_Library.Database;
-using SobekCM.Engine_Library.Endpoints;
 using SobekCM.Engine_Library.Items;
 using SobekCM.Engine_Library.SiteMap;
 using SobekCM.Engine_Library.Solr;
 using SobekCM.Library.Database;
-using SobekCM.Engine_Library.Skins;
 using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Divisions;
@@ -61,9 +58,17 @@ namespace SobekCM.Library
             }
 
             Site_Map = null;
+            Simple_Web_Content = null;
 
-            string source = Current_Mode.Page_By_FileName;
-            Simple_Web_Content = HTML_Based_Content_Reader.Read_HTML_File(source, true, Tracer);
+            // Get the web content object
+            if ((( Current_Mode.WebContentID.HasValue ) && ( Current_Mode.WebContentID.Value > 0 )) && (( !Current_Mode.Missing.HasValue ) || ( !Current_Mode.Missing.Value )))
+                Simple_Web_Content = SobekEngineClient.WebContent.Get_HTML_Based_Content(Current_Mode.WebContentID.Value, Tracer);
+
+            // If somehow this is null and this was for DEFAULT, just add the page
+            if (Simple_Web_Content == null)
+            {
+                Simple_Web_Content = SobekEngineClient.WebContent.Get_Special_Missing_Page(Tracer);
+            }
 
             if (Simple_Web_Content == null)
             {
@@ -75,104 +80,6 @@ namespace SobekCM.Library
             {
                 Current_Mode.Error_Message = "Unable to read the file for display";
                 return false;
-            }
-
-            // Now, check for any "server-side include" directorives in the source text
-            int include_index = Simple_Web_Content.Content.IndexOf("<%INCLUDE");
-            while ((include_index > 0) && (Simple_Web_Content.Content.IndexOf("%>", include_index, StringComparison.Ordinal) > 0))
-            {
-                int include_finish_index = Simple_Web_Content.Content.IndexOf("%>", include_index, StringComparison.Ordinal) + 2;
-                string include_statement = Simple_Web_Content.Content.Substring(include_index, include_finish_index - include_index);
-                string include_statement_upper = include_statement.ToUpper();
-                int file_index = include_statement_upper.IndexOf("FILE");
-                string filename_to_include = String.Empty;
-                if (file_index > 0)
-                {
-                    // Pull out the possible file name
-                    string possible_file_name = include_statement.Substring(file_index + 4);
-                    int file_start = -1;
-                    int file_end = -1;
-                    int char_index = 0;
-
-                    // Find the start of the file information
-                    while ((file_start < 0) && (char_index < possible_file_name.Length))
-                    {
-                        if ((possible_file_name[char_index] != '"') && (possible_file_name[char_index] != '=') && (possible_file_name[char_index] != ' '))
-                        {
-                            file_start = char_index;
-                        }
-                        else
-                        {
-                            char_index++;
-                        }
-                    }
-
-                    // Find the end of the file information
-                    if (file_start >= 0)
-                    {
-                        char_index++;
-                        while ((file_end < 0) && (char_index < possible_file_name.Length))
-                        {
-                            if ((possible_file_name[char_index] == '"') || (possible_file_name[char_index] == ' ') || (possible_file_name[char_index] == '%'))
-                            {
-                                file_end = char_index;
-                            }
-                            else
-                            {
-                                char_index++;
-                            }
-                        }
-                    }
-
-                    // Get the filename
-                    if ((file_start > 0) && (file_end > 0))
-                    {
-                        filename_to_include = possible_file_name.Substring(file_start, file_end - file_start);
-                    }
-                }
-
-                // Remove the include and either place in the text from the indicated file, 
-                // or just remove
-                if ((filename_to_include.Length > 0) && (File.Exists(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + filename_to_include)))
-                {
-                    // Define the value for the include text
-                    string include_text;
-
-                    // Look in the cache for this
-                    object returnValue = HttpContext.Current.Cache.Get("INCLUDE_" + filename_to_include);
-                    if (returnValue != null)
-                    {
-                        include_text = returnValue.ToString();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            // Pull from the file
-                            StreamReader reader = new StreamReader(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + filename_to_include);
-                            include_text = reader.ReadToEnd();
-                            reader.Close();
-
-                            // Store on the cache for two minutes, if no indication not to
-                            if (include_statement_upper.IndexOf("NOCACHE") < 0)
-                                HttpContext.Current.Cache.Insert("INCLUDE_" + filename_to_include, include_text, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(2));
-                        }
-                        catch (Exception)
-                        {
-                            include_text = "Unable to read the soruce file ( " + filename_to_include + " )";
-                        }
-                    }
-
-                    // Replace the text with the include file
-                    Simple_Web_Content.Content = Simple_Web_Content.Content.Replace(include_statement, include_text);
-                    include_index = Simple_Web_Content.Content.IndexOf("<%INCLUDE", include_index + include_text.Length - 1, StringComparison.Ordinal);
-                }
-                else
-                {
-                    // No suitable name was found, or it doesn't exist so just remove the INCLUDE completely
-                    Simple_Web_Content.Content = Simple_Web_Content.Content.Replace(include_statement, "");
-                    include_index = Simple_Web_Content.Content.IndexOf("<%INCLUDE", include_index, StringComparison.Ordinal);
-                }
             }
 
             // Look for a site map
@@ -630,6 +537,7 @@ namespace SobekCM.Library
         /// <param name="All_Items_Lookup"> Lookup object used to pull basic information about any item loaded into this library </param>
         /// <param name="Base_URL"> Base URL for all the digital resource files for items to display </param>
         /// <param name="Icon_Table"> Dictionary of all the wordmark/icons which can be tagged to the items </param>
+        /// <param name="Item_Viewer_Priority"> List of the globally defined item viewer priorities  </param>
         /// <param name="Current_User"> Currently logged on user information (used when editing an item)</param>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering </param>
         /// <param name="Current_Item"> [OUT] Built single digital resource ready for displaying or editing </param>
@@ -660,6 +568,7 @@ namespace SobekCM.Library
         /// <param name="Base_URL"> Base URL for all the digital resource files for items to display </param>
         /// <param name="Icon_Table"> Dictionary of all the wordmark/icons which can be tagged to the items </param>
         /// <param name="Current_User"> Currently logged on user information (used when editing an item)</param>
+        /// <param name="Item_Viewer_Priority"> List of the globally defined item viewer priorities </param>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering </param>
         /// <param name="Current_Item"> [OUT] Built single digital resource ready for displaying or editing </param>
         /// <param name="Current_Page"> [OUT] Build current page for display </param>
@@ -870,12 +779,14 @@ namespace SobekCM.Library
         /// <param name="Current_Mode"> Mode / navigation information for the current request</param>
         /// <param name="All_Items_Lookup"> Lookup object used to pull basic information about any item loaded into this library </param>
         /// <param name="Aggregation_Object"> Object for the current aggregation object, against which this search is performed </param>
+        /// <param name="Search_Stop_Words"> List of search stop workds </param>
         /// <param name="Tracer"> Trace object keeps a list of each method executed and important milestones in rendering </param>
         /// <param name="Complete_Result_Set_Info"> [OUT] Information about the entire set of results </param>
         /// <param name="Paged_Results"> [OUT] List of search results for the requested page of results </param>
         public void Get_Search_Results(Navigation_Object Current_Mode,
                                        Item_Lookup_Object All_Items_Lookup,
-                                       Item_Aggregation Aggregation_Object, List<string> Search_Stop_Words,
+                                       Item_Aggregation Aggregation_Object, 
+            List<string> Search_Stop_Words,
                                        Custom_Tracer Tracer,
                                        out Search_Results_Statistics Complete_Result_Set_Info,
                                        out List<iSearch_Title_Result> Paged_Results )
@@ -1819,44 +1730,17 @@ namespace SobekCM.Library
         public Web_Skin_Object Get_HTML_Skin(string Web_Skin_Code, Navigation_Object Current_Mode, Web_Skin_Collection Skin_Collection, bool Cache_On_Build, Custom_Tracer Tracer)
         {
             // Get the interface object
-            Web_Skin_Object htmlSkin = null;
-
-            // If no interface yet, look in the cache
-            if ((Web_Skin_Code != "new") && (Cache_On_Build))
-            {
-                htmlSkin = CachedDataManager.WebSkins.Retrieve_Skin(Web_Skin_Code, Current_Mode.Language_Code, Tracer);
-                if (htmlSkin != null)
-                {
-                    if (Tracer != null)
-                    {
-                        Tracer.Add_Trace("SobekCM_Assistant.Get_HTML_Skin", "Web skin '" + Web_Skin_Code + "' found in cache");
-                    }
-                    if ((!String.IsNullOrEmpty(htmlSkin.Base_Skin_Code)) && (htmlSkin.Base_Skin_Code != htmlSkin.Skin_Code))
-                        Current_Mode.Base_Skin = htmlSkin.Base_Skin_Code;
-                    return htmlSkin;
-                }
-            }
-
-            // If still not interface, build one
-            Web_Skin_Object new_skin = WebSkinServices.get_web_skin(Web_Skin_Code, Current_Mode.Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, Tracer);
-
-            // Look in the web skin row and see if it should be kept around, rather than momentarily cached
-            if (new_skin != null)
-            {
-                if (Cache_On_Build)
-                {
-                    // Momentarily cache this web skin object
-                    CachedDataManager.WebSkins.Store_Skin(Web_Skin_Code, Current_Mode.Language_Code, new_skin, Tracer);
-                }
-
-                htmlSkin = new_skin;
-            }
+            Web_Skin_Object htmlSkin = SobekEngineClient.WebSkins.Get_LanguageSpecific_Web_Skin(Web_Skin_Code, Current_Mode.Language, UI_ApplicationCache_Gateway.Settings.Default_UI_Language, Cache_On_Build, Tracer);
 
             // If there is still no interface, this is an ERROR
             if (htmlSkin != null)
             {
                 if ((!String.IsNullOrEmpty(htmlSkin.Base_Skin_Code)) && (htmlSkin.Base_Skin_Code != htmlSkin.Skin_Code))
                     Current_Mode.Base_Skin = htmlSkin.Base_Skin_Code;
+            }
+            else
+            {
+                Tracer.Add_Trace("SobekCM_Assistant.Get_HTML_Skin", "SobekEngineClient returned NULL for the requeted web skin");
             }
 
             // Return the value

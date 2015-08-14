@@ -72,7 +72,7 @@ namespace SobekCM.Resource_Object.Utilities
 
 			// Save the location for temporary files
 			temp_folder = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-			temp_folder = temp_folder + "\\DLC Toolbox\\Temporary";
+			temp_folder = temp_folder + "\\SobekCM\\Temporary";
 		}
 
 		/// <summary> Gets the count of the number of failures Kakadu experienced while creating JPEG2000 derivatives </summary>
@@ -92,9 +92,13 @@ namespace SobekCM.Resource_Object.Utilities
 		/// <summary> Custom event is fired when all processing is complete </summary>
 		public event Image_Creation_Process_Complete_Delegate Process_Complete;
 
-		/// <summary> Processes a single package </summary>
-		/// <param name="ParentLogId"> Primary key to the parent log entery if this is performed by the builder </param>
-		public bool Process(string Package_Directory, string BibID, string VID, string[] TifFiles, long ParentLogId )
+	    /// <summary> Processes a single package </summary>
+	    /// <param name="TifFiles"> List of TIFF files </param>
+	    /// <param name="ParentLogId"> Primary key to the parent log entery if this is performed by the builder </param>
+	    /// <param name="Package_Directory"> Directory for the package </param>
+	    /// <param name="BibID"> Bibliographic id for the item to derive images for </param>
+	    /// <param name="VID"> Volume id for the item to derive images for </param>
+	    public bool Process(string Package_Directory, string BibID, string VID, string[] TifFiles, long ParentLogId )
 		{
 			// Create the temp folder
 			if (!Directory.Exists(temp_folder))

@@ -1177,7 +1177,7 @@ namespace SobekCM.Library.HTML
 			            }
 		            }
 
-	                if (html_list.Count > 0)
+	                if ((html_list.Count > 0) && ( String.Compare(RequestSpecificValues.Hierarchy_Object.Code, "all", true) != 0 ))
 	                {
 	                    string childTypes = RequestSpecificValues.Hierarchy_Object.Child_Types.Trim();
 	                    if (childTypes.IndexOf(" ") > 0)
@@ -1521,6 +1521,9 @@ namespace SobekCM.Library.HTML
 
         #endregion
 
+        /// <summary> Write the treeview to the specified output </summary>
+        /// <param name="Output"> Stream to the HTML response output </param>
+        /// <param name="Tracer">The tracer.</param>
         protected internal void write_treeview(TextWriter Output, Custom_Tracer Tracer)
         {
             Output.WriteLine("<script type=\"text/javascript\" src=\"" + Static_Resources.Jstree_Js + "\"></script>");

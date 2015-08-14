@@ -17,6 +17,7 @@ namespace SobekCM.Core.WebContent
     /// simple CMS-style web content objects.  These are objects which are (possibly) read from
     /// a static HTML file and much of the head information must be maintained </summary>
     [Serializable, DataContract, ProtoContract]
+    [XmlRoot("webContentPage")]
     public class HTML_Based_Content
     {
         private string code;
@@ -56,6 +57,7 @@ namespace SobekCM.Core.WebContent
         /// <summary> Constructor for a new instance of the base_HTML_Content_Object class  </summary>
         /// <param name="Text"> Static text to use for this item </param>
         /// <param name="Title"> Title to display with this item </param>
+        /// <param name="Source"> Source file for this static web-based content object </param>
         /// <remarks> This constructor is mostly used with passing back errors to be displayed. </remarks>
         public HTML_Based_Content(string Text, string Title, string Source )
         {
@@ -162,12 +164,8 @@ namespace SobekCM.Core.WebContent
         [XmlAttribute("includeMenu")]
         public string IncludeMenu_AsString
         {
-            get
-            {
-                if (IncludeMenu.HasValue)
-                    return IncludeMenu.ToString();
-                else
-                    return null;
+            get {
+                return IncludeMenu.HasValue ? IncludeMenu.ToString() : null;
             }
             set
             {
@@ -177,10 +175,37 @@ namespace SobekCM.Core.WebContent
             }
         }
 
+        /// <summary> Primary key of this static webcontent page, if this is a non-aggregational related page </summary>
+        [DataMember(EmitDefaultValue = false, Name = "id")]
+        [XmlIgnore]
+        [ProtoMember(14)]
+        public int? WebContentID { get; set; }
+
+        /// <summary> Primary key of this static webcontent page, if this is a non-aggregational related page, as string </summary>
+        /// <remarks> This is for the XML serialization portions </remarks>
+        [IgnoreDataMember]
+        [XmlAttribute("id")]
+        public string WebContentID_AsString
+        {
+            get { return WebContentID.HasValue ? WebContentID.Value.ToString() : null; }
+            set
+            {
+                int temp;
+                if (Int32.TryParse(value, out temp))
+                    WebContentID = temp;
+            }
+        }
+
+        /// <summary> Redirect URL associated with this web content object </summary>
+        [DataMember(EmitDefaultValue = false, Name = "redirect")]
+        [XmlElement("redirect")]
+        [ProtoMember(15)]
+        public string Redirect { get; set; }
+
         /// <summary> Source for this html-based web content </summary>
         [DataMember(EmitDefaultValue = false, Name = "source")]
         [XmlAttribute("source")]
-        [ProtoMember(14)]
+        [ProtoMember(16)]
         public string Source { get; set; }
 
         /// <summary> Static text included as the body of the static HTML file if item aggregation custom directives
@@ -227,6 +252,7 @@ namespace SobekCM.Core.WebContent
 
             // Replace the standard directives next
             Display_Text = Display_Text.Replace("<%URLOPTS%>", URL_Options).Replace("<%?URLOPTS%>", urlOptions1).Replace("<%&URLOPTS%>", urlOptions2).Replace("<%INTERFACE%>", Web_Skin_Code).Replace("<%WEBSKIN%>", Web_Skin_Code).Replace("<%BASEURL%>", Base_URL);
+            Display_Text = Display_Text.Replace("[%URLOPTS%]", URL_Options).Replace("[%?URLOPTS%]", urlOptions1).Replace("[%&URLOPTS%]", urlOptions2).Replace("[%INTERFACE%]", Web_Skin_Code).Replace("[%WEBSKIN%]", Web_Skin_Code).Replace("[%BASEURL%]", Base_URL);
 
             // Replace some additional (more complex) values
             string tabstart = "<img src=\"" + Base_URL + "design/skins/" + Base_Skin_Code + "/tabs/cLD.gif\" border=\"0\" class=\"tab_image\" /><span class=\"tab\">";
@@ -293,7 +319,7 @@ namespace SobekCM.Core.WebContent
 
 				return true;
 			}
-			catch (Exception ee)
+			catch 
 			{
 				return false;
 			}

@@ -8,8 +8,14 @@ using System.Text.RegularExpressions;
 
 namespace SobekCM.Builder_Library.Modules.Items
 {
+    /// <summary> Item-level submission package module copies all incoming files into an archive
+    /// folder, where an archiving process can pickup the new files  </summary>
+    /// <remarks> This class implements the <see cref="abstractSubmissionPackageModule" /> abstract class and implements the <see cref="iSubmissionPackageModule" /> interface. </remarks>
     public class CopyToArchiveFolderModule : abstractSubmissionPackageModule
     {
+        /// <summary> Copies all incoming files into an archive folder, where an archiving process can pickup the new files  </summary>
+        /// <param name="Resource"> Incoming digital resource object </param>
+        /// <returns> TRUE if processing can continue, FALSE if a critical error occurred which should stop all processing </returns>
         public override bool DoWork(Incoming_Digital_Resource Resource)
         {
             string resourceFolder = Resource.Resource_Folder;

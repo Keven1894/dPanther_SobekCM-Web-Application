@@ -9,7 +9,6 @@ using System.Web.UI.WebControls;
 using SobekCM.Core.MemoryMgmt;
 using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Database;
-using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.AdminViewer;
 using SobekCM.Library.MainWriters;
 using SobekCM.Library.MySobekViewer;
@@ -27,8 +26,8 @@ namespace SobekCM.Library.HTML
 	/// <remarks> This class extends the <see cref="abstractHtmlSubwriter"/> abstract class. <br /><br />
 	/// During a valid html request, the following steps occur:
 	/// <ul>
-	/// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-	/// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation.SobekCM_Navigation_Object"/> </li>
+	/// <li>Application state is built/verified by the Application_State_Builder </li>
+	/// <li>Request is analyzed by the QueryString_Analyzer and output as a <see cref="Navigation_Object"/>  </li>
 	/// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
 	/// <li>The HTML writer will create this necessary subwriter since this action requires administrative rights. </li>
 	/// <li>This class will create a admin subwriter (extending <see cref="AdminViewer.abstract_AdminViewer"/> ) for the specified task.The admin subwriter creates an instance of this viewer to view and edit existing item aggregationPermissions in this digital library</li>
@@ -100,6 +99,22 @@ namespace SobekCM.Library.HTML
 
                 case Admin_Type_Enum.Aliases:
                     adminViewer = new Aliases_AdminViewer(RequestSpecificValues);
+                    break;
+
+                case Admin_Type_Enum.WebContent_Mgmt:
+                    adminViewer = new WebContent_Mgmt_AdminViewer(RequestSpecificValues);
+                    break;
+
+                case Admin_Type_Enum.WebContent_History:
+                    adminViewer = new WebContent_History_AdminViewer(RequestSpecificValues);
+                    break;
+
+                case Admin_Type_Enum.WebContent_Single:
+                    adminViewer = new WebContent_Single_AdminViewer(RequestSpecificValues);
+                    break;
+
+                case Admin_Type_Enum.WebContent_Usage:
+                    adminViewer = new WebContent_Usage_AdminViewer(RequestSpecificValues);
                     break;
 
                 case Admin_Type_Enum.Wordmarks:
@@ -216,7 +231,11 @@ namespace SobekCM.Library.HTML
 				if (RequestSpecificValues.Current_User == null)
 					return false;
 
-                if ((RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Wordmarks) || (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Aggregation_Single) || (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Skins_Single) || (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Add_Collection_Wizard))
+                if ((RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Wordmarks) || 
+                    (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Aggregation_Single) || 
+                    (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Skins_Single) || 
+                    (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.Add_Collection_Wizard) || 
+                    (RequestSpecificValues.Current_Mode.Admin_Type == Admin_Type_Enum.WebContent_Single))
 					return true;
 
 
@@ -298,8 +317,8 @@ namespace SobekCM.Library.HTML
                             Admin_Type_Enum adminType = RequestSpecificValues.Current_Mode.Admin_Type;
                             ushort page = RequestSpecificValues.Current_Mode.Page.HasValue ? RequestSpecificValues.Current_Mode.Page.Value : ((ushort) 1);
                             string browse_code = RequestSpecificValues.Current_Mode.Info_Browse_Mode;
-                            string aggregation = RequestSpecificValues.Current_Mode.Aggregation;
-                            string mySobekMode = RequestSpecificValues.Current_Mode.My_Sobek_SubMode;
+                            //string aggregation = RequestSpecificValues.Current_Mode.Aggregation;
+                            //string mySobekMode = RequestSpecificValues.Current_Mode.My_Sobek_SubMode;
 
                             // Get the URL for the home page
                             RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Aggregation;
@@ -332,6 +351,10 @@ namespace SobekCM.Library.HTML
                                 Output.WriteLine("  " + adminViewer.Web_Title);
                                 Output.WriteLine("</div>"); 
                             }
+
+                            RequestSpecificValues.Current_Mode.Page = page;
+                            RequestSpecificValues.Current_Mode.Info_Browse_Mode = browse_code;
+                            
                         }
                     }
                 }
@@ -475,7 +498,13 @@ namespace SobekCM.Library.HTML
                         break;
 
                     case Admin_Type_Enum.User_Permissions_Reports:
+                    case Admin_Type_Enum.WebContent_Mgmt:
+                    case Admin_Type_Enum.WebContent_History:
+                    case Admin_Type_Enum.WebContent_Usage:
                         return "sbkUpav_ContainerInner";
+
+                    case Admin_Type_Enum.WebContent_Single:
+                        return "sbkSaav_ContainerInner";
 				}
 				return base.Container_CssClass;
 			}

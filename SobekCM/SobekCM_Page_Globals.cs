@@ -13,6 +13,7 @@ using SobekCM.Core.Aggregations;
 using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Items;
 using SobekCM.Core.MemoryMgmt;
+using SobekCM.Core.MicroservicesClient;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.Results;
 using SobekCM.Core.SiteMap;
@@ -84,6 +85,7 @@ namespace SobekCM
 			    {
 			        UI_ApplicationCache_Gateway.Settings.System_Base_URL = base_url;
 			        UI_ApplicationCache_Gateway.Settings.Base_URL = base_url;
+
 			    }
 #endif
 
@@ -91,6 +93,8 @@ namespace SobekCM
 			    if ( String.IsNullOrEmpty(UI_ApplicationCache_Gateway.Settings.Base_Directory))
 			    {
                     string baseDir = System.Web.HttpContext.Current.Server.MapPath("~");
+			        if ((baseDir.Length > 0) && (baseDir[baseDir.Length - 1] != '\\'))
+			            baseDir = baseDir + "\\";
                     UI_ApplicationCache_Gateway.Settings.Base_Directory = baseDir;
 
                     SobekCM_Database.Set_Setting("Application Server Network", baseDir);
@@ -177,7 +181,7 @@ namespace SobekCM
 			    currentMode = new Navigation_Object();
 			    NameValueCollection queryString = request.QueryString;
 
-			    SobekCM_QueryString_Analyzer.Parse_Query(queryString, currentMode, base_url, request.UserLanguages, UI_ApplicationCache_Gateway.Aggregations, UI_ApplicationCache_Gateway.Collection_Aliases, UI_ApplicationCache_Gateway.Items, UI_ApplicationCache_Gateway.URL_Portals, tracer);
+			    QueryString_Analyzer.Parse_Query(queryString, currentMode, base_url, request.UserLanguages, UI_ApplicationCache_Gateway.Aggregations, UI_ApplicationCache_Gateway.Collection_Aliases, UI_ApplicationCache_Gateway.Items, UI_ApplicationCache_Gateway.URL_Portals, UI_ApplicationCache_Gateway.WebContent_Hierarchy, tracer);
 
                 currentMode.Base_URL=base_url;
 			    currentMode.isPostBack = isPostBack;
@@ -186,13 +190,15 @@ namespace SobekCM
 
                 defaultSkin = currentMode.Skin;
 			}
-			catch
+			catch  ( Exception ee )
 			{
 				HttpContext.Current.Response.Status = "301 Moved Permanently";
 				HttpContext.Current.Response.AddHeader("Location", base_url);
 				HttpContext.Current.ApplicationInstance.CompleteRequest();
 				return;
 			}
+
+		    
 
 			// If this was for HTML, but was at the data, just convert to XML 
 			if ((page_name == "SOBEKCM_DATA") && (currentMode.Writer_Type != Writer_Type_Enum.XML) && (currentMode.Writer_Type != Writer_Type_Enum.JSON) && (currentMode.Writer_Type != Writer_Type_Enum.DataSet) && (currentMode.Writer_Type != Writer_Type_Enum.Data_Provider))

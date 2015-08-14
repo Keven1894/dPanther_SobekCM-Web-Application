@@ -1,4 +1,4 @@
-﻿#region Using directives
+#region Using directives
 
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,6 @@ using System.Web;
 using SobekCM.Core.MemoryMgmt;
 using SobekCM.Core.Navigation;
 using SobekCM.Engine_Library.Items;
-using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Citation;
 using SobekCM.Library.Citation.Template;
 using SobekCM.Library.HTML;
@@ -19,7 +18,6 @@ using SobekCM.Library.Settings;
 using SobekCM.Library.UI;
 using SobekCM.Resource_Object;
 using SobekCM.Resource_Object.Bib_Info;
-using SobekCM.Resource_Object.Database;
 using SobekCM.Resource_Object.Metadata_File_ReaderWriters;
 using SobekCM.Tools;
 
@@ -33,8 +31,8 @@ namespace SobekCM.Library.MySobekViewer
     /// authentication, such as online submittal, metadata editing, and system administrative tasks.<br /><br />
     /// During a valid html request, the following steps occur:
     /// <ul>
-    /// <li>Application state is built/verified by the <see cref="Application_State.Application_State_Builder"/> </li>
-    /// <li>Request is analyzed by the <see cref="Navigation.SobekCM_QueryString_Analyzer"/> and output as a <see cref="Navigation_Object"/> </li>
+    /// <li>Application state is built/verified by the Application_State_Builder </li>
+    /// <li>Request is analyzed by the QueryString_Analyzer and output as a <see cref="Navigation_Object"/> </li>
     /// <li>Main writer is created for rendering the output, in his case the <see cref="Html_MainWriter"/> </li>
     /// <li>The HTML writer will create the necessary subwriter.  Since this action requires authentication, an instance of the  <see cref="MySobek_HtmlSubwriter"/> class is created. </li>
     /// <li>The mySobek subwriter creates an instance of this viewer to display the item for editing</li>
@@ -204,12 +202,12 @@ namespace SobekCM.Library.MySobekViewer
 		        {
 			        case "name":
 				        delayed_popup = "name";
-				        item.Bib_Info.Add_Named_Entity(String.Empty).Name_Type = Name_Info_Type_Enum.personal;
+				        item.Bib_Info.Add_Named_Entity(String.Empty).Name_Type = Name_Info_Type_Enum.Personal;
 				        break;
 
 			        case "title":
 				        delayed_popup = "title";
-				        item.Bib_Info.Add_Other_Title(String.Empty, Title_Type_Enum.alternative);
+				        item.Bib_Info.Add_Other_Title(String.Empty, Title_Type_Enum.Alternative);
 				        break;
 
 			        case "subject":
@@ -290,11 +288,20 @@ namespace SobekCM.Library.MySobekViewer
             }
         }
 
+        /// <summary> Add the HTML to be displayed in the main SobekCM viewer area (outside of any form)  </summary>
+        /// <param name="Output">Textwriter to write the HTML for this viewer</param>
+        /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <remarks> Does nothing </remarks>
 		public override void Write_HTML(TextWriter Output, Custom_Tracer Tracer)
 		{
 			// DO nothing
 		}
 
+        /// <summary> This is an opportunity to write HTML directly into the main form before any controls are 
+        /// placed in the main place holder </summary>
+        /// <param name="Output">Textwriter to write the pop-up form HTML for this viewer</param>
+        /// <param name="Tracer">Trace object keeps a list of each method executed and important milestones in rendering</param>
+        /// <remarks> This text will appear within the ItemNavForm form tags  </remarks>
 	    public override void Write_ItemNavForm_Opening(TextWriter Output, Custom_Tracer Tracer)
 	    {
 		    Output.WriteLine("<!-- Edit_Item_Metadata_MySobekViewer.Add_Controls -->");
@@ -315,7 +322,7 @@ namespace SobekCM.Library.MySobekViewer
                 Output.WriteLine("      <li>Clicking on the green plus button ( <img class=\"repeat_button\" src=\"" + Static_Resources.New_Element_Demo_Jpg + "\" /> ) will add another instance of the element, if the element is repeatable.</li>");
 
                 // This whole section only applies if the simple and complex templates are different
-			    if (String.Compare(RequestSpecificValues.Current_User.Edit_Template_Code_Complex, RequestSpecificValues.Current_User.Edit_Template_Code_Simple, true) != 0)
+			    if (String.Compare(RequestSpecificValues.Current_User.Edit_Template_Code_Complex, RequestSpecificValues.Current_User.Edit_Template_Code_Simple, StringComparison.OrdinalIgnoreCase) != 0)
 			    {
 			        if ((item.Using_Complex_Template) || (item.Contains_Complex_Content))
 			        {
@@ -676,6 +683,5 @@ namespace SobekCM.Library.MySobekViewer
     }
 }
   
-
 
 
