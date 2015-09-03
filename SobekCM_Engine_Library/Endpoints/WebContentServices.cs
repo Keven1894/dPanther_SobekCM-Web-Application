@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.Caching;
@@ -1299,7 +1300,31 @@ namespace SobekCM.Engine_Library.Endpoints
                 if (!String.IsNullOrEmpty(QueryString["l2"]))
                 {
                     string level2_filter = QueryString["l2"];
-                    resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
+                    if (!String.IsNullOrEmpty(QueryString["l3"]))
+                    {
+                        string level3_filter = QueryString["l3"];
+                        if (!String.IsNullOrEmpty(QueryString["l4"]))
+                        {
+                            string level4_filter = QueryString["l4"];
+                            if (!String.IsNullOrEmpty(QueryString["l5"]))
+                            {
+                                string level5_filter = QueryString["l5"];
+                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "' and Level5='" + level5_filter + "'";
+                            }
+                            else
+                            {
+                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "'";
+                            }
+                        }
+                        else
+                        {
+                            resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "'";
+                        }
+                    }
+                    else
+                    {
+                        resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
+                    }
                 }
                 else
                 {
@@ -1386,11 +1411,11 @@ namespace SobekCM.Engine_Library.Endpoints
                     }
                 }
 
-
-                Response.Output.Write("\", \"" + thisRow["Title"] + "\", ");
-                Response.Output.Write("\", \"" + (DateTime.Parse(thisRow["MilestoneDate"].ToString())).ToString() + "\", ");
-                Response.Output.Write("\", \"" + thisRow["MilestoneUser"] + "\", ");
-                Response.Output.Write("\", \"" + thisRow["Milestone"] + "\" ");
+                Response.Output.Write("\", ");
+                Response.Output.Write("\"" + thisRow["Title"] + "\", ");
+                Response.Output.Write("\"" + (DateTime.Parse(thisRow["MilestoneDate"].ToString())).ToString() + "\", ");
+                Response.Output.Write("\"" + thisRow["MilestoneUser"] + "\", ");
+                Response.Output.Write("\"" + thisRow["Milestone"] + "\" ");
 
                 // Finish this row
                 if ((i < displayStart + displayLength - 1) && (i < total_results - 1))
@@ -1453,7 +1478,7 @@ namespace SobekCM.Engine_Library.Endpoints
                         tracer.Add_Trace("WebContentServices.Get_Global_Recent_Updates_NextLevel", "Special case, top level");
                         foreach (DataRow thisRow in changes.Tables[2].Rows)
                         {
-                            returnValue.Add(thisRow[0].ToString());
+                            returnValue.Add(thisRow[0].ToString().ToLower());
                         }
                     }
                     else
@@ -1467,7 +1492,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
                         foreach (DataRowView thisRow in specialView)
                         {
-                            returnValue.Add(thisRow[1].ToString());
+                            returnValue.Add(thisRow[1].ToString().ToLower());
                         }
                     }
                 }
@@ -1519,16 +1544,20 @@ namespace SobekCM.Engine_Library.Endpoints
                     };
 
 
-                    // Step through and add each NEW term
+                    // Step through and add each NEW term to a sorted dictionary
+                    SortedDictionary<string, string> sortList = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (DataRowView thisRow in specialView)
                     {
                         if (thisRow[column_counter] != DBNull.Value)
                         {
-                            string thisTerm = thisRow[column_counter].ToString().ToLower();
-                            if ((!String.IsNullOrEmpty(thisTerm)) && (!returnValue.Contains(thisTerm)))
-                                returnValue.Add(thisTerm);
+                            string thisTerm = thisRow[column_counter].ToString();
+                            if ((!String.IsNullOrEmpty(thisTerm)) && (!sortList.ContainsKey(thisTerm)))
+                                sortList[thisTerm.ToLower()] = thisTerm;
                         }
                     }
+
+                    // Now, copy the keys over to the return value
+                    returnValue.AddRange(sortList.Select(Kvp => Kvp.Key));
                 }
             }
             catch (Exception ee)
@@ -1732,7 +1761,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
             // Look in the cache
             bool? cacheFlag = CachedDataManager.WebContent.Retrieve_Has_Global_Usage_Flag(tracer);
-            bool flag = false;
+            bool flag;
             if (cacheFlag.HasValue)
                 flag = cacheFlag.Value;
             else
@@ -2036,7 +2065,31 @@ namespace SobekCM.Engine_Library.Endpoints
                 if (!String.IsNullOrEmpty(QueryString["l2"]))
                 {
                     string level2_filter = QueryString["l2"];
-                    resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
+                    if (!String.IsNullOrEmpty(QueryString["l3"]))
+                    {
+                        string level3_filter = QueryString["l3"];
+                        if (!String.IsNullOrEmpty(QueryString["l4"]))
+                        {
+                            string level4_filter = QueryString["l4"];
+                            if (!String.IsNullOrEmpty(QueryString["l5"]))
+                            {
+                                string level5_filter = QueryString["l5"];
+                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "' and Level5='" + level5_filter + "'";
+                            }
+                            else
+                            {
+                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "'";
+                            }
+                        }
+                        else
+                        {
+                            resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "'";
+                        }
+                    }
+                    else
+                    {
+                        resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
+                    }
                 }
                 else
                 {
@@ -2062,12 +2115,10 @@ namespace SobekCM.Engine_Library.Endpoints
             Response.Output.WriteLine("\"aaData\": [");
 
             // Sort by the correct column
-            if ((sortingColumn1 > 0) || (sortDirection1 != "asc"))
-            {
                 if (sortingColumn1 == 0)
                 {
                     // Must be descending column zero then
-                    resultsView.Sort = "Level1 desc, Level2 desc, Level3 desc, Level4 desc, Level5 desc, Level6 desc, Level7 desc, Level8 desc";
+                    resultsView.Sort = "Level1 " + sortDirection1 + ", Level2 " + sortDirection1 + ", Level3 " + sortDirection1 + ", Level4 " + sortDirection1 + ", Level5 " + sortDirection1 + ", Level6 " + sortDirection1 + ", Level7 " + sortDirection1 + ", Level8 " + sortDirection1;
                 }
                 else if (sortingColumn1 == 1)
                 {
@@ -2081,7 +2132,6 @@ namespace SobekCM.Engine_Library.Endpoints
                 {
                     resultsView.Sort = "HitsHierarchical " + sortDirection1;
                 }
-            }
 
             // Add the data for the rows to show
             for (int i = displayStart; (i < displayStart + displayLength) && (i < total_results); i++)
@@ -2200,7 +2250,7 @@ namespace SobekCM.Engine_Library.Endpoints
                         tracer.Add_Trace("WebContentServices.Get_Global_Usage_Report_NextLevel", "Special case, top level");
                         foreach (DataRow thisRow in pages.Tables[1].Rows)
                         {
-                            returnValue.Add(thisRow[0].ToString());
+                            returnValue.Add(thisRow[0].ToString().ToLower());
                         }
                     }
                     else
@@ -2214,7 +2264,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
                         foreach (DataRowView thisRow in specialView)
                         {
-                            returnValue.Add(thisRow[1].ToString());
+                            returnValue.Add(thisRow[1].ToString().ToLower());
                         }
                     }
                 }
@@ -2265,17 +2315,20 @@ namespace SobekCM.Engine_Library.Endpoints
                         RowFilter = filterBuilder.ToString()
                     };
 
-
-                    // Step through and add each NEW term
+                    // Step through and add each NEW term to a sorted dictionary
+                    SortedDictionary<string, string> sortList = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (DataRowView thisRow in specialView)
                     {
                         if (thisRow[column_counter] != DBNull.Value)
                         {
-                            string thisTerm = thisRow[column_counter].ToString().ToLower();
-                            if ((!String.IsNullOrEmpty(thisTerm)) && (!returnValue.Contains(thisTerm)))
-                                returnValue.Add(thisTerm);
+                            string thisTerm = thisRow[column_counter].ToString();
+                            if ((!String.IsNullOrEmpty(thisTerm)) && (!sortList.ContainsKey(thisTerm)))
+                                sortList[thisTerm.ToLower()] = thisTerm;
                         }
                     }
+
+                    // Now, copy the keys over to the return value
+                    returnValue.AddRange(sortList.Select(Kvp => Kvp.Key));
                 }
             }
             catch (Exception ee)
@@ -2767,7 +2820,7 @@ namespace SobekCM.Engine_Library.Endpoints
                         tracer.Add_Trace("WebContentServices.Get_All_Redirects_NextLevel", "Special case, top level");
                         foreach (DataRow thisRow in pages.Tables[1].Rows)
                         {
-                            returnValue.Add(thisRow[0].ToString());
+                            returnValue.Add(thisRow[0].ToString().ToLower());
                         }
                     }
                     else
@@ -2781,7 +2834,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
                         foreach (DataRowView thisRow in specialView)
                         {
-                            returnValue.Add(thisRow[1].ToString());
+                            returnValue.Add(thisRow[1].ToString().ToLower());
                         }
                     }
                 }
@@ -2832,17 +2885,20 @@ namespace SobekCM.Engine_Library.Endpoints
                         RowFilter = filterBuilder.ToString()
                     };
 
-
-                    // Step through and add each NEW term
+                    // Step through and add each NEW term to a sorted dictionary
+                    SortedDictionary<string, string> sortList = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (DataRowView thisRow in specialView)
                     {
                         if (thisRow[column_counter] != DBNull.Value)
                         {
-                            string thisTerm = thisRow[column_counter].ToString().ToLower();
-                            if ((!String.IsNullOrEmpty(thisTerm)) && (!returnValue.Contains(thisTerm)))
-                                returnValue.Add(thisTerm);
+                            string thisTerm = thisRow[column_counter].ToString();
+                            if ((!String.IsNullOrEmpty(thisTerm)) && (!sortList.ContainsKey(thisTerm)))
+                                sortList[thisTerm.ToLower()] = thisTerm;
                         }
                     }
+
+                    // Now, copy the keys over to the return value
+                    returnValue.AddRange(sortList.Select(Kvp => Kvp.Key));
                 }
             }
             catch (Exception ee)
@@ -3332,7 +3388,7 @@ namespace SobekCM.Engine_Library.Endpoints
                         tracer.Add_Trace("WebContentServices.Get_All_Pages_NextLevel", "Special case, top level");
                         foreach (DataRow thisRow in pages.Tables[1].Rows)
                         {
-                            returnValue.Add(thisRow[0].ToString());
+                            returnValue.Add(thisRow[0].ToString().ToLower());
                         }
                     }
                     else
@@ -3346,7 +3402,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
                         foreach (DataRowView thisRow in specialView)
                         {
-                            returnValue.Add(thisRow[1].ToString());
+                            returnValue.Add(thisRow[1].ToString().ToLower());
                         }
                     }
                 }
@@ -3397,17 +3453,20 @@ namespace SobekCM.Engine_Library.Endpoints
                         RowFilter = filterBuilder.ToString()
                     };
 
-
-                    // Step through and add each NEW term
+                    // Step through and add each NEW term to a sorted dictionary
+                    SortedDictionary<string, string> sortList = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (DataRowView thisRow in specialView)
                     {
                         if (thisRow[column_counter] != DBNull.Value)
                         {
-                            string thisTerm = thisRow[column_counter].ToString().ToLower();
-                            if (( !String.IsNullOrEmpty(thisTerm)) && (!returnValue.Contains(thisTerm)))
-                                returnValue.Add(thisTerm);
+                            string thisTerm = thisRow[column_counter].ToString();
+                            if ((!String.IsNullOrEmpty(thisTerm)) && (!sortList.ContainsKey(thisTerm)))
+                                sortList[thisTerm.ToLower()] = thisTerm;
                         }
                     }
+
+                    // Now, copy the keys over to the return value
+                    returnValue.AddRange(sortList.Select(Kvp => Kvp.Key));
                 }
             }
             catch (Exception ee)
@@ -3945,7 +4004,7 @@ namespace SobekCM.Engine_Library.Endpoints
                         tracer.Add_Trace("WebContentServices.Get_All_NextLevel", "Special case, top level");
                         foreach (DataRow thisRow in pages.Tables[1].Rows)
                         {
-                            returnValue.Add(thisRow[0].ToString());
+                            returnValue.Add(thisRow[0].ToString().ToLower());
                         }
                     }
                     else
@@ -3959,7 +4018,7 @@ namespace SobekCM.Engine_Library.Endpoints
 
                         foreach (DataRowView thisRow in specialView)
                         {
-                            returnValue.Add(thisRow[1].ToString());
+                            returnValue.Add(thisRow[1].ToString().ToLower());
                         }
                     }
                 }
@@ -4010,17 +4069,20 @@ namespace SobekCM.Engine_Library.Endpoints
                         RowFilter = filterBuilder.ToString()
                     };
 
-
-                    // Step through and add each NEW term
+                    // Step through and add each NEW term to a sorted dictionary
+                    SortedDictionary<string, string> sortList = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (DataRowView thisRow in specialView)
                     {
                         if (thisRow[column_counter] != DBNull.Value)
                         {
-                            string thisTerm = thisRow[column_counter].ToString().ToLower();
-                            if ((!String.IsNullOrEmpty(thisTerm)) && (!returnValue.Contains(thisTerm)))
-                                returnValue.Add(thisTerm);
+                            string thisTerm = thisRow[column_counter].ToString();
+                            if ((!String.IsNullOrEmpty(thisTerm)) && (!sortList.ContainsKey(thisTerm)))
+                                sortList[thisTerm.ToLower()] = thisTerm;
                         }
                     }
+
+                    // Now, copy the keys over to the return value
+                    returnValue.AddRange(sortList.Select(Kvp => Kvp.Key));
                 }
             }
             catch (Exception ee)
@@ -4174,8 +4236,16 @@ namespace SobekCM.Engine_Library.Endpoints
                         return null;
                     }
 
-                    // Copy over the primary key for this web content
+                    // Copy over the primary key and URL segments for this web content
                     simpleWebContent.WebContentID = BasicInfo.WebContentID;
+                    simpleWebContent.Level1 = BasicInfo.Level1;
+                    simpleWebContent.Level2 = BasicInfo.Level2;
+                    simpleWebContent.Level3 = BasicInfo.Level3;
+                    simpleWebContent.Level4 = BasicInfo.Level4;
+                    simpleWebContent.Level5 = BasicInfo.Level5;
+                    simpleWebContent.Level6 = BasicInfo.Level6;
+                    simpleWebContent.Level7 = BasicInfo.Level7;
+                    simpleWebContent.Level8 = BasicInfo.Level8;
 
                     // Now, check for any "server-side include" directorives in the source text
                     int include_index = simpleWebContent.Content.IndexOf("<%INCLUDE");
