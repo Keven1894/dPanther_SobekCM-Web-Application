@@ -6,12 +6,11 @@ using System.Text;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
-using SobekCM.Core.Aggregations;
 using SobekCM.Core.Client;
-using SobekCM.Core.Configuration;
+using SobekCM.Core.MemoryMgmt;
+using SobekCM.Core.Message;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.WebContent;
-using SobekCM.Library.Database;
 using SobekCM.Library.HTML;
 using SobekCM.Library.Settings;
 using SobekCM.Library.UI;
@@ -34,10 +33,10 @@ namespace SobekCM.Library.AdminViewer
 
 		private readonly int page;
 
-		private string childPageCode;
-		private string childPageLabel;
-		private string childPageVisibility;
-		private string childPageParent;
+        //private string childPageCode;
+        //private string childPageLabel;
+        //private string childPageVisibility;
+        //private string childPageParent;
         private Exception storedException;
 
 
@@ -70,22 +69,13 @@ namespace SobekCM.Library.AdminViewer
 			actionMessage = String.Empty;
             webContentId = RequestSpecificValues.Current_Mode.WebContentID.Value;
 
-			// If the RequestSpecificValues.Current_User cannot edit this, go back
-            if ((!RequestSpecificValues.Current_User.Is_Portal_Admin) && (!RequestSpecificValues.Current_User.Is_System_Admin) && (!RequestSpecificValues.Current_User.Is_Host_Admin))
-			{
-                RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
-                RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.Home;
-                UrlWriterHelper.Redirect(RequestSpecificValues.Current_Mode);
-				return;
-			}
-
             try
             {
 
-                // Load the item aggregation, either currenlty from the session (if already editing this aggregation )
+                // Load the web content, either currenlty from the session (if already editing this aggregation )
                 // or by reading all the appropriate XML and reading data from the database
-                object possibleEditAggregation = HttpContext.Current.Session["Edit_WebContent|" + webContentId];
-                HTML_Based_Content cachedInstance = possibleEditAggregation as HTML_Based_Content;
+                object possibleEditWebContent = HttpContext.Current.Session["Edit_WebContent|" + webContentId];
+                HTML_Based_Content cachedInstance = possibleEditWebContent as HTML_Based_Content;
                 if (cachedInstance != null)
                 {
                     webContent = cachedInstance;
@@ -103,7 +93,16 @@ namespace SobekCM.Library.AdminViewer
                     return;
                 }
 
-                // Get the aggregation directory and ensure it exists
+                // If the current user cannot edit this, go back
+                if (!webContent.Can_Edit(RequestSpecificValues.Current_User))
+                {
+                    RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
+                    RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.Home;
+                    UrlWriterHelper.Redirect(RequestSpecificValues.Current_Mode);
+                    return;
+                }
+
+                // Get the web content directory and ensure it exists
                 webContentDirectory = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + "webcontent\\" + webContent.UrlSegments.Replace("/", "\\");
                 if (!Directory.Exists(webContentDirectory))
                     Directory.CreateDirectory(webContentDirectory);
@@ -178,128 +177,25 @@ namespace SobekCM.Library.AdminViewer
                         }
 
                         // Should this be saved to the database?
-                        if ((action == "save") || (action == "save_exit") || (action == "save_wizard"))
+                        if ((action == "save") || (action == "save_exit"))
                         {
-                            actionMessage = "Saving temporarily disabled";
+                            // Set the date on the page to today
+                            webContent.Date = DateTime.Now.ToShortDateString();
 
-                            //// Get the current aggrgeation information, for comparison
-                            //Complete_Item_Aggregation currentAggregation = SobekEngineClient.Aggregations.Get_Complete_Aggregation(code, true, RequestSpecificValues.Tracer);
+                            // Send the update to the endgine
+                            RestResponseMessage response = SobekEngineClient.WebContent.Update_HTML_Based_Content(webContent, RequestSpecificValues.Current_User.Full_Name, RequestSpecificValues.Tracer);
 
-                            //// Backup the old aggregation info
-                            //string backup_folder = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + itemAggregation.ObjDirectory.Replace("/","\\") + "backup\\configs";
-                            //if (!Directory.Exists(backup_folder))
-                            //    Directory.CreateDirectory(backup_folder);
-                            //string current_config = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + itemAggregation.ObjDirectory + "\\" + itemAggregation.Code + ".xml";
-                            //if (File.Exists(current_config))
-                            //{
-                            //    // Use the last modified date as the name of the backup
-                            //    DateTime lastModifiedDate = (new FileInfo(current_config)).LastWriteTime;
-                            //    string backup_name = itemAggregation.Code + lastModifiedDate.Year + lastModifiedDate.Month.ToString().PadLeft(2, '0') + lastModifiedDate.Day.ToString().PadLeft(2, '0') + lastModifiedDate.Hour.ToString().PadLeft(2, '0') + lastModifiedDate.Minute.ToString().PadLeft(2, '0') + ".xml";
-                            //    if (!File.Exists(backup_folder + "\\" + backup_name))
-                            //        File.Copy(current_config, backup_folder + "\\" + backup_name, false );
-                            //}
+                            // Clear the cache
+                            CachedDataManager.WebContent.Clear_Page_Details(webContent.WebContentID.Value);
 
-                            //// Save the new configuration file
-                            //string save_error = String.Empty;
-                            //bool successful_save = true;
-                            //if (!itemAggregation.Write_Configuration_File(UI_ApplicationCache_Gateway.Settings.Base_Design_Location + itemAggregation.ObjDirectory))
-                            //{
-                            //    successful_save = false;
-                            //    save_error = "<br /><br />Error saving the configuration file";
-                            //}
+                            if (action == "save_exit")
+                            {
+                                RequestSpecificValues.Current_Mode.Request_Completed = true;
+                                HttpContext.Current.Response.Redirect(webContent.URL(RequestSpecificValues.Current_Mode.Base_URL), false);
+                                HttpContext.Current.ApplicationInstance.CompleteRequest();
+                                return;
+                            }
 
-                            //// Save to the database
-                            //if (!Item_Aggregation_Utilities.Save_To_Database(itemAggregation, RequestSpecificValues.Current_User.Full_Name, null))
-                            //{
-                            //    successful_save = false;
-                            //    save_error = "<br /><br />Error saving to the database.";
-
-                            //    if (Engine_Database.Last_Exception != null)
-                            //    {
-                            //        save_error = save_error + "<br /><br />" + Engine_Database.Last_Exception.Message;
-                            //    }
-                            //}
-
-                            //// Save the link between this item and the thematic heading
-                            //int thematicHeadingId = -1;
-                            //if (itemAggregation.Thematic_Heading != null)
-                            //    thematicHeadingId = itemAggregation.Thematic_Heading.ID;
-                            //UI_ApplicationCache_Gateway.Aggregations.Set_Aggregation_Thematic_Heading(itemAggregation.Code, thematicHeadingId);
-
-
-                            //// Clear the aggregation from the cache
-                            //CachedDataManager.Aggregations.Remove_Item_Aggregation(itemAggregation.Code, null);
-                            //CachedDataManager.Aggregations.Clear_Aggregation_Hierarchy();
-                            //Engine_ApplicationCache_Gateway.RefreshCodes();
-                            //Engine_ApplicationCache_Gateway.RefreshThematicHeadings();
-
-
-
-                            //// Forward back to the aggregation home page, if this was successful
-                            //if (successful_save)
-                            //{
-                            //    // Also, update the information that was changed
-                            //    try
-                            //    {
-                            //        List<string> changes = Complete_Item_Aggregation_Comparer.Compare(currentAggregation, itemAggregation);
-                            //        if ((changes != null) && (changes.Count > 0))
-                            //        {
-                            //            StringBuilder builder = new StringBuilder(changes[0]);
-                            //            for (int i = 1; i < changes.Count; i++)
-                            //            {
-                            //                builder.Append("\n" + changes[i]);
-                            //            }
-                            //            SobekCM_Database.Save_Item_Aggregation_Milestone(itemAggregation.Code, builder.ToString(), RequestSpecificValues.Current_User.Full_Name);
-
-                            //        }
-                            //        else
-                            //        {
-                            //            SobekCM_Database.Save_Item_Aggregation_Milestone(itemAggregation.Code, "Configuration edited", RequestSpecificValues.Current_User.Full_Name);
-                            //        }
-                            //    }
-                            //    catch
-                            //    {
-                            //        SobekCM_Database.Save_Item_Aggregation_Milestone(itemAggregation.Code, "Configuration edited", RequestSpecificValues.Current_User.Full_Name);
-                            //    }
-
-
-                            //    // Clear the aggregation from the sessions
-                            //    HttpContext.Current.Session["Edit_Aggregation_" + itemAggregation.Code] = null;
-                            //    HttpContext.Current.Session["Item_Aggr_Edit_" + itemAggregation.Code + "_NewLanguages"] = null;
-
-                            //    // Redirect the RequestSpecificValues.Current_User
-                            //    if (action == "save_exit")
-                            //    {
-                            //        RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Aggregation;
-                            //        RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Home;
-                            //        UrlWriterHelper.Redirect(RequestSpecificValues.Current_Mode);
-                            //    }
-                            //    else if (action == "save_wizard")
-                            //    {
-
-                            //        RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Add_Collection_Wizard;
-                            //        string wizard_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
-                            //        RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Aggregations_Mgmt;
-
-                            //        if (wizard_url.IndexOf("?") < 0)
-                            //            wizard_url = wizard_url + "?parent=" + itemAggregation.Code;
-                            //        else
-                            //            wizard_url = wizard_url + "&parent=" + itemAggregation.Code;
-
-                            //        RequestSpecificValues.Current_Mode.Request_Completed = true;
-                            //        HttpContext.Current.Response.Redirect(wizard_url, false);
-                            //        HttpContext.Current.ApplicationInstance.CompleteRequest();
-
-                            //    }
-                            //    else
-                            //    {
-                            //        UrlWriterHelper.Redirect(RequestSpecificValues.Current_Mode);
-                            //    }
-                            //}
-                            //else
-                            //{
-                            //    actionMessage = "Error saving aggregation information!" + save_error;
-                            //}
                         }
                         else
                         {
@@ -315,9 +211,9 @@ namespace SobekCM.Library.AdminViewer
                             RequestSpecificValues.Current_Mode.Request_Completed = true;
                         }
                     }
-                    catch
+                    catch ( Exception ee )
                     {
-                        actionMessage = "Unable to correctly parse postback data.";
+                        actionMessage = "Unable to correctly parse postback data.  " + ee.Message;
                     }
                 }
             }
@@ -522,7 +418,6 @@ namespace SobekCM.Library.AdminViewer
                 Output.WriteLine(storedException.Message);
                 Output.WriteLine();
                 Output.WriteLine(storedException.StackTrace);
-                return;
 		    }
 		}
 
@@ -717,7 +612,35 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("    <td>&nbsp;</td>");
             Output.WriteLine("    <td class=\"sbkSaav_TableLabel\"><label for=\"admin_webcontent_sitemap\">Tree Nav Group:</label></td>");
             Output.WriteLine("    <td>");
-            Output.WriteLine("      <table class=\"sbkSaav_InnerTable\"><tr><td><input class=\"sbkWcav_large_input sbkAdmin_Focusable\" name=\"admin_webcontent_sitemap\" id=\"admin_webcontent_sitemap\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(webContent.SiteMap) + "\" /></td>");
+            Output.WriteLine("      <table class=\"sbkSaav_InnerTable\"><tr><td>");
+
+            // Start the select box
+            Output.Write("          <select class=\"sbkSaav_SelectSkin\" name=\"admin_webcontent_sitemap\" id=\"admin_webcontent_sitemap\">");
+
+            // Add the NONE option first
+            Output.Write(String.IsNullOrEmpty(webContent.SiteMap) ? "<option value=\"\" selected=\"selected\" ></option>" : "<option value=\"\"></option>");
+
+            // Get the ordered list of all skin codes
+		    List<string> sitemaps = SobekEngineClient.WebContent.Get_All_Sitemaps(RequestSpecificValues.Tracer);
+
+            // Add each web skin code to the select box
+		    if (sitemaps != null)
+		    {
+		        foreach (string siteCode in sitemaps)
+		        {
+		            if (String.Compare(webContent.SiteMap, siteCode, StringComparison.OrdinalIgnoreCase) == 0)
+		            {
+		                Output.Write("<option value=\"" + siteCode + "\" selected=\"selected\" >" + HttpUtility.HtmlEncode(siteCode) + "</option>");
+		            }
+		            else
+		            {
+		                Output.Write("<option value=\"" + siteCode + "\">" + HttpUtility.HtmlEncode(siteCode) + "</option>");
+		            }
+		        }
+		    }
+		    Output.WriteLine("</select>");
+
+            Output.WriteLine("        </td>");
             Output.WriteLine("        <td><img class=\"sbkSaav_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + SITEMAP_HELP + "');\"  title=\"" + SITEMAP_HELP + "\" /></td></tr></table>");
             Output.WriteLine("     </td>");
             Output.WriteLine("  </tr>");
@@ -888,10 +811,10 @@ namespace SobekCM.Library.AdminViewer
 
         
 
-            const string CODE_HELP = "Enter the code for the new child page.  This code should be less than 20 characters and be as descriptive of the content of your new page as possible.  This code will appear in the URL for the new child page.";
-			const string LABEL_HELP = "Enter the title for this new child page.  This title should be short, but can include spaces.  This will appear above the child page text.  If this child page appears in the main menu, this will also appear on the menu.  If this child page appears as a browse by, this will appear in the list of possible browse bys as well.";
-			const string VISIBILITY_HELP = "Choose how a link to this child page should appear for the web users.\\n\\nIf you select MAIN MENU, this will appear in the collection main menu system.\\n\\nIf you select BROWSE BY, this will appear with metadata browse bys on the main menu under the BROWSE BY menu item.\\n\\nIf you select NONE, then you will need to add a link to the new child page yourself by editing the text of the home page or an existing linked child page.";
-			const string PARENT_HELP = "If this child page will appear on the main menu, you can select a parent child page already on the main menu.  This will create a drop down menu under, or next to, the parent.";
+            //const string CODE_HELP = "Enter the code for the new child page.  This code should be less than 20 characters and be as descriptive of the content of your new page as possible.  This code will appear in the URL for the new child page.";
+            //const string LABEL_HELP = "Enter the title for this new child page.  This title should be short, but can include spaces.  This will appear above the child page text.  If this child page appears in the main menu, this will also appear on the menu.  If this child page appears as a browse by, this will appear in the list of possible browse bys as well.";
+            //const string VISIBILITY_HELP = "Choose how a link to this child page should appear for the web users.\\n\\nIf you select MAIN MENU, this will appear in the collection main menu system.\\n\\nIf you select BROWSE BY, this will appear with metadata browse bys on the main menu under the BROWSE BY menu item.\\n\\nIf you select NONE, then you will need to add a link to the new child page yourself by editing the text of the home page or an existing linked child page.";
+            //const string PARENT_HELP = "If this child page will appear on the main menu, you can select a parent child page already on the main menu.  This will create a drop down menu under, or next to, the parent.";
 
 			if (actionMessage.Length > 0)
 			{
@@ -1286,7 +1209,7 @@ namespace SobekCM.Library.AdminViewer
             if (HttpContext.Current.Session["WebContent|" + webContentId + "|Uploads"] != null)
             {
                 string files = HttpContext.Current.Session["WebContent|" + webContentId + "|Uploads"].ToString().Replace("|", ", ");
-              //  SobekCM_Database.Save_Item_Aggregation_Milestone(itemAggregation.Code, "Uploaded file(s) " + files, RequestSpecificValues.Current_User.Full_Name);
+                SobekEngineClient.WebContent.Add_Milestone(webContentId, RequestSpecificValues.Current_User.Full_Name, "Uploaded file(s) " + files, RequestSpecificValues.Tracer);
                 HttpContext.Current.Session.Remove("WebContent|" + webContentId + "|Uploads");
             }
 
@@ -1300,7 +1223,7 @@ namespace SobekCM.Library.AdminViewer
                     try
                     {
                         File.Delete(path_file);
-                       // SobekCM_Database.Save_Item_Aggregation_Milestone(itemAggregation.Code, "Deleted upload file " + file, RequestSpecificValues.Current_User.Full_Name);
+                        SobekEngineClient.WebContent.Add_Milestone(webContentId, RequestSpecificValues.Current_User.Full_Name, "Deleted upload file " + file, RequestSpecificValues.Tracer);
                     }
                     catch { }
                 }
@@ -1563,7 +1486,7 @@ namespace SobekCM.Library.AdminViewer
 			switch (page)
 			{
                 case 5:
-                    add_upload_controls(MainPlaceHolder, ".gif,.bmp,.jpg,.png,.jpeg,.ai,.doc,.docx,.eps,.kml,.pdf,.psd,.pub,.txt,.vsd,.vsdx,.xls,.xlsx,.xml,.zip", webContentDirectory, String.Empty, true, webContent.WebContentID + "|Uploads", Tracer);
+                    add_upload_controls(MainPlaceHolder, ".gif,.bmp,.jpg,.png,.jpeg,.ai,.doc,.docx,.eps,.kml,.pdf,.psd,.pub,.txt,.vsd,.vsdx,.xls,.xlsx,.xml,.zip", webContentDirectory, String.Empty, true, "WebContent|" + webContent.WebContentID + "|Uploads", Tracer);
                     break;
 			}
 		}

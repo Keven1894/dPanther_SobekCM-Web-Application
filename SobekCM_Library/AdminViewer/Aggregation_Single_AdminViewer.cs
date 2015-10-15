@@ -1,6 +1,7 @@
 ﻿#region Using directives
 
 using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -1581,22 +1582,238 @@ namespace SobekCM.Library.AdminViewer
 
 		private void Save_Page_2_Postback(NameValueCollection Form)
 		{
-			if (Form["admin_aggr_mapsearch_type"] != null)
-				itemAggregation.Map_Search = Convert.ToUInt16(Form["admin_aggr_mapsearch_type"]);
+            // Get the map search type
+		    decimal latitude = 0;
+		    decimal longitude = 0;
+		    int zoom = 1;
+		    if (Form["admin_aggr_mapsearch_type"] != null)
+		    {
+                // Ensure this is not null
+		        int map_search_type = Convert.ToInt32(Form["admin_aggr_mapsearch_type"]);
+                if (map_search_type == -1)
+                {
+                    itemAggregation.Map_Search_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.EXTENT);
+                    if ((Form["admin_aggr_mapsearch_zoom"] != null) && (Form["admin_aggr_mapsearch_latitude"] != null) && (Form["admin_aggr_mapsearch_longitude"] != null))
+                    {
+                        decimal customLatitude;
+                        decimal customLongitude;
+                        int customZoom;
+                        if ((Int32.TryParse(Form["admin_aggr_mapsearch_zoom"], out customZoom)) && (Decimal.TryParse(Form["admin_aggr_mapsearch_longitude"], out customLongitude)) && (Decimal.TryParse(Form["admin_aggr_mapsearch_latitude"], out customLatitude)))
+                        {
+                            itemAggregation.Map_Search_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.FIXED, customZoom, customLongitude, customLatitude);
+                        }
+                    }
+                }
+                else if (map_search_type == -2)
+                {
+                    itemAggregation.Map_Search_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.EXTENT);
+                }
+                else
+                {
+                    switch (map_search_type)
+                    {
+                        case 0: // WORLD
+                            latitude = 0;
+                            longitude = 0;
+                            zoom = 1;
+                            break;
+
+                        case 1: // FLORIDA
+                            latitude = 28;
+                            longitude = -84.5m;
+                            zoom = 6;
+                            break;
+
+                        case 2: // NORTH AMERICA
+                            latitude = 48;
+                            longitude = -95;
+                            zoom = 3;
+                            break;
+
+                        case 3: // CARIBBEAN
+                            latitude = 19;
+                            longitude = -74;
+                            zoom = 4;
+                            break;
+
+                        case 4: // SOUTH AMERICA
+                            latitude = -22;
+                            longitude = -60;
+                            zoom = 3;
+                            break;
+
+                        case 5: // AFRICA 
+                            latitude = 6;
+                            longitude = 19.5m;
+                            zoom = 3;
+                            break;
+
+                        case 6: // EUROPE
+                            latitude = 49.5m;
+                            longitude = 13.35m;
+                            zoom = 4;
+                            break;
+
+                        case 7: // ASIA
+                            latitude = 36;
+                            longitude = 96;
+                            zoom = 3;
+                            break;
+
+                        case 8: // MIDDLE EAST
+                            latitude = 31;
+                            longitude = 39;
+                            zoom = 4;
+                            break;
+                    }
+                    itemAggregation.Map_Search_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.FIXED, zoom, longitude, latitude);
+                }
+		    }
+
+            // Get the map browse type
+            latitude = 0;
+            longitude = 0;
+            zoom = 1;
+            if (Form["admin_aggr_mapbrowse_type"] != null)
+            {
+                // Ensure this is not null
+                int map_browse_type = Convert.ToInt32(Form["admin_aggr_mapbrowse_type"]);
+                if (map_browse_type == -1)
+                {
+                    itemAggregation.Map_Browse_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.EXTENT);
+                    if ((Form["admin_aggr_mapbrowse_zoom"] != null) && (Form["admin_aggr_mapbrowse_latitude"] != null) && (Form["admin_aggr_mapbrowse_longitude"] != null))
+                    {
+                        decimal customLatitude;
+                        decimal customLongitude;
+                        int customZoom;
+                        if ((Int32.TryParse(Form["admin_aggr_mapbrowse_zoom"], out customZoom)) && (Decimal.TryParse(Form["admin_aggr_mapbrowse_longitude"], out customLongitude)) && (Decimal.TryParse(Form["admin_aggr_mapbrowse_latitude"], out customLatitude)))
+                        {
+                            itemAggregation.Map_Browse_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.FIXED, customZoom, customLongitude, customLatitude);
+                        }
+                    }
+                }
+                else if (map_browse_type == -2)
+                {
+                    itemAggregation.Map_Browse_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.EXTENT);
+                }
+                else
+                {
+                    switch (map_browse_type)
+                    {
+                        case 0: // WORLD
+                            latitude = 0;
+                            longitude = 0;
+                            zoom = 1;
+                            break;
+
+                        case 1: // FLORIDA
+                            latitude = 28;
+                            longitude = -84.5m;
+                            zoom = 6;
+                            break;
+
+                        case 2: // NORTH AMERICA
+                            latitude = 48;
+                            longitude = -95;
+                            zoom = 3;
+                            break;
+
+                        case 3: // CARIBBEAN
+                            latitude = 19;
+                            longitude = -74;
+                            zoom = 4;
+                            break;
+
+                        case 4: // SOUTH AMERICA
+                            latitude = -22;
+                            longitude = -60;
+                            zoom = 3;
+                            break;
+
+                        case 5: // AFRICA 
+                            latitude = 6;
+                            longitude = 19.5m;
+                            zoom = 3;
+                            break;
+
+                        case 6: // EUROPE
+                            latitude = 49.5m;
+                            longitude = 13.35m;
+                            zoom = 4;
+                            break;
+
+                        case 7: // ASIA
+                            latitude = 36;
+                            longitude = 96;
+                            zoom = 3;
+                            break;
+
+                        case 8: // MIDDLE EAST
+                            latitude = 31;
+                            longitude = 39;
+                            zoom = 4;
+                            break;
+                    }
+                    itemAggregation.Map_Browse_Display = new Item_Aggregation_Map_Coverage_Info(Item_Aggregation_Map_Coverage_Type_Enum.FIXED, zoom, longitude, latitude);
+                }
+            }
+
+
+		    //if (Form["admin_aggr_mapsearch_type"] != null)
+            //    itemAggregation.Map_Search = Convert.ToUInt16(Form["admin_aggr_mapsearch_type"]);
 
 			// Build the display options string
 			StringBuilder displayOptionsBldr = new StringBuilder();
-			if (Form["admin_aggr_basicsearch"] != null) displayOptionsBldr.Append("B");
-			if (Form["admin_aggr_basicsearch_years"] != null) displayOptionsBldr.Append("Y");
-            if (Form["admin_aggr_basicsearch_mimetype"] != null) displayOptionsBldr.Append("W");
+
+            // Choose the basic search
+		    if (Form["basicsearch"] != null)
+		    {
+                string basicValue = Form["basicsearch"];
+		        switch (basicValue)
+		        {
+		            case "basic":
+                        displayOptionsBldr.Append("B");
+                        break;
+
+                    case "years":
+                        displayOptionsBldr.Append("Y");
+                        break;
+
+                    case "mime":
+                        displayOptionsBldr.Append("W");
+                        break;
+
+                    case "fulltext":
+                        displayOptionsBldr.Append("E");
+                        break;
+		        }
+		    }
+
+            // Choose the advanced search
+            if (Form["advancedsearch"] != null)
+            {
+                string basicValue = Form["advancedsearch"];
+                switch (basicValue)
+                {
+                    case "standard":
+                        displayOptionsBldr.Append("A");
+                        break;
+
+                    case "years":
+                        displayOptionsBldr.Append("Z");
+                        break;
+
+                    case "mime":
+                        displayOptionsBldr.Append("X");
+                        break;
+                }
+            }
+
 			if (Form["admin_aggr_dloctextsearch"] != null) displayOptionsBldr.Append("C");
 			if (Form["admin_aggr_textsearch"] != null) displayOptionsBldr.Append("F");
 			if (Form["admin_aggr_newspsearch"] != null) displayOptionsBldr.Append("N");
-			if (Form["admin_aggr_advsearch"] != null) displayOptionsBldr.Append("A");
-			if (Form["admin_aggr_advsearch_years"] != null) displayOptionsBldr.Append("Z");
-            if (Form["admin_aggr_advsearch_mimetype"] != null) displayOptionsBldr.Append("X");
 			if (Form["admin_aggr_mapsearch"] != null) displayOptionsBldr.Append("M");
-            if (Form["admin_aggr_mapsearchbeta"] != null) displayOptionsBldr.Append("Q");
+          //  if (Form["admin_aggr_mapsearchbeta"] != null) displayOptionsBldr.Append("Q");
 			if (Form["admin_aggr_mapbrowse"] != null) displayOptionsBldr.Append("G");
 			if (Form["admin_aggr_allitems"] != null) displayOptionsBldr.Append("I");
             
@@ -1616,12 +1833,26 @@ namespace SobekCM.Library.AdminViewer
 			Output.WriteLine("  <tr class=\"sbkSaav_TitleRow\"><td colspan=\"3\">Search Options</td></tr>");
 			Output.WriteLine("  <tr class=\"sbkSaav_TextRow\"><td colspan=\"3\"><p>These options control how searching works within this aggregation, such as which search options are made publicly available.</p><p>For more information about the settings on this tab, <a href=\"" + UI_ApplicationCache_Gateway.Settings.Help_URL(RequestSpecificValues.Current_Mode.Base_URL) + "adminhelp/singleaggr\" target=\"ADMIN_USER_HELP\" >click here to view the help page</a>.</p></td></tr>");
 
-			// Add line for basic search type
+			// Add line for NO basic search type
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
 			Output.WriteLine("    <td style=\"width:50px;\">&nbsp;</td>");
-			Output.WriteLine("    <td  style=\"width:175px; vertical-align:top;\" class=\"sbkSaav_TableLabel\">Search Types:</label></td>");
+			Output.WriteLine("    <td  style=\"width:175px; vertical-align:top;\" class=\"sbkSaav_TableLabel\">Basic Search:</label></td>");
 			Output.WriteLine("    <td>");
-            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_basicsearch\" id=\"admin_aggr_basicsearch\"");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"basicsearch\" id=\"admin_aggr_nobasicsearch\" value=\"none\"");
+                
+            if ((itemAggregation.Display_Options.IndexOf("B") < 0) && (itemAggregation.Display_Options.IndexOf("D") < 0) && (itemAggregation.Display_Options.IndexOf("E") < 0) && (itemAggregation.Display_Options.IndexOf("Y") < 0) && (itemAggregation.Display_Options.IndexOf("W") < 0))
+                Output.Write(" checked=\"checked\"");
+            Output.WriteLine(" /> <label for=\"admin_aggr_nobasicsearch\">None</label></div>");
+            Output.WriteLine("    </td>");
+            Output.WriteLine("  </tr>");
+
+
+            // Add line for basic search 
+            Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
+            Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
+            Output.WriteLine("    <td>");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"basicsearch\" id=\"admin_aggr_basicsearch\" value=\"basic\"");
+
 			if (( itemAggregation.Display_Options.IndexOf("B") >= 0 ) || (itemAggregation.Display_Options.IndexOf("D") >= 0 ))
 				Output.Write(" checked=\"checked\"");
             Output.WriteLine(" /> <label for=\"admin_aggr_basicsearch\">Basic Search</label></div>");
@@ -1633,7 +1864,8 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
 			Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
 			Output.WriteLine("    <td>");
-            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_basicsearch_years\" id=\"admin_aggr_basicsearch_years\"");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"basicsearch\" id=\"admin_aggr_basicsearch_years\" value=\"years\"");
+
 			if (itemAggregation.Display_Options.IndexOf("Y") >= 0)
 				Output.Write(" checked=\"checked\"");
             Output.WriteLine(" /> <label for=\"admin_aggr_basicsearch_years\">Basic Search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with Year Range)</label></div>");
@@ -1645,7 +1877,7 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
             Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
             Output.WriteLine("    <td>");
-            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_basicsearch_mimetype\" id=\"admin_aggr_basicsearch_mimetype\"");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"basicsearch\" id=\"admin_aggr_basicsearch_mimetype\" value=\"mime\"");
             if (itemAggregation.Display_Options.IndexOf("W") >= 0)
                 Output.Write(" checked=\"checked\"");
             Output.WriteLine(" /> <label for=\"admin_aggr_basicsearch_mimetype\">Basic search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with mime-type filter)</label></div>");
@@ -1653,11 +1885,37 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("    </td>");
             Output.WriteLine("  </tr>");
 
+            // Add line for basic search ( with FULL TEXT option )
+            Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
+            Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
+            Output.WriteLine("    <td>");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"basicsearch\" id=\"admin_aggr_basicsearch_fulltext\" value=\"fulltext\"");
+            if (itemAggregation.Display_Options.IndexOf("E") >= 0)
+                Output.Write(" checked=\"checked\"");
+            Output.WriteLine(" /> <label for=\"admin_aggr_basicsearch_fulltext\">Basic search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with full text option)</label></div>");
+            Output.WriteLine("      <img class=\"sbkSaav_SearchImg\" src=\"" + Static_Resources.Search_Basic_With_FullText_Img + "\" onclick=\"expand_contract_search_img(this);\"  title=\"Click to expand or reduce this image.\" />");
+            Output.WriteLine("    </td>");
+            Output.WriteLine("  </tr>");
+
+
+            // Add line for noadvanced search type
+            Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
+            Output.WriteLine("    <td>&nbsp;</td>");
+            Output.WriteLine("    <td style=\"vertical-align:top;\" class=\"sbkSaav_TableLabel\">Advanced Search:</label></td>");
+            Output.WriteLine("    <td>");
+            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"advancedsearch\" id=\"admin_aggr_noadvsearch\" value=\"none\"");
+            if ((itemAggregation.Display_Options.IndexOf("A") < 0) && (itemAggregation.Display_Options.IndexOf("Z") < 0) && (itemAggregation.Display_Options.IndexOf("X") < 0))
+                Output.Write(" checked=\"checked\"");
+            Output.WriteLine(" /> <label for=\"admin_aggr_noadvsearch\">None</label></div>");
+            Output.WriteLine("    </td>");
+            Output.WriteLine("  </tr>");
+
+
 			// Add line for advanced search type
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
-			Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
+            Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
 			Output.WriteLine("    <td>");
-			Output.Write(    "      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_advsearch\" id=\"admin_aggr_advsearch\"");
+		    Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"advancedsearch\" id=\"admin_aggr_advsearch\" value=\"standard\"");
 			if (itemAggregation.Display_Options.IndexOf("A") >= 0)
 				Output.Write(" checked=\"checked\"");
             Output.WriteLine(" /> <label for=\"admin_aggr_advsearch\">Advanced Search</label></div></div>");
@@ -1669,7 +1927,7 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
 			Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
 			Output.WriteLine("    <td>");
-            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_advsearch_years\" id=\"admin_aggr_advsearch_years\"");
+		    Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"advancedsearch\" id=\"admin_aggr_advsearch_years\" value=\"years\"");
 			if (itemAggregation.Display_Options.IndexOf("Z") >= 0)
 				Output.Write(" checked=\"checked\"");
             Output.WriteLine(" /> <label for=\"admin_aggr_advsearch_years\">Advanced Search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with Year Range)</label></div>");
@@ -1681,17 +1939,18 @@ namespace SobekCM.Library.AdminViewer
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
             Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
             Output.WriteLine("    <td>");
-            Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_advsearch_mimetype\" id=\"admin_aggr_advsearch_mimetype\"");
+		    Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"radio\" name=\"advancedsearch\" id=\"admin_aggr_advsearch_mimetype\"value=\"mime\"");
             if (itemAggregation.Display_Options.IndexOf("X") >= 0)
                 Output.Write(" checked=\"checked\"");
-            Output.WriteLine(" /> <label for=\"admin_aggr_advsearch\">Advanced Search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with mime-type filter)</label></div>");
+            Output.WriteLine(" /> <label for=\"admin_aggr_advsearch_mimetype\">Advanced Search<br /> &nbsp; &nbsp; &nbsp; &nbsp; (with mime-type filter)</label></div>");
             Output.WriteLine("      <img class=\"sbkSaav_SearchImg\" src=\"" + Static_Resources.Search_Advanced_MimeType_Img + "\" onclick=\"expand_contract_search_img(this);\"  title=\"Click to expand or reduce this image.\" />");
             Output.WriteLine("    </td>");
             Output.WriteLine("  </tr>");
 
 			// Add line for full text search
             Output.WriteLine("  <tr class=\"sbkSaav_SearchCheckRow\" style=\"vertical-align:top\">");
-			Output.WriteLine("    <td colspan=\"2\">&nbsp;</td>");
+            Output.WriteLine("    <td>&nbsp;</td>");
+            Output.WriteLine("    <td style=\"vertical-align:top;\" class=\"sbkSaav_TableLabel\">Other Searches:</label></td>");
 			Output.WriteLine("    <td>");
             Output.Write("      <div class=\"sbkSaav_SearchCheckDiv\"><input class=\"sbkSaav_checkbox\" type=\"checkbox\" name=\"admin_aggr_textsearch\" id=\"admin_aggr_textsearch\"");
 			if (itemAggregation.Display_Options.IndexOf("F") >= 0)
@@ -1784,60 +2043,276 @@ namespace SobekCM.Library.AdminViewer
 			Output.WriteLine("     </td>");
 			Output.WriteLine("  </tr>");
 
+            // Determine the value for the map SEARCH drop down
+		    int search_area_value = -2;
+		    decimal latitude = 0;
+            decimal longitude = 0;
+		    int zoom = 1;
+		    if (itemAggregation.Map_Search_Display != null)
+		    {
+		        if (itemAggregation.Map_Search_Display.Type == Item_Aggregation_Map_Coverage_Type_Enum.FIXED)
+		        {
+		            search_area_value = -1;
+		            latitude = 0;
+		            longitude = 0;
+		            zoom = 1;
+		            if ((itemAggregation.Map_Search_Display.ZoomLevel.HasValue) && (itemAggregation.Map_Search_Display.Latitude.HasValue) && (itemAggregation.Map_Search_Display.Longitude.HasValue))
+		            {
+		                latitude = itemAggregation.Map_Search_Display.Latitude.Value;
+		                longitude = itemAggregation.Map_Search_Display.Longitude.Value;
+		                zoom = itemAggregation.Map_Search_Display.ZoomLevel.Value;
 
-			// Add line for all/new item browses type
+		            }
+		            if (zoom <= 1)
+		                search_area_value = 0;
+		            else if ((latitude == 28m) && (longitude == -84.5m) && (zoom == 6))
+		            {
+		                search_area_value = 1; // Florida
+		            }
+		            else if ((latitude == 48m) && (longitude == -95m) && (zoom == 3))
+		            {
+		                search_area_value = 2; // North American
+		            }
+		            else if ((latitude == 19m) && (longitude == -74m) && (zoom == 4))
+		            {
+		                search_area_value = 3; // Caribbean
+		            }
+		            else if ((latitude == -22m) && (longitude == -60m) && (zoom == 3))
+		            {
+		                search_area_value = 4; // South America
+		            }
+		            else if ((latitude == 6m) && (longitude == 19.5m) && (zoom == 3))
+		            {
+		                search_area_value = 5; // Africa
+		            }
+		            else if ((latitude == 49.5m) && (longitude == 13.35m) && (zoom == 4))
+		            {
+		                search_area_value = 6; // Europe
+		            }
+		            else if ((latitude == 36m) && (longitude == 96m) && (zoom == 3))
+		            {
+		                search_area_value = 7; // Asia
+		            }
+		            else if ((latitude == 31m) && (longitude == 39m) && (zoom == 4))
+		            {
+		                search_area_value = 8; // Middle east
+		            }
+		        }
+		        else
+		        {
+                    if ((itemAggregation.Map_Search_Display.ZoomLevel.HasValue) && (itemAggregation.Map_Search_Display.Latitude.HasValue) && (itemAggregation.Map_Search_Display.Longitude.HasValue))
+                    {
+                        latitude = itemAggregation.Map_Search_Display.Latitude.Value;
+                        longitude = itemAggregation.Map_Search_Display.Longitude.Value;
+                        zoom = itemAggregation.Map_Search_Display.ZoomLevel.Value;
+                    }
+		        }
+		    }
+
+			// Add line the map SEARCH coverage drop down
 			Output.WriteLine("  <tr class=\"sbkSaav_SingleRow\">");
 			Output.WriteLine("    <td>&nbsp;</td>");
 			Output.WriteLine("    <td class=\"sbkSaav_TableLabel\">Map Search Default Area:</label></td>");
 			Output.WriteLine("    <td>");
-			Output.WriteLine("      <table class=\"sbkSaav_InnerTable\"><tr><td>");
-			Output.WriteLine("          <select class=\"sbkSaav_SelectSingle\" name=\"admin_aggr_mapsearch_type\" id=\"admin_aggr_mapsearch_type\">");
+			Output.WriteLine("      <table class=\"sbkSaav_InnerTable\">");
+            Output.WriteLine("        <tr>");
+            Output.WriteLine("          <td style=\"width:190px\">");
+            Output.WriteLine("            <select class=\"sbkSaav_SelectSingle\" name=\"admin_aggr_mapsearch_type\" id=\"admin_aggr_mapsearch_type\" onchange=\"return aggr_mapsearch_changed();\">");
 
-			Output.WriteLine(itemAggregation.Map_Search % 100 == 0
-							 ? "            <option value=\"0\" selected=\"selected\" >World</option>"
-							 : "            <option value=\"0\">World</option>");
+            Output.WriteLine(search_area_value == -2
+                           ? "              <option value=\"-2\" selected=\"selected\" >(zoom to extent)</option>"
+                           : "              <option value=\"-2\">(zoom to extent)</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 1
-							 ? "            <option value=\"1\" selected=\"selected\" >Florida</option>"
-							 : "            <option value=\"1\">Florida</option>");
+            Output.WriteLine(search_area_value == -1
+                           ? "              <option value=\"-1\" selected=\"selected\" >(custom)</option>"
+                           : "              <option value=\"-1\">(custom)</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 2
-							 ? "            <option value=\"2\" selected=\"selected\" >United States</option>"
-							 : "            <option value=\"2\">United States</option>");
+            Output.WriteLine(search_area_value == 0
+							? "             <option value=\"0\" selected=\"selected\" >World</option>"
+							: "             <option value=\"0\">World</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 3
-							 ? "            <option value=\"3\" selected=\"selected\" >North America</option>"
-							 : "            <option value=\"3\">North America</option>");
+            Output.Write(search_area_value == 5
+                            ? "             <option value=\"5\" selected=\"selected\" >Africa</option>"
+                            : "             <option value=\"5\">Africa</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 4
-							 ? "            <option value=\"4\" selected=\"selected\" >Caribbean</option>"
-							 : "            <option value=\"4\">Caribbean</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 5
-							 ? "            <option value=\"5\" selected=\"selected\" >South America</option>"
-							 : "            <option value=\"5\">South America</option>");
+            Output.Write(search_area_value == 7
+                            ? "             <option value=\"7\" selected=\"selected\" >Asia</option>"
+                            : "             <option value=\"7\">Asia</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 6
-							 ? "            <option value=\"6\" selected=\"selected\" >Africa</option>"
-							 : "            <option value=\"6\">Africa</option>");
+            Output.Write(search_area_value == 6
+                            ? "             <option value=\"6\" selected=\"selected\" >Europe</option>"
+                            : "             <option value=\"6\">Europe</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 7
-							 ? "            <option value=\"7\" selected=\"selected\" >Europe</option>"
-							 : "            <option value=\"7\">Europe</option>");
+            Output.Write(search_area_value == 2
+							? "             <option value=\"2\" selected=\"selected\" >North America</option>"
+							: "             <option value=\"2\">North America</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 8
-							 ? "            <option value=\"8\" selected=\"selected\" >Asia</option>"
-							 : "            <option value=\"8\">Asia</option>");
+            Output.Write(search_area_value == 4
+							? "             <option value=\"4\" selected=\"selected\" >Caribbean</option>"
+							: "             <option value=\"4\">South America</option>");
 
-			Output.Write(itemAggregation.Map_Search % 100 == 9
-							 ? "            <option value=\"9\" selected=\"selected\" >Middle East</option>"
-							 : "            <option value=\"9\">Middle East</option>");
+            Output.Write(search_area_value == 8
+							? "             <option value=\"8\" selected=\"selected\" >Middle East</option>"
+							: "             <option value=\"8\">Middle East</option>");
 
-			Output.WriteLine("          </select>");
-			Output.WriteLine("        </td>");
-			Output.WriteLine("        <td><img class=\"sbkSaav_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + MAP_SEARCH_BOUNDING_HELP + "');\"  title=\"" + MAP_SEARCH_BOUNDING_HELP + "\" /></td></tr></table>");
-			Output.WriteLine("     </td>");
+            Output.Write(search_area_value == 3
+                            ? "             <option value=\"3\" selected=\"selected\" >Caribbean</option>"
+                            : "             <option value=\"3\">Caribbean</option>");
+
+            Output.Write(search_area_value == 1
+                            ? "             <option value=\"1\" selected=\"selected\" >Florida</option>"
+                            : "             <option value=\"1\">Florida</option>");
+
+            Output.WriteLine("            </select>");
+			Output.WriteLine("          </td>");
+            Output.WriteLine("          <td style=\"text-align:left;\"><img class=\"sbkSaav_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + MAP_SEARCH_BOUNDING_HELP + "');\"  title=\"" + MAP_SEARCH_BOUNDING_HELP + "\" /></td>");
+		    Output.WriteLine("        </tr>");
+            if (search_area_value == -1)
+                Output.WriteLine("        <tr id=\"admin_aggr_mapsearch_custom_row\">");
+            else
+                Output.WriteLine("        <tr id=\"admin_aggr_mapsearch_custom_row\" style=\"display:none\">");
+            Output.WriteLine("          <td colspan=\"2\">");
+		    Output.WriteLine("            Zoom: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapsearch_zoom\" id=\"admin_aggr_mapsearch_zoom\" type=\"text\" value=\"" + zoom + "\" /> ");
+            Output.WriteLine("            Latitude: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapsearch_latitude\" id=\"admin_aggr_mapsearch_latitude\" type=\"text\" value=\"" + latitude + "\" /> ");
+            Output.WriteLine("            Longitude: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapsearch_longitude\" id=\"admin_aggr_mapsearch_longitude\" type=\"text\" value=\"" + longitude + "\" /> ");
+            Output.WriteLine("          </td>");
+            Output.WriteLine("        </tr>");
+            Output.WriteLine("      </table>");
+			Output.WriteLine("    </td>");
 			Output.WriteLine("  </tr>");
+
+
+            // Determine the value for the map BROWSE drop down
+            search_area_value = -2;
+            latitude = 0;
+            longitude = 0;
+            zoom = 1;
+            if (itemAggregation.Map_Browse_Display != null)
+            {
+                if (itemAggregation.Map_Browse_Display.Type == Item_Aggregation_Map_Coverage_Type_Enum.FIXED)
+                {
+                    search_area_value = -1;
+                    latitude = 0;
+                    longitude = 0;
+                    zoom = 1;
+                    if ((itemAggregation.Map_Browse_Display.ZoomLevel.HasValue) && (itemAggregation.Map_Browse_Display.Latitude.HasValue) && (itemAggregation.Map_Browse_Display.Longitude.HasValue))
+                    {
+                        latitude = itemAggregation.Map_Browse_Display.Latitude.Value;
+                        longitude = itemAggregation.Map_Browse_Display.Longitude.Value;
+                        zoom = itemAggregation.Map_Browse_Display.ZoomLevel.Value;
+
+                    }
+                    if (zoom <= 1)
+                        search_area_value = 0;
+                    else if ((latitude == 28m) && (longitude == -84.5m) && (zoom == 6))
+                    {
+                        search_area_value = 1; // Florida
+                    }
+                    else if ((latitude == 48m) && (longitude == -95m) && (zoom == 3))
+                    {
+                        search_area_value = 2; // North American
+                    }
+                    else if ((latitude == 19m) && (longitude == -74m) && (zoom == 4))
+                    {
+                        search_area_value = 3; // Caribbean
+                    }
+                    else if ((latitude == -22m) && (longitude == -60m) && (zoom == 3))
+                    {
+                        search_area_value = 4; // South America
+                    }
+                    else if ((latitude == 6m) && (longitude == 19.5m) && (zoom == 3))
+                    {
+                        search_area_value = 5; // Africa
+                    }
+                    else if ((latitude == 49.5m) && (longitude == 13.35m) && (zoom == 4))
+                    {
+                        search_area_value = 6; // Europe
+                    }
+                    else if ((latitude == 36m) && (longitude == 96m) && (zoom == 3))
+                    {
+                        search_area_value = 7; // Asia
+                    }
+                    else if ((latitude == 31m) && (longitude == 39m) && (zoom == 4))
+                    {
+                        search_area_value = 8; // Middle east
+                    }
+                }
+            }
+
+            // Add line the map BROWSE coverage drop down
+            Output.WriteLine("  <tr class=\"sbkSaav_SingleRow\">");
+            Output.WriteLine("    <td>&nbsp;</td>");
+            Output.WriteLine("    <td class=\"sbkSaav_TableLabel\">Map Browse Default Area:</label></td>");
+            Output.WriteLine("    <td>");
+            Output.WriteLine("      <table class=\"sbkSaav_InnerTable\">");
+            Output.WriteLine("        <tr>");
+            Output.WriteLine("          <td style=\"width:190px\">");
+            Output.WriteLine("          <select class=\"sbkSaav_SelectSingle\" name=\"admin_aggr_mapbrowse_type\" id=\"admin_aggr_mapbrowse_type\" onchange=\"return aggr_mapbrowse_changed();\">");
+
+            Output.WriteLine(search_area_value == -2
+                            ? "            <option value=\"-2\" selected=\"selected\" >(zoom to extent)</option>"
+                            : "            <option value=\"-2\">(zoom to extent)</option>");
+
+            Output.WriteLine(search_area_value == -1
+                            ? "            <option value=\"-1\" selected=\"selected\" >(custom)</option>"
+                            : "            <option value=\"-1\">(custom)</option>");
+
+            Output.WriteLine(search_area_value == 0
+                            ? "             <option value=\"0\" selected=\"selected\" >World</option>"
+                            : "             <option value=\"0\">World</option>");
+
+            Output.Write(search_area_value == 5
+                            ? "             <option value=\"5\" selected=\"selected\" >Africa</option>"
+                            : "             <option value=\"5\">Africa</option>");
+
+
+            Output.Write(search_area_value == 7
+                            ? "             <option value=\"7\" selected=\"selected\" >Asia</option>"
+                            : "             <option value=\"7\">Asia</option>");
+
+            Output.Write(search_area_value == 6
+                            ? "             <option value=\"6\" selected=\"selected\" >Europe</option>"
+                            : "             <option value=\"6\">Europe</option>");
+
+            Output.Write(search_area_value == 2
+                            ? "             <option value=\"2\" selected=\"selected\" >North America</option>"
+                            : "             <option value=\"2\">North America</option>");
+
+            Output.Write(search_area_value == 4
+                            ? "             <option value=\"4\" selected=\"selected\" >Caribbean</option>"
+                            : "             <option value=\"4\">South America</option>");
+
+            Output.Write(search_area_value == 8
+                            ? "             <option value=\"8\" selected=\"selected\" >Middle East</option>"
+                            : "             <option value=\"8\">Middle East</option>");
+
+            Output.Write(search_area_value == 3
+                            ? "             <option value=\"3\" selected=\"selected\" >Caribbean</option>"
+                            : "             <option value=\"3\">Caribbean</option>");
+
+            Output.Write(search_area_value == 1
+                            ? "             <option value=\"1\" selected=\"selected\" >Florida</option>"
+                            : "             <option value=\"1\">Florida</option>");
+
+
+            Output.WriteLine("            </select>");
+            Output.WriteLine("          </td>");
+            Output.WriteLine("          <td style=\"text-align:left;\"><img class=\"sbkSaav_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + MAP_SEARCH_BOUNDING_HELP + "');\"  title=\"" + MAP_SEARCH_BOUNDING_HELP + "\" /></td>");
+            Output.WriteLine("        </tr>");
+            if ( search_area_value == -1)
+                Output.WriteLine("        <tr id=\"admin_aggr_mapbrowse_custom_row\">");
+            else
+                Output.WriteLine("        <tr id=\"admin_aggr_mapbrowse_custom_row\" style=\"display:none\">");
+            Output.WriteLine("          <td colspan=\"2\">");
+            Output.WriteLine("            Zoom: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapbrowse_zoom\" id=\"admin_aggr_mapbrowse_zoom\" type=\"text\" value=\"" + zoom + "\" /> ");
+            Output.WriteLine("            Latitude: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapbrowse_latitude\" id=\"admin_aggr_mapbrowse_latitude\" type=\"text\" value=\"" + latitude + "\" /> ");
+            Output.WriteLine("            Longitude: <input class=\"sbkSaav_small_input sbkAdmin_Focusable\" name=\"admin_aggr_mapbrowse_longitude\" id=\"admin_aggr_mapbrowse_longitude\" type=\"text\" value=\"" + longitude + "\" /> ");
+            Output.WriteLine("          </td>");
+            Output.WriteLine("        </tr>");
+            Output.WriteLine("      </table>");
+            Output.WriteLine("    </td>");
+            Output.WriteLine("  </tr>");
 
 			Output.WriteLine("</table>");
 			Output.WriteLine("<br />");

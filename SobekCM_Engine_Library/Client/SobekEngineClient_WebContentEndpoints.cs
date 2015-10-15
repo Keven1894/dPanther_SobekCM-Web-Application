@@ -2,15 +2,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text;
+using System.Xml.Serialization;
+using Jil;
+using ProtoBuf;
 using SobekCM.Core.MemoryMgmt;
+using SobekCM.Core.Message;
 using SobekCM.Core.MicroservicesClient;
 using SobekCM.Core.WebContent;
 using SobekCM.Core.WebContent.Admin;
 using SobekCM.Core.WebContent.Hierarchy;
 using SobekCM.Core.WebContent.Single;
-using SobekCM.Engine_Library.Endpoints;
 using SobekCM.Tools;
 
 #endregion
@@ -27,8 +30,19 @@ namespace SobekCM.Core.Client
             // All work done in the base constructor
         }
 
+        /// <summary> URL for the list of uploaded file JSON REST API </summary>
+        /// <remarks> This is used by the CKEditor to display previously uploaded file at the web content level </remarks>
+        public string Uploaded_Files_URL
+        {
+            get
+            {
+                return Config["WebContent.Get_Uploaded_Files"] == null ? null : Config["WebContent.Get_Uploaded_Files"].URL;
+            }
+        }
+
         /// <summary> Get the information for a single non-aggregational web content page </summary>
         /// <param name="WebContentID"> Primary key for this non-aggregational web content page </param>
+        /// <param name="UseCache"> Flag indicates whether to use the cache for this request </param>
         /// <param name="Tracer"></param>
         /// <returns> Object with all the information and source text for the top-level web content page </returns>
         public HTML_Based_Content Get_HTML_Based_Content(int WebContentID, bool UseCache, Custom_Tracer Tracer)
@@ -88,9 +102,10 @@ namespace SobekCM.Core.Client
         
         /// <summary> Delete a web content page </summary>
         /// <param name="WebContentID"> Primary key for the web content page or redirect to delete </param>
+        /// <param name="User"> Name of the user that performed the work </param>
         /// <param name="Tracer"></param>
         /// <returns> Message </returns>
-        public string Delete_HTML_Based_Content(int WebContentID, string User, Custom_Tracer Tracer)
+        public RestResponseMessage Delete_HTML_Based_Content(int WebContentID, string User, Custom_Tracer Tracer)
         {
             // Add a beginning trace
             Tracer.Add_Trace("SobekEngineClient_WebContentServices.Delete_HTML_Based_Content", "Delete a web content page or redirect");
@@ -102,7 +117,183 @@ namespace SobekCM.Core.Client
             string url = String.Format(endpoint.URL, WebContentID);
 
             // Call out to the endpoint and return the deserialized object
-            return Deserialize<string>(url, endpoint.Protocol, null, "DELETE", Tracer);
+            return Deserialize<RestResponseMessage>(url, endpoint.Protocol, null, "DELETE", Tracer);
+        }
+
+        /// <summary> Add a new web content page or redirect </summary>
+        /// <param name="Content"> Newly updated HTML content to be put back on the server </param>
+        /// <param name="User"> Name of the user that performed the work </param>
+        /// <param name="InheritFromAnyParent"> Flag indicates if this should inherit some design attributes from any found parent </param>
+        /// <param name="Tracer"></param>
+        /// <returns> Message </returns>
+        public RestResponseMessage Add_HTML_Based_Content(HTML_Based_Content Content, string User, bool InheritFromAnyParent, Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.AddUpdate_HTML_Based_Content", "Add a new or update an existing web content page or redirect");
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Add_HTML_Based_Content", Tracer);
+
+            // Using the correct protocol, encode the Content
+            string contentString = String.Empty;
+            switch (endpoint.Protocol)
+            {
+                case Microservice_Endpoint_Protocol_Enum.JSON:
+                case Microservice_Endpoint_Protocol_Enum.JSON_P:
+                    contentString = JSON.Serialize(Content);
+                    break;
+
+                case Microservice_Endpoint_Protocol_Enum.PROTOBUF:
+                    using (MemoryStream memStream = new MemoryStream())
+                    {
+                        Serializer.Serialize(memStream, Content);
+                        contentString = Encoding.ASCII.GetString(memStream.ToArray());
+                    }
+                    break;
+
+                case Microservice_Endpoint_Protocol_Enum.XML:
+                    XmlSerializer x = new XmlSerializer(Content.GetType());
+                    StringBuilder bldr = new StringBuilder();
+                    using (StringWriter stringWriter = new StringWriter(bldr))
+                    {
+                        x.Serialize(stringWriter, Content);
+                        contentString = bldr.ToString();
+                    }
+                    break;
+            }
+
+            // Create the post data
+            List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("User", User), 
+                new KeyValuePair<string, string>("Inherit", InheritFromAnyParent.ToString()), 
+                new KeyValuePair<string, string>("Content", contentString)
+            };
+
+            // Format the URL
+            StringBuilder urlBuilder = new StringBuilder( Content.Level1 );
+            if (!String.IsNullOrEmpty(Content.Level2))
+            {
+                urlBuilder.Append("/" + Content.Level2);
+                if (!String.IsNullOrEmpty(Content.Level3))
+                {
+                    urlBuilder.Append("/" + Content.Level3);
+                    if (!String.IsNullOrEmpty(Content.Level4))
+                    {
+                        urlBuilder.Append("/" + Content.Level4);
+                        if (!String.IsNullOrEmpty(Content.Level5))
+                        {
+                            urlBuilder.Append("/" + Content.Level5);
+                            if (!String.IsNullOrEmpty(Content.Level6))
+                            {
+                                urlBuilder.Append("/" + Content.Level6);
+                                if (!String.IsNullOrEmpty(Content.Level7))
+                                {
+                                    urlBuilder.Append("/" + Content.Level7);
+                                    if (!String.IsNullOrEmpty(Content.Level8))
+                                    {
+                                        urlBuilder.Append("/" + Content.Level8);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Call out to the endpoint and return the deserialized object
+            string url = String.Format(endpoint.URL, urlBuilder);
+            return Deserialize<RestResponseMessage>(url, endpoint.Protocol, postData, "PUT", Tracer);
+        }
+
+        /// <summary> Update an existing web content page or redirect </summary>
+        /// <param name="Content"> Newly updated HTML content to be put back on the server </param>
+        /// <param name="User"> Name of the user that performed the work </param>
+        /// <param name="Tracer"></param>
+        /// <returns> Message </returns>
+        public RestResponseMessage Update_HTML_Based_Content(HTML_Based_Content Content, string User, Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.Update_HTML_Based_Content", "Add a new or update an existing web content page or redirect");
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Update_HTML_Based_Content", Tracer);
+
+            // Using the correct protocol, encode the Content
+            string contentString = String.Empty;
+            switch (endpoint.Protocol)
+            {
+                case Microservice_Endpoint_Protocol_Enum.JSON:
+                case Microservice_Endpoint_Protocol_Enum.JSON_P:
+                    contentString = JSON.Serialize(Content);
+                    break;
+
+                case Microservice_Endpoint_Protocol_Enum.PROTOBUF:
+                    using (MemoryStream memStream = new MemoryStream())
+                    {
+                        Serializer.Serialize(memStream, Content);
+                        contentString = Encoding.ASCII.GetString(memStream.ToArray());
+                    }
+                    break;
+
+                case Microservice_Endpoint_Protocol_Enum.XML:
+                    XmlSerializer x = new XmlSerializer(Content.GetType());
+                    StringBuilder bldr = new StringBuilder();
+                    using (StringWriter stringWriter = new StringWriter(bldr))
+                    {
+                        x.Serialize(stringWriter, Content);
+                        contentString = bldr.ToString();
+                    }
+                    break;
+            }
+
+            // Create the post data
+            List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("User", User), 
+                new KeyValuePair<string, string>("Content", contentString)
+            };
+
+            // Format the URL
+            string url = String.Format(endpoint.URL, Content.WebContentID);
+
+            // Call out to the endpoint and return the deserialized object
+            return Deserialize<RestResponseMessage>(url, endpoint.Protocol, postData, "POST", Tracer);
+        }
+
+        /// <summary> Add a milestone to an existing web content page </summary>
+        /// <param name="WebContentID"> Primary key for the web content page or redirect to add milestone to</param>
+        /// <param name="User"> Name of the user that performed the work </param>
+        /// <param name="Milestone"> Notes associated with this milestone </param>
+        /// <param name="Tracer"></param>
+        /// <returns> Message </returns>
+        public RestResponseMessage Add_Milestone(int WebContentID, string User, string Milestone, Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.Add_Milestone", "Add a milestone to an existing web content page");
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Add_Milestone", Tracer);
+
+            // Create the post data
+            List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("User", User), 
+                new KeyValuePair<string, string>("Milestone", Milestone)
+            };
+
+            // Format the URL
+            string url = String.Format(endpoint.URL, WebContentID);
+
+            // Call out to the endpoint and return the deserialized object
+            RestResponseMessage returnValue = Deserialize<RestResponseMessage>(url, endpoint.Protocol, postData, "POST", Tracer);
+
+            // Clear any cached list of global updates
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates();
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates_NextLevel();
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates_Users();
+
+            return returnValue;
         }
 
         /// <summary> Gets the special missing web content page, used when a requested resource is missing </summary>
@@ -977,5 +1168,126 @@ namespace SobekCM.Core.Client
         }
 
         #endregion
+
+        #region Endpoints related to the sitemaps
+
+        /// <summary> Get the list of all sitemaps from the engine endpoint </summary>
+        /// <param name="Tracer"></param>
+        /// <returns> List of all the sitemaps </returns>
+        public List<string> Get_All_Sitemaps(Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Sitemaps", "Get list of sitemaps from remote endpoint");
+
+            // Look in the cache
+            if (Config.UseCache)
+            {
+                List<string> fromCache = CachedDataManager.WebContent.Retrieve_All_Sitemaps(Tracer);
+                if (fromCache != null)
+                {
+                    Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Sitemaps", "Found list in the local cache");
+                    return fromCache;
+                }
+            }
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Get_All_Sitemaps", Tracer);
+
+            // Call out to the endpoint and deserialize the object
+            List<string> returnValue = Deserialize<List<string>>(endpoint.URL, endpoint.Protocol, Tracer);
+
+            // Add to the local cache
+            if ((Config.UseCache) && (returnValue != null))
+            {
+                Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Sitemaps", "Store list in the local cache");
+                CachedDataManager.WebContent.Store_All_Sitemaps(returnValue, Tracer);
+            }
+
+            // Return the object
+            return returnValue;
+        }
+
+        #endregion
+
+        #region Endpoints related to the controlled CSS stylesheet files
+
+        /// <summary> Get the list of all controlled CSS stylesheet files from the engine endpoint </summary>
+        /// <param name="Tracer"></param>
+        /// <returns> List of all the controlled CSS stylesheet files </returns>
+        public List<string> Get_All_Controlled_Stylesheets(Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Stylesheets", "Get list of controlled CSS stylesheet files from remote endpoint");
+
+            // Look in the cache
+            if (Config.UseCache)
+            {
+                List<string> fromCache = CachedDataManager.WebContent.Retrieve_All_Controlled_Stylesheets(Tracer);
+                if (fromCache != null)
+                {
+                    Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Stylesheets", "Found list in the local cache");
+                    return fromCache;
+                }
+            }
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Get_All_Controlled_Stylesheets", Tracer);
+
+            // Call out to the endpoint and deserialize the object
+            List<string> returnValue = Deserialize<List<string>>(endpoint.URL, endpoint.Protocol, Tracer);
+
+            // Add to the local cache
+            if ((Config.UseCache) && (returnValue != null))
+            {
+                Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Stylesheets", "Store list in the local cache");
+                CachedDataManager.WebContent.Store_All_Controlled_Stylesheets(returnValue, Tracer);
+            }
+
+            // Return the object
+            return returnValue;
+        }
+
+        #endregion
+
+        #region Endpoints related to the controlled javascript files
+
+        /// <summary> Get the list of all controlled javascript files from the engine endpoint </summary>
+        /// <param name="Tracer"></param>
+        /// <returns> List of all the controlled javascript files </returns>
+        public List<string> Get_All_Controlled_Javascript(Custom_Tracer Tracer)
+        {
+            // Add a beginning trace
+            Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Javascript", "Get list of controlled javascript files from remote endpoint");
+
+            // Look in the cache
+            if (Config.UseCache)
+            {
+                List<string> fromCache = CachedDataManager.WebContent.Retrieve_All_Controlled_Javascript(Tracer);
+                if (fromCache != null)
+                {
+                    Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Javascript", "Found list in the local cache");
+                    return fromCache;
+                }
+            }
+
+            // Get the endpoint
+            MicroservicesClient_Endpoint endpoint = GetEndpointConfig("WebContent.Get_All_Controlled_Javascript", Tracer);
+
+            // Call out to the endpoint and deserialize the object
+            List<string> returnValue = Deserialize<List<string>>(endpoint.URL, endpoint.Protocol, Tracer);
+
+            // Add to the local cache
+            if ((Config.UseCache) && (returnValue != null))
+            {
+                Tracer.Add_Trace("SobekEngineClient_WebContentServices.Get_All_Controlled_Javascript", "Store list in the local cache");
+                CachedDataManager.WebContent.Store_All_Controlled_Javascript(returnValue, Tracer);
+            }
+
+            // Return the object
+            return returnValue;
+        }
+
+        #endregion
+
     }
 }

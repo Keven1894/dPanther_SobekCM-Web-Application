@@ -8,6 +8,7 @@ using SobekCM.Core.Aggregations;
 using SobekCM.Core.ApplicationState;
 using SobekCM.Core.Configuration;
 using SobekCM.Core.Navigation;
+using SobekCM.Engine_Library.Navigation;
 using SobekCM.Library.Database;
 using SobekCM.Library.Settings;
 using SobekCM.Library.UI;
@@ -51,7 +52,7 @@ namespace SobekCM.Library.HTML
             }
 
             // Add the banner
-            Add_Banner(Output, "sbkShs_BannerDiv", WebPage_Title.Replace("{0} ", ""), RequestSpecificValues.Current_Mode, RequestSpecificValues.HTML_Skin, RequestSpecificValues.Hierarchy_Object);
+            Add_Banner(Output, "sbkShs_BannerDiv", RequestSpecificValues.Current_Mode, RequestSpecificValues.HTML_Skin, RequestSpecificValues.Hierarchy_Object);
 
             #region Code to add the statistics menu
 
@@ -971,12 +972,12 @@ namespace SobekCM.Library.HTML
                 Output.WriteLine("<a name=\"Views\" ></a>");
                 Output.WriteLine("<h3>VIEWS</h3>");
                 Output.WriteLine("<p>Views are the actual page hits. Each time a person goes to " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " it counts as a view. The " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + " statistics are cleaned so that views from robots, which search engines use to index websites, are removed. If they were not removed, the views on all collections and items would be much higher. Web usage statistics are always somewhat fallible, and this is one of the means for ensuring better quality usage statistics. <br /><br />");
-                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each ?page item download? as a hit, each single view to the main page would be counted as over 30 ?page item downloads.? To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
+                Output.WriteLine("Some web statistics count &quot;page item downloads&quot; as views, which is highly inaccurate because each page has multiple items on it. For instance, the digital library main page, " + RequestSpecificValues.Current_Mode.Instance_Abbreviation + ", includes the page HTML and all of the images. If the statistics counted each “page item download” as a hit, each single view to the main page would be counted as over 30 “page item downloads.” To make matters more confusing, some digital repositories only offer PDF downloads for users to view items. Those digital repositories track &quot;item downloads&quot; and those are most equivalent to our statistics for usage by &quot;item.&quot; </p>");
 
                 Output.WriteLine("<a name=\"Visits\" ></a>");
                 Output.WriteLine("<h3>VISITS</h3>");
-                Output.WriteLine("<p>Each time a person goes to this digital library it counts as a view, but that means a single user going to the site repeatedly can log a large number of views. Visits provide a better statistic for how many different ?unique? users are using the site. Visits include all views from a particular IP address (the user?s computer web address when connected) as recorded in the web log file within an hour.  <br /><br />");
-                Output.WriteLine("This is also a fallible statistic since users? IP addresses are frequently reused on networks.  Connecting to free wireless means that network gives your computer an IP address, and then when you disconnect that IP address will be given to the next user who needs it. For a campus based resource with so many on campus users connecting through the VPN or from on campus, the margin for error increases for visit-based statistics. </p>");
+                Output.WriteLine("<p>Each time a person goes to this digital library it counts as a view, but that means a single user going to the site repeatedly can log a large number of views. Visits provide a better statistic for how many different “unique” users are using the site. Visits include all views from a particular IP address (the user’s computer web address when connected) as recorded in the web log file within an hour.  <br /><br />");
+                Output.WriteLine("This is also a fallible statistic since users’ IP addresses are frequently reused on networks.  Connecting to free wireless means that network gives your computer an IP address, and then when you disconnect that IP address will be given to the next user who needs it. For a campus based resource with so many on campus users connecting through the VPN or from on campus, the margin for error increases for visit-based statistics. </p>");
 
                 Output.WriteLine("<a name=\"Main_Pages\" ></a>");
                 Output.WriteLine("<h3>MAIN PAGES</h3>");
@@ -1007,7 +1008,7 @@ namespace SobekCM.Library.HTML
 
                 Output.WriteLine("<a name=\"Citation_Views\" ></a>");
                 Output.WriteLine("<h3>CITATION VIEWS</h3>");
-                Output.WriteLine("<p>For each item, the default view is set to the page item (zoomable or static based on user selection and the availability of each of the views for that item). All items also include a ?Citation View? that is not selected by default. The ?Citation Views? counts the number of times a user chooses the ?Citation View? for an item.</p>");
+                Output.WriteLine("<p>For each item, the default view is set to the page item (zoomable or static based on user selection and the availability of each of the views for that item). All items also include a “Citation View” that is not selected by default. The “Citation Views” counts the number of times a user chooses the “Citation View” for an item.</p>");
 
                 Output.WriteLine("<a name=\"Text_Searches\" ></a>");
                 Output.WriteLine("<h3>TEXT SEARCHES</h3>");
@@ -2937,7 +2938,7 @@ namespace SobekCM.Library.HTML
 		    DataTable itemCount = null;
 		    DateTime? date1 = null;
 		    DateTime? date2 = null;
-		    if ( !String.IsNullOrEmpty(currentInfoBrowseMode))
+		    if (currentInfoBrowseMode.Length > 0)
 		    {
 			    try
 			    {
@@ -3061,6 +3062,7 @@ namespace SobekCM.Library.HTML
 			    Output.WriteLine();
 			    Output.WriteLine("</div>");
 
+			    const int RULE = 10;
 			    Output.WriteLine("</div>");
 
 
@@ -3268,8 +3270,6 @@ namespace SobekCM.Library.HTML
             }
         }
 
-        /// <summary> Gets the collection of special behaviors which this subwriter
-        /// requests from the main HTML writer. </summary>
         public override List<HtmlSubwriter_Behaviors_Enum> Subwriter_Behaviors
         {
             get { return new List<HtmlSubwriter_Behaviors_Enum> {HtmlSubwriter_Behaviors_Enum.Suppress_Banner}; }

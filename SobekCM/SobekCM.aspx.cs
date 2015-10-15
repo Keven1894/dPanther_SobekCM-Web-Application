@@ -71,6 +71,7 @@ namespace SobekCM
 						(pageGlobals.currentMode.Mode != Display_Mode_Enum.Reset) &&
 						(pageGlobals.currentMode.Mode != Display_Mode_Enum.Internal) &&
 						(pageGlobals.currentMode.Mode != Display_Mode_Enum.Public_Folder) &&
+                        ((pageGlobals.currentMode.Mode != Display_Mode_Enum.Simple_HTML_CMS) || ((pageGlobals.currentMode.WebContent_Type != WebContent_Type_Enum.Edit) && (pageGlobals.currentMode.WebContent_Type != WebContent_Type_Enum.Milestones))) &&
 						((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Home_Edit)) &&
                         ((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.Work_History)) &&
                         ((pageGlobals.currentMode.Mode != Display_Mode_Enum.Aggregation) || (pageGlobals.currentMode.Aggregation_Type != Aggregation_Type_Enum.User_Permissions)) &&
@@ -291,6 +292,18 @@ namespace SobekCM
 
 		protected override void OnInit(EventArgs E)
 		{
+            // Ensure there is a base URL
+		    if (String.IsNullOrEmpty(UI_ApplicationCache_Gateway.Settings.System_Base_URL))
+		    {
+		        string base_url = Request.Url.AbsoluteUri.ToLower().Replace("sobekcm.aspx", "");
+	            if (base_url.IndexOf("?") > 0)
+	                base_url = base_url.Substring(0, base_url.IndexOf("?"));
+		        if (base_url[base_url.Length - 1] != '/')
+		            base_url = base_url + "/";
+                UI_ApplicationCache_Gateway.Settings.System_Base_URL = base_url;
+                UI_ApplicationCache_Gateway.Settings.Base_URL = base_url;
+		    }
+
             // Ensure the microservices client has read the configuration file
 		    if (!SobekEngineClient.Config_Read_Attempted)
 		    {

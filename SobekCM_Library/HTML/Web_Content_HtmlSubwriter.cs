@@ -3,14 +3,18 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.UI.WebControls;
+using SobekCM.Core.Client;
+using SobekCM.Core.MemoryMgmt;
+using SobekCM.Core.Message;
 using SobekCM.Core.Navigation;
 using SobekCM.Core.SiteMap;
 using SobekCM.Core.Users;
+using SobekCM.Core.WebContent;
 using SobekCM.Library.Settings;
 using SobekCM.Library.UI;
 using SobekCM.Library.WebContentViewer;
@@ -76,15 +80,34 @@ namespace SobekCM.Library.HTML
             // This is very simple for now, but should change soon
             if ((RequestSpecificValues.Current_User != null) && (RequestSpecificValues.Current_User.LoggedOn))
             {
-                if ((RequestSpecificValues.Current_User.Is_System_Admin) || (RequestSpecificValues.Current_User.Is_Host_Admin))
-                    canEdit = true;
-                else
+                canEdit = RequestSpecificValues.Static_Web_Content.Can_Edit(RequestSpecificValues.Current_User);
+            }
+
+            NameValueCollection form = HttpContext.Current.Request.Form;
+            if ((canEdit) && (RequestSpecificValues.Current_Mode.WebContent_Type == WebContent_Type_Enum.Edit) && (form["sbkWchs_TextEdit"] != null))
+            {
+                string newSource = form["sbkWchs_TextEdit"];
+                if (!String.IsNullOrEmpty(newSource))
                 {
-                    // If this user can edit all items (by regular expression), then they can edit this as well
-                    if (RequestSpecificValues.Current_User.Editable_Regular_Expressions.Any(ThisRegularExpression => ThisRegularExpression == "[A-Z]{2}[A-Z|0-9]{4}[0-9]{4}"))
-                    {
-                        canEdit = true;
-                    }
+                    // Set the source to the new source
+                    RequestSpecificValues.Static_Web_Content.Content = newSource;
+                    RequestSpecificValues.Static_Web_Content.ContentSource = newSource;
+
+                    // Set the date on the page to today
+                    RequestSpecificValues.Static_Web_Content.Date = DateTime.Now.ToShortDateString();
+
+                    // Send the update to the endgine
+                    RestResponseMessage response = SobekEngineClient.WebContent.Update_HTML_Based_Content(RequestSpecificValues.Static_Web_Content, RequestSpecificValues.Current_User.Full_Name, RequestSpecificValues.Tracer);
+
+                    // Clear the cache
+                    CachedDataManager.WebContent.Clear_Page_Details(RequestSpecificValues.Static_Web_Content.WebContentID.Value);
+
+                    // Forward along
+                    RequestSpecificValues.Current_Mode.Request_Completed = true;
+                    HttpContext.Current.Response.Redirect(RequestSpecificValues.Static_Web_Content.URL(RequestSpecificValues.Current_Mode.Base_URL), false);
+                    HttpContext.Current.ApplicationInstance.CompleteRequest();
+
+                    return;
                 }
             }
 
@@ -350,40 +373,68 @@ namespace SobekCM.Library.HTML
 
                 Output.WriteLine("  <table id=\"sbkHav_OptionsTable3\" style=\"padding-top:10px;\">");
 
-                // Add collection wizard
-                RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Administrative;
-                RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Add_Collection_Wizard;
-                string add_collection_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
-                Output.WriteLine("    <tr>");
-                Output.WriteLine("      <td>&nbsp;</td>");
-                Output.WriteLine("      <td><a href=\"" + add_collection_url + "\"><img src=\"" + Static_Resources.Wizard_Img_Large + "\" /></a></td>");
-                Output.WriteLine("      <td>");
-                Output.WriteLine("        <a href=\"" + add_collection_url + "\">Add New Collection</a>");
-                Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + String.Format(ADD_COLLECTION_WIZARD_BRIEF, RequestSpecificValues.Current_Mode.Info_Browse_Mode) + "</div>");
-                Output.WriteLine("      </td>");
-                Output.WriteLine("    </tr>");
+                // Does this have a slash in it, which would make it ONLY a web content page
+                bool contains_slash = RequestSpecificValues.Current_Mode.Info_Browse_Mode.Contains("/");
 
-                // Add new digital resource
-                if (UI_ApplicationCache_Gateway.Settings.Online_Item_Submit_Enabled)
+                // Add collection wizard
+                if (!contains_slash)
                 {
-                    RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
-                    RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.New_Item;
-                    RequestSpecificValues.Current_Mode.My_Sobek_SubMode = "1"; ;
-                    string add_new_item_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                    RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Administrative;
+                    RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Add_Collection_Wizard;
+                    string add_collection_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                    if (add_collection_url.IndexOf("?") < 0)
+                        add_collection_url = add_collection_url + "?code=" + RequestSpecificValues.Current_Mode.Info_Browse_Mode;
+                    else
+                        add_collection_url = add_collection_url + "&code=" + RequestSpecificValues.Current_Mode.Info_Browse_Mode;
+
                     Output.WriteLine("    <tr>");
                     Output.WriteLine("      <td>&nbsp;</td>");
-                    Output.WriteLine("      <td><a href=\"" + add_new_item_url + "\"><img src=\"" + Static_Resources.New_Item_Img_Large + "\" /></a></td>");
+                    Output.WriteLine("      <td><a href=\"" + add_collection_url + "\"><img src=\"" + Static_Resources.Wizard_Img_Large + "\" /></a></td>");
                     Output.WriteLine("      <td>");
-                    Output.WriteLine("        <a href=\"" + add_new_item_url + "\">Add New Item</a>");
-                    Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + String.Format(ADD_NEW_ITEM_BRIEF, RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper()) + "</div>");
+                    Output.WriteLine("        <a href=\"" + add_collection_url + "\">Add New Collection</a>");
+                    Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + String.Format(ADD_COLLECTION_WIZARD_BRIEF, RequestSpecificValues.Current_Mode.Info_Browse_Mode) + "</div>");
                     Output.WriteLine("      </td>");
                     Output.WriteLine("    </tr>");
                 }
 
+
+                // Add new digital resource
+                if (( !contains_slash ) && ( UI_ApplicationCache_Gateway.Settings.Online_Item_Submit_Enabled))
+                {
+                    if (RequestSpecificValues.Current_Mode.Info_Browse_Mode.Length == 10)
+                    {
+                        RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.My_Sobek;
+                        RequestSpecificValues.Current_Mode.My_Sobek_Type = My_Sobek_Type_Enum.New_Item;
+                        RequestSpecificValues.Current_Mode.My_Sobek_SubMode = "1";
+                        ;
+                        string add_new_item_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                        Output.WriteLine("    <tr>");
+                        Output.WriteLine("      <td>&nbsp;</td>");
+                        Output.WriteLine("      <td><a href=\"" + add_new_item_url + "\"><img src=\"" + Static_Resources.New_Item_Img_Large + "\" /></a></td>");
+                        Output.WriteLine("      <td>");
+                        Output.WriteLine("        <a href=\"" + add_new_item_url + "\">Add New Item</a>");
+                        Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + String.Format(ADD_NEW_ITEM_BRIEF, RequestSpecificValues.Current_Mode.Info_Browse_Mode.ToUpper()) + "</div>");
+                        Output.WriteLine("      </td>");
+                        Output.WriteLine("    </tr>");
+                    }
+                }
+
                 // Add web content page
                 RequestSpecificValues.Current_Mode.Mode = Display_Mode_Enum.Administrative;
-                RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Add_Collection_Wizard;
-                string add_webcontent_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.WebContent_Add_New;
+                StringBuilder add_webcontent_url = new StringBuilder(UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode));
+                string[] splitter = RequestSpecificValues.Current_Mode.Info_Browse_Mode.Split("/".ToCharArray());
+                int level = 1;
+                foreach (string thisSplitter in splitter)
+                {
+                    if ( level == 1 )
+                        add_webcontent_url.Append("?l1=" + thisSplitter);
+                    else
+                        add_webcontent_url.Append("&l" + level + "=" + thisSplitter);
+
+                    level++;
+                }
+
                 Output.WriteLine("    <tr>");
                 Output.WriteLine("      <td>&nbsp;</td>");
                 Output.WriteLine("      <td><a href=\"" + add_webcontent_url + "\"><img src=\"" + Static_Resources.WebContent_Img_Large + "\" /></a></td>");
@@ -395,17 +446,26 @@ namespace SobekCM.Library.HTML
 
 
                 // Edit aggregation aliases
-                RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Aliases;
-                string alias_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
+                if (!contains_slash)
+                {
+                    RequestSpecificValues.Current_Mode.Admin_Type = Admin_Type_Enum.Aliases;
+                    string alias_url = UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode);
 
-                Output.WriteLine("    <tr>");
-                Output.WriteLine("      <td>&nbsp;</td>");
-                Output.WriteLine("      <td><a href=\"" + alias_url + "\"><img src=\"" + Static_Resources.Aliases_Img_Large + "\" /></a></td>");
-                Output.WriteLine("      <td>");
-                Output.WriteLine("        <a href=\"" + alias_url + "\">Add New Aggregation Alias</a>");
-                Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + ALIASES_BRIEF + "</div>");
-                Output.WriteLine("      </td>");
-                Output.WriteLine("    </tr>");
+                    if (alias_url.IndexOf("?") < 0)
+                        alias_url = alias_url + "?code=" + RequestSpecificValues.Current_Mode.Info_Browse_Mode;
+                    else
+                        alias_url = alias_url + "&code=" + RequestSpecificValues.Current_Mode.Info_Browse_Mode;
+
+
+                    Output.WriteLine("    <tr>");
+                    Output.WriteLine("      <td>&nbsp;</td>");
+                    Output.WriteLine("      <td><a href=\"" + alias_url + "\"><img src=\"" + Static_Resources.Aliases_Img_Large + "\" /></a></td>");
+                    Output.WriteLine("      <td>");
+                    Output.WriteLine("        <a href=\"" + alias_url + "\">Add New Aggregation Alias</a>");
+                    Output.WriteLine("        <div class=\"sbkMmav_Desc\">" + ALIASES_BRIEF + "</div>");
+                    Output.WriteLine("      </td>");
+                    Output.WriteLine("    </tr>");
+                }
 
                 Output.WriteLine("  </table>");
 
@@ -718,58 +778,58 @@ namespace SobekCM.Library.HTML
             string post_url = HttpUtility.HtmlEncode(HttpContext.Current.Items["Original_URL"].ToString());
             Output.WriteLine("<form name=\"home_edit_form\" method=\"post\" action=\"" + post_url + "\" id=\"addedForm\" >");
 
-            const string TITLE_HELP = "Help for the title place holder";
-            const string AUTHOR_HELP = "Help for the author place holder";
-            const string DATE_HELP = "Help for the date place holder";
-            const string DESCRIPTION_HELP = "Help for the description place holder";
-            const string KEYWORDS_HELP = "Help for the keywords place holder";
-            const string EXTRA_HEAD_HELP = "Help for the extra head place holder";
+            //const string TITLE_HELP = "Help for the title place holder";
+            //const string AUTHOR_HELP = "Help for the author place holder";
+            //const string DATE_HELP = "Help for the date place holder";
+            //const string DESCRIPTION_HELP = "Help for the description place holder";
+            //const string KEYWORDS_HELP = "Help for the keywords place holder";
+            //const string EXTRA_HEAD_HELP = "Help for the extra head place holder";
 
-            Output.WriteLine("  <a href=\"\" onclick=\"return show_header_info()\" id=\"sbkSbia_HeaderInfoDivShowLink\">show header data (advanced)</a><br />");
-            Output.WriteLine("  <div id=\"sbkSbia_HeaderInfoDiv\" style=\"display:none;\">");
-            Output.WriteLine("    <div style=\"font-style:italic; padding:0 5px 5px 5px; text-align:left;\">The data below describes the content of this static child page and is used by some search engine indexing algorithms.  By default, it will not show in text of the page, but will be included in the head tag of the page.</div>");
+            //Output.WriteLine("  <a href=\"\" onclick=\"return show_header_info()\" id=\"sbkSbia_HeaderInfoDivShowLink\">show header data (advanced)</a><br />");
+            //Output.WriteLine("  <div id=\"sbkSbia_HeaderInfoDiv\" style=\"display:none;\">");
+            //Output.WriteLine("    <div style=\"font-style:italic; padding:0 5px 5px 5px; text-align:left;\">The data below describes the content of this static child page and is used by some search engine indexing algorithms.  By default, it will not show in text of the page, but will be included in the head tag of the page.</div>");
 
-            Output.WriteLine("    <table id=\"sbkSbia_HeaderTable\">");
-            Output.WriteLine("      <tr>");
-            Output.WriteLine("        <td style=\"width:50px\">&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_title\">Title:</label></td>");
-            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_title\" id=\"admin_childpage_title\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Title) + "\" /></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + TITLE_HELP + "');\"  title=\"" + TITLE_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("      <tr>");
-            Output.WriteLine("        <td>&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_author\">Author:</label></td>");
-            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_author\" id=\"admin_childpage_author\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Author) + "\" /></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + AUTHOR_HELP + "');\"  title=\"" + AUTHOR_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("      <tr>");
-            Output.WriteLine("        <td>&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_date\">Date:</label></td>");
-            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_date\" id=\"admin_childpage_date\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Date) + "\" /></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DATE_HELP + "');\"  title=\"" + DATE_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("      <tr>");
-            Output.WriteLine("        <td>&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_description\">Description:</label></td>");
-            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_description\" id=\"admin_childpage_description\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Description) + "\" /></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DESCRIPTION_HELP + "');\"  title=\"" + DESCRIPTION_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("      <tr>");
-            Output.WriteLine("        <td>&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_keywords\">Keywords:</label></td>");
-            Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_keywords\" id=\"admin_childpage_keywords\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Keywords) + "\" /></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + KEYWORDS_HELP + "');\"  title=\"" + KEYWORDS_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("      <tr style=\"vertical-align:top;\">");
-            Output.WriteLine("        <td>&nbsp;</td>");
-            Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\" style=\"padding-top:5px\"><label for=\"admin_childpage_extrahead\">HTML Head Info:</label></td>");
-            string extra_head_info = RequestSpecificValues.Static_Web_Content.Extra_Head_Info ?? String.Empty;
-            Output.WriteLine("        <td><textarea rows=\"3\" class=\"sbkSbia_HeaderTextArea sbk_Focusable\" name=\"admin_childpage_extrahead\" id=\"admin_childpage_extrahead\" type=\"text\">" + HttpUtility.HtmlEncode(extra_head_info) + "</textarea></td>");
-            Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + EXTRA_HEAD_HELP + "');\"  title=\"" + EXTRA_HEAD_HELP + "\" /></td>");
-            Output.WriteLine("      </tr>");
-            Output.WriteLine("    </table>");
-            Output.WriteLine("    <br />");
-            Output.WriteLine("  </div>");
+            //Output.WriteLine("    <table id=\"sbkSbia_HeaderTable\">");
+            //Output.WriteLine("      <tr>");
+            //Output.WriteLine("        <td style=\"width:50px\">&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_title\">Title:</label></td>");
+            //Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_title\" id=\"admin_childpage_title\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Title) + "\" /></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + TITLE_HELP + "');\"  title=\"" + TITLE_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("      <tr>");
+            //Output.WriteLine("        <td>&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_author\">Author:</label></td>");
+            //Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_author\" id=\"admin_childpage_author\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Author) + "\" /></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + AUTHOR_HELP + "');\"  title=\"" + AUTHOR_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("      <tr>");
+            //Output.WriteLine("        <td>&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_date\">Date:</label></td>");
+            //Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_date\" id=\"admin_childpage_date\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Date) + "\" /></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DATE_HELP + "');\"  title=\"" + DATE_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("      <tr>");
+            //Output.WriteLine("        <td>&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_description\">Description:</label></td>");
+            //Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_description\" id=\"admin_childpage_description\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Description) + "\" /></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + DESCRIPTION_HELP + "');\"  title=\"" + DESCRIPTION_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("      <tr>");
+            //Output.WriteLine("        <td>&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\"><label for=\"admin_childpage_keywords\">Keywords:</label></td>");
+            //Output.WriteLine("        <td><input class=\"sbkSbia_HeaderInput sbk_Focusable\" name=\"admin_childpage_keywords\" id=\"admin_childpage_keywords\" type=\"text\" value=\"" + HttpUtility.HtmlEncode(RequestSpecificValues.Static_Web_Content.Keywords) + "\" /></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + KEYWORDS_HELP + "');\"  title=\"" + KEYWORDS_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("      <tr style=\"vertical-align:top;\">");
+            //Output.WriteLine("        <td>&nbsp;</td>");
+            //Output.WriteLine("        <td class=\"sbkSbia_HeaderTableLabel\" style=\"padding-top:5px\"><label for=\"admin_childpage_extrahead\">HTML Head Info:</label></td>");
+            //string extra_head_info = RequestSpecificValues.Static_Web_Content.Extra_Head_Info ?? String.Empty;
+            //Output.WriteLine("        <td><textarea rows=\"3\" class=\"sbkSbia_HeaderTextArea sbk_Focusable\" name=\"admin_childpage_extrahead\" id=\"admin_childpage_extrahead\" type=\"text\">" + HttpUtility.HtmlEncode(extra_head_info) + "</textarea></td>");
+            //Output.WriteLine("        <td><img class=\"sbkSbia_HelpButton\" src=\"" + Static_Resources.Help_Button_Jpg + "\" onclick=\"alert('" + EXTRA_HEAD_HELP + "');\"  title=\"" + EXTRA_HEAD_HELP + "\" /></td>");
+            //Output.WriteLine("      </tr>");
+            //Output.WriteLine("    </table>");
+            //Output.WriteLine("    <br />");
+            //Output.WriteLine("  </div>");
 
             Output.WriteLine("  <textarea id=\"sbkWchs_TextEdit\" name=\"sbkWchs_TextEdit\" style=\"height:400px;\" >");
             Output.WriteLine(RequestSpecificValues.Static_Web_Content.Content.Replace("<%", "[%").Replace("%>", "%]"));
@@ -777,9 +837,10 @@ namespace SobekCM.Library.HTML
             Output.WriteLine();
 
             Output.WriteLine("<div id=\"sbkAghsw_HomeEditButtons\">");
-            RequestSpecificValues.Current_Mode.Aggregation_Type = Aggregation_Type_Enum.Home;
+            RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Display;
             Output.WriteLine("  <button title=\"Do not apply changes\" class=\"roundbutton\" onclick=\"window.location.href='" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "';return false;\"><img src=\"" + Static_Resources.Button_Previous_Arrow_Png + "\" class=\"roundbutton_img_left\" alt=\"\" /> CANCEL</button> &nbsp; &nbsp; ");
-            Output.WriteLine("  <button title=\"Save changes to this aggregation home page text\" class=\"roundbutton\" type=\"submit\" onclick=\"for(var i in CKEDITOR.instances) { CKEDITOR.instances[i].updateElement(); }\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"roundbutton_img_right\" alt=\"\" /></button>");
+            RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Edit;
+            Output.WriteLine("  <button title=\"Save changes to this web content page text\" class=\"roundbutton\" type=\"submit\" onclick=\"for(var i in CKEDITOR.instances) { CKEDITOR.instances[i].updateElement(); }\">SAVE <img src=\"" + Static_Resources.Button_Next_Arrow_Png + "\" class=\"roundbutton_img_right\" alt=\"\" /></button>");
             Output.WriteLine("</div>");
             Output.WriteLine("</form>");
             Output.WriteLine("<br /><br /><br />");
@@ -847,48 +908,70 @@ namespace SobekCM.Library.HTML
                 Output.WriteLine("  <link href=\"" + Static_Resources.Sobekcm_Metadata_Css + "\" rel=\"stylesheet\" type=\"text/css\" />");
             }
 
-            // If this is the static html web content view, add any special text which came from the original
-            // static html file which was already read, which can include style sheets, etc..
-            if ((RequestSpecificValues.Static_Web_Content != null) && ( !String.IsNullOrEmpty(RequestSpecificValues.Static_Web_Content.Extra_Head_Info)))
+            // Include the interface's style sheet if it has one
+            if ((RequestSpecificValues.HTML_Skin != null) && (RequestSpecificValues.HTML_Skin.CSS_Style.Length > 0)) 
             {
-                Output.WriteLine("  " + RequestSpecificValues.Static_Web_Content.Extra_Head_Info.Trim());
+                Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + RequestSpecificValues.HTML_Skin.CSS_Style + "\" rel=\"stylesheet\" type=\"text/css\" />");
             }
 
-            if ((canEdit) && (RequestSpecificValues.Current_Mode.WebContent_Type == WebContent_Type_Enum.Edit))
+            // Add the special CSS here
+            if (RequestSpecificValues.Static_Web_Content != null)
             {
-                // Determine the aggregation upload directory
-                string directory = Path.GetDirectoryName(RequestSpecificValues.Static_Web_Content.Source);
-
-                //string aggregation_upload_dir = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + "aggregations\\" + RequestSpecificValues.Hierarchy_Object.Code + "\\uploads";
-                //string aggregation_upload_url = UI_ApplicationCache_Gateway.Settings.System_Base_URL + "design/aggregations/" + RequestSpecificValues.Hierarchy_Object.Code + "/uploads/";
-
-                // Create the CKEditor object
-                CKEditor.CKEditor editor = new CKEditor.CKEditor
+                if (!String.IsNullOrEmpty(RequestSpecificValues.Static_Web_Content.CssFile))
                 {
-                    BaseUrl = RequestSpecificValues.Current_Mode.Base_URL,
-                    Language = RequestSpecificValues.Current_Mode.Language,
-                    TextAreaID = "sbkWchs_TextEdit",
-                    FileBrowser_ImageUploadUrl = RequestSpecificValues.Current_Mode.Base_URL + "HtmlEditFileHandler.ashx",
-                    UploadPath = directory,
-                    UploadURL = directory
-                };
+                    Output.WriteLine("  <link href=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/design/webcontent/css/" + RequestSpecificValues.Static_Web_Content.CssFile + "\" rel=\"stylesheet\" type=\"text/css\" id=\"SobekCmControlledCss\" />");
+                }
 
-                //// If there are existing files, add a reference to the URL for the image browser
-                //if ((Directory.Exists(aggregation_upload_dir)) && (Directory.GetFiles(aggregation_upload_dir).Length > 0))
-                //{
-                //    // Is there an endpoint defined for looking at uploaded files?
-                //    string upload_files_json_url = SobekEngineClient.Aggregations.Aggregation_Uploaded_Files_URL;
-                //    if (!String.IsNullOrEmpty(upload_files_json_url))
-                //    {
-                //        editor.ImageBrowser_ListUrl = String.Format(upload_files_json_url, RequestSpecificValues.Hierarchy_Object.Code);
-                //    }
-                //}
+                // Add the special javascript here
+                if (!String.IsNullOrEmpty(RequestSpecificValues.Static_Web_Content.JavascriptFile))
+                {
+                    Output.WriteLine("  <script type=\"text/javascript\" src=\"" + RequestSpecificValues.Current_Mode.Base_URL + "/design/webcontent/javascript/" + RequestSpecificValues.Static_Web_Content.JavascriptFile + "\" id=\"SobekCmControlledJavascript\" ></script>");
+                }
 
-                if ((RequestSpecificValues.Static_Web_Content.Content.IndexOf("<script", StringComparison.OrdinalIgnoreCase) >= 0) || (RequestSpecificValues.Static_Web_Content.Content.IndexOf("<input", StringComparison.OrdinalIgnoreCase) >= 0))
-                    editor.Start_In_Source_Mode = true;
+                // If this is the static html web content view, add any special text which came from the original
+                // static html file which was already read, which can include style sheets, etc..
+                if (!String.IsNullOrEmpty(RequestSpecificValues.Static_Web_Content.Extra_Head_Info))
+                {
+                    Output.WriteLine("  " + RequestSpecificValues.Static_Web_Content.Extra_Head_Info.Trim());
+                }
 
-                // Add the HTML from the CKEditor object
-                editor.Add_To_Stream(Output);
+                // Add the javascript for the HTML Editor
+                if ((canEdit) && (RequestSpecificValues.Current_Mode.WebContent_Type == WebContent_Type_Enum.Edit))
+                {
+                    // Build the folder which will include the uploads
+                    HTML_Based_Content webContent = RequestSpecificValues.Static_Web_Content;
+                    string urlSegments = webContent.UrlSegments;
+                    string webcontent_upload_dir = UI_ApplicationCache_Gateway.Settings.Base_Design_Location + "webcontent\\" + urlSegments.Replace("/", "\\");
+                    string webcontent_upload_url = UI_ApplicationCache_Gateway.Settings.System_Base_URL + "design/webcontent/" + urlSegments.Replace("\\","/") + "/";
+
+                    // Create the CKEditor object
+                    CKEditor.CKEditor editor = new CKEditor.CKEditor
+                    {
+                        BaseUrl = RequestSpecificValues.Current_Mode.Base_URL,
+                        Language = RequestSpecificValues.Current_Mode.Language,
+                        TextAreaID = "sbkWchs_TextEdit",
+                        FileBrowser_ImageUploadUrl = RequestSpecificValues.Current_Mode.Base_URL + "HtmlEditFileHandler.ashx",
+                        UploadPath = webcontent_upload_dir,
+                        UploadURL = webcontent_upload_url
+                    };
+
+                    // If there are existing files, add a reference to the URL for the image browser
+                    if ((Directory.Exists(webcontent_upload_dir)) && (Directory.GetFiles(webcontent_upload_dir).Length > 0))
+                    {
+                        // Is there an endpoint defined for looking at uploaded files?
+                        string upload_files_json_url = SobekEngineClient.WebContent.Uploaded_Files_URL;
+                        if (!String.IsNullOrEmpty(upload_files_json_url))
+                        {
+                            editor.ImageBrowser_ListUrl = String.Format(upload_files_json_url, urlSegments);
+                        }
+                    }
+
+                    if ((RequestSpecificValues.Static_Web_Content.Content.IndexOf("<script", StringComparison.OrdinalIgnoreCase) >= 0) || (RequestSpecificValues.Static_Web_Content.Content.IndexOf("<input", StringComparison.OrdinalIgnoreCase) >= 0))
+                        editor.Start_In_Source_Mode = true;
+
+                    // Add the HTML from the CKEditor object
+                    editor.Add_To_Stream(Output);
+                }
             }
 
             // If this has a viewer than it is a special, non-public view, add the admin CSS
@@ -930,6 +1013,10 @@ namespace SobekCM.Library.HTML
                 Display_Mode_Enum displayMode = RequestSpecificValues.Current_Mode.Mode;
                 WebContent_Type_Enum webType = RequestSpecificValues.Current_Mode.WebContent_Type;
                 string submode = RequestSpecificValues.Current_Mode.Info_Browse_Mode;
+
+                // Add button to edit this page
+                RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Edit;
+                Output.WriteLine("          <button title=\"View history of use\" class=\"intheader_button_aggr edit_page_button\" onclick=\"window.location.href='" + UrlWriterHelper.Redirect_URL(RequestSpecificValues.Current_Mode) + "';return false;\" ></button>");
 
                 // Add button to view usage statistics information
                 RequestSpecificValues.Current_Mode.WebContent_Type = WebContent_Type_Enum.Usage;

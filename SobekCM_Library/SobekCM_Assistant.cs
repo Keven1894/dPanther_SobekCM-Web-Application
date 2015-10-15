@@ -76,7 +76,11 @@ namespace SobekCM.Library
                 return false;
             }
 
-            if (Simple_Web_Content.Content.Length == 0)
+            // If this is a redirect, just return 
+            if (!String.IsNullOrEmpty(Simple_Web_Content.Redirect))
+                return true;
+
+            if ( String.IsNullOrEmpty(Simple_Web_Content.Content))
             {
                 Current_Mode.Error_Message = "Unable to read the file for display";
                 return false;
@@ -91,8 +95,12 @@ namespace SobekCM.Library
                 // If this was NULL, pull it
                 if (Site_Map == null)
                 {
+                    string sitemap_file = Simple_Web_Content.SiteMap;
+                    if (!sitemap_file.ToLower().Contains(".sitemap"))
+                        sitemap_file = sitemap_file + ".sitemap";
+
                     // Only continue if the file exists
-                    if (File.Exists(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + Simple_Web_Content.SiteMap))
+                    if (File.Exists(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\sitemaps\\" + sitemap_file))
                     {
                         if (Tracer != null)
                         {
@@ -100,7 +108,24 @@ namespace SobekCM.Library
                         }
 
                         // Try to read this sitemap file
-                        Site_Map = SobekCM_SiteMap_Reader.Read_SiteMap_File(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + Simple_Web_Content.SiteMap);
+                        Site_Map = SobekCM_SiteMap_Reader.Read_SiteMap_File(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\sitemaps\\" + sitemap_file);
+
+                        // If the sitemap file was succesfully read, cache it
+                        if (Site_Map != null)
+                        {
+                            CachedDataManager.Store_Site_Map(Site_Map, Simple_Web_Content.SiteMap, Tracer);
+                        }
+                    }
+                    else if (File.Exists(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + sitemap_file))
+                    {
+                        // This is just for some legacy material
+                        if (Tracer != null)
+                        {
+                            Tracer.Add_Trace("SobekCM_Assistant.Get_Simple_Web_Content_Text", "Reading site map file");
+                        }
+
+                        // Try to read this sitemap file
+                        Site_Map = SobekCM_SiteMap_Reader.Read_SiteMap_File(UI_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + sitemap_file);
 
                         // If the sitemap file was succesfully read, cache it
                         if (Site_Map != null)
@@ -786,7 +811,7 @@ namespace SobekCM.Library
         public void Get_Search_Results(Navigation_Object Current_Mode,
                                        Item_Lookup_Object All_Items_Lookup,
                                        Item_Aggregation Aggregation_Object, 
-            List<string> Search_Stop_Words,
+                                       List<string> Search_Stop_Words,
                                        Custom_Tracer Tracer,
                                        out Search_Results_Statistics Complete_Result_Set_Info,
                                        out List<iSearch_Title_Result> Paged_Results )
@@ -809,7 +834,14 @@ namespace SobekCM.Library
             // Depending on type of search, either go to database or Greenstone
 	        if (Current_Mode.Search_Type == Search_Type_Enum.Map)
 	        {
-		        try
+                // If this is showing in the map, only allow sot zero, which is by coordinates
+	            if ((Current_Mode.Result_Display_Type == Result_Display_Type_Enum.Map) || (Current_Mode.Result_Display_Type == Result_Display_Type_Enum.Default))
+	            {
+	                Current_Mode.Sort = 0;
+	                sort = 0;
+	            }
+
+	            try
 		        {
 			        double lat1 = 1000;
 			        double long1 = 1000;
@@ -1439,7 +1471,7 @@ namespace SobekCM.Library
                                 }
                                 else
                                 {
-                                    switch (links[i-1])
+                                    switch (links[i])
                                     {
                                         case 0:
                                             searchBuilder.Append(" AND ");
@@ -1740,7 +1772,7 @@ namespace SobekCM.Library
             }
             else
             {
-                Tracer.Add_Trace("SobekCM_Assistant.Get_HTML_Skin", "SobekEngineClient returned NULL for the requeted web skin");
+                Tracer.Add_Trace("SobekCM_Assistant.Get_HTML_Skin", "SobekEngineClient returned NULL for the requested web skin");
             }
 
             // Return the value

@@ -808,6 +808,9 @@ namespace SobekCM.Resource_Object.Database
                 }
             }
 
+            // Finally, have the database build the full citation based on each metadata element
+            Create_Full_Citation_Value(ThisPackage.Web.ItemID);
+
             // Return the item id
             return ThisPackage.Web.ItemID;
         }
@@ -2173,9 +2176,6 @@ namespace SobekCM.Resource_Object.Database
                 // Increment curent index
                 current_index += 10;
             }
-
-            // Finally, have the database build the full citation based on each metadata element
-            Create_Full_Citation_Value(ThisPackage.Web.ItemID);
 
             return true;
         }
@@ -4007,7 +4007,11 @@ namespace SobekCM.Resource_Object.Database
         {
             try
             {
-                DataSet returnSet = EalDbAccess.ExecuteDataset(DatabaseType, connectionString, CommandType.StoredProcedure, "SobekCM_QC_Get_Errors");
+                //Add the parameters to this command
+                EalDbParameter[] parameters = new EalDbParameter[1];
+                parameters[0] = new EalDbParameter("@itemID", ItemID);
+
+                DataSet returnSet = EalDbAccess.ExecuteDataset(DatabaseType, connectionString, CommandType.StoredProcedure, "SobekCM_QC_Get_Errors", parameters);
                 if ((returnSet != null) && (returnSet.Tables.Count > 0))
                 {
                     return returnSet.Tables[0];

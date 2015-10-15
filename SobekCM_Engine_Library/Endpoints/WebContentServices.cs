@@ -9,16 +9,19 @@ using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.Caching;
+using System.Web.UI.WebControls;
 using System.Xml.Serialization;
 using Jil;
 using ProtoBuf;
 using SobekCM.Core.MemoryMgmt;
+using SobekCM.Core.Message;
 using SobekCM.Core.WebContent;
 using SobekCM.Core.WebContent.Admin;
 using SobekCM.Core.WebContent.Hierarchy;
 using SobekCM.Core.WebContent.Single;
 using SobekCM.Engine_Library.ApplicationState;
 using SobekCM.Engine_Library.Database;
+using SobekCM.Engine_Library.JSON_Client_Helpers;
 using SobekCM.Engine_Library.Microservices;
 using SobekCM.Tools;
 using SolrNet.DSL;
@@ -84,7 +87,6 @@ namespace SobekCM.Engine_Library.Endpoints
                     Response.Output.WriteLine(ee.StackTrace);
                 }
                 return;
-                throw;
             }
             
 
@@ -221,6 +223,17 @@ namespace SobekCM.Engine_Library.Endpoints
                     {
                         returnValue = new HTML_Based_Content
                         {
+                            Title = basicInfo.Title,
+                            Level1 = basicInfo.Level1,
+                            Level2 = basicInfo.Level2,
+                            Level3 = basicInfo.Level3,
+                            Level4 = basicInfo.Level4,
+                            Level5 = basicInfo.Level5,
+                            Level6 = basicInfo.Level6,
+                            Level7 = basicInfo.Level7,
+                            Level8 = basicInfo.Level8,
+                            Locked = basicInfo.Locked,
+                            Description = basicInfo.Summary,
                             Redirect = basicInfo.Redirect,
                             WebContentID = basicInfo.WebContentID
                         };
@@ -463,10 +476,773 @@ namespace SobekCM.Engine_Library.Endpoints
             // Add a trace
             tracer.Add_Trace("WebContentServices.Delete_HTML_Based_Content");
 
-            string message = "Currently disabled";
+            // Validate the web content id exists in the URL
+            int webcontentId;
+            if ((UrlSegments.Count == 0) || (!Int32.TryParse(UrlSegments[0], out webcontentId)))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Invalid URL.  WebContentID missing from URL"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Validate the username is present
+            if (String.IsNullOrEmpty(RequestForm["User"]))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'User' is missing"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Get the username
+            string user = RequestForm["User"];
+
+
+            // Validate the milestone is present
+            if (String.IsNullOrEmpty(RequestForm["Reason"]))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'Reason' is missing"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Get the username
+            string reason = RequestForm["Reason"];
+
+            // Ensure the web page does not already exist
+            if (Engine_Database.WebContent_Delete_Page(webcontentId, reason, user, tracer))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Successful, null), Response, Protocol, null);
+                Response.StatusCode = 200;
+            }
+            else
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Error deleting the web content page", tracer.Text_Trace), Response, Protocol, null);
+                Response.StatusCode = 500;
+            }
+        }
+
+        // <summary> Delete a non-aggregational top-level web content, static HTML page or redirect </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="RequestForm"></param>
+        /// <param name="IsDebug"></param>
+        public void Update_HTML_Based_Content(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            // Add a trace
+            tracer.Add_Trace("WebContentServices.AddUpdate_HTML_Based_Content");
+
+            // Validate the web content id exists in the URL
+            int webcontentId;
+            if ((UrlSegments.Count == 0) || (!Int32.TryParse(UrlSegments[0], out webcontentId)))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Invalid URL.  WebContentID missing from URL"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Get and validate the required USER (string) posted request object
+            if ((RequestForm["User"] == null) || (String.IsNullOrEmpty(RequestForm["User"])))
+            {
+                Serialize( new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'User' is missing") , Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+            string user = RequestForm["User"];
+
+            // Get and validate the required CONTENT (HTML_Based_Content) posted request objects
+            if ((RequestForm["Content"] == null) || (String.IsNullOrEmpty(RequestForm["Content"])))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'Content' is missing"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            string contentString = RequestForm["Content"];
+            HTML_Based_Content content = null;
+            try
+            {
+                switch (Protocol)
+                {
+                    case Microservice_Endpoint_Protocol_Enum.JSON:
+                    case Microservice_Endpoint_Protocol_Enum.JSON_P:
+                        content = JSON.Deserialize<HTML_Based_Content>(contentString);
+                        break;
+
+                    case Microservice_Endpoint_Protocol_Enum.PROTOBUF:
+                        // Deserialize using the Protocol buffer-net library
+                        byte[] byteArray = Encoding.ASCII.GetBytes(contentString);
+                        MemoryStream mstream = new MemoryStream(byteArray);
+                        content = Serializer.Deserialize<HTML_Based_Content>(mstream);
+                        break;
+
+                    case Microservice_Endpoint_Protocol_Enum.XML:
+                        byte[] byteArray2 = Encoding.UTF8.GetBytes(contentString);
+                        MemoryStream mstream2 = new MemoryStream(byteArray2);
+                        XmlSerializer x = new XmlSerializer(typeof(Content));
+                        content = (HTML_Based_Content)x.Deserialize(mstream2);
+                        break;
+                }
+            }
+            catch (Exception ee)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Unable to deserialize 'Content' parameter to HTML_Based_Content: " + ee.Message), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // If content wasnot successfully deserialized, return error
+            if ( content == null )
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Unable to deserialize 'Content' parameter to HTML_Based_Content"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Level1 must be neither NULL nor empty
+            if (String.IsNullOrEmpty(content.Level1))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Level1 of the content cannot be null or empty"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Valiodate the web content id in the URL matches the object
+            if (webcontentId != content.WebContentID)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "WebContentID from URL does not match Content posted object"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // You can't change the URL segments, so pull the current object to ensure that wasn't done
+            HTML_Based_Content currentContent = CachedDataManager.WebContent.Retrieve_Page_Details(webcontentId, tracer);
+
+            // If nothing was retrieved, build it
+            if (currentContent == null)
+            {
+                // Try to read and return the html based content 
+                // Get the details from the database
+                WebContent_Basic_Info basicInfo = Engine_Database.WebContent_Get_Page(webcontentId, tracer);
+                if (basicInfo == null)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("Unable to pull web content data from the database");
+                    Response.StatusCode = 500;
+                    return;
+                }
+
+                // Set the content levels from the database object
+                content.Level1 = basicInfo.Level1;
+                content.Level2 = basicInfo.Level2;
+                content.Level3 = basicInfo.Level3;
+                content.Level4 = basicInfo.Level4;
+                content.Level5 = basicInfo.Level5;
+                content.Level6 = basicInfo.Level6;
+                content.Level7 = basicInfo.Level7;
+                content.Level8 = basicInfo.Level8;
+
+
+                // If this has a redirect, return
+                if (!String.IsNullOrEmpty(basicInfo.Redirect))
+                {
+                    currentContent = new HTML_Based_Content
+                    {
+                        Title = basicInfo.Title,
+                        Level1 = basicInfo.Level1,
+                        Level2 = basicInfo.Level2,
+                        Level3 = basicInfo.Level3,
+                        Level4 = basicInfo.Level4,
+                        Level5 = basicInfo.Level5,
+                        Level6 = basicInfo.Level6,
+                        Level7 = basicInfo.Level7,
+                        Level8 = basicInfo.Level8,
+                        Locked = basicInfo.Locked,
+                        Description = basicInfo.Summary,
+                        Redirect = basicInfo.Redirect,
+                        WebContentID = basicInfo.WebContentID
+                    };
+                }
+                else
+                {
+                    // Build the HTML content
+                    WebContentEndpointErrorEnum errorType;
+                    currentContent = read_source_file(basicInfo, tracer, out errorType);
+                }
+            }
+
+            // If the current value was pulled, determine what has been changed for the database note
+            string changeMessage = "Updated web page";
+            if (currentContent != null)
+            {
+                // If the redirect changed, just make that the message
+                string currRedirect = String.Empty;
+                string newRedirect = String.Empty;
+                if (!String.IsNullOrEmpty(content.Redirect)) newRedirect = content.Redirect;
+                if (!String.IsNullOrEmpty(currentContent.Redirect)) currRedirect = currentContent.Redirect;
+                if (String.Compare(newRedirect, currRedirect, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    if ((newRedirect.Length > 0) && (currRedirect.Length > 0))
+                    {
+                        changeMessage = "Changed redirect URL";
+                    }
+                    else if ( newRedirect.Length == 0 )
+                    {
+                        changeMessage = "Removed redirect URL";
+                    }
+                    else
+                    {
+                        changeMessage = "Added redirect URL";
+                    }
+                }
+                else if (!AreEqual(content.ContentSource, currentContent.ContentSource))
+                {
+                    changeMessage = "Updated the text/html";
+                }
+                else
+                {
+                    List<string> updatesBuilderList = new List<string>();
+                    if (!AreEqual(content.Author, currentContent.Author)) updatesBuilderList.Add("Author");
+                    if (!AreEqual(content.Banner, currentContent.Banner)) updatesBuilderList.Add("Banner");
+                    if (!AreEqual(content.CssFile, currentContent.CssFile)) updatesBuilderList.Add("Stylesheet");
+                    if (!AreEqual(content.Description, currentContent.Description)) updatesBuilderList.Add("Description");
+                    if (!AreEqual(content.Extra_Head_Info, currentContent.Extra_Head_Info)) updatesBuilderList.Add("Header Data");
+                    if (!AreEqual(content.JavascriptFile, currentContent.JavascriptFile)) updatesBuilderList.Add("Javascript");
+                    if (!AreEqual(content.Keywords, currentContent.Keywords)) updatesBuilderList.Add("Keywords");
+                    if (!AreEqual(content.SiteMap, currentContent.SiteMap)) updatesBuilderList.Add("Tree Nav Group");
+                    if (!AreEqual(content.Title, currentContent.Title)) updatesBuilderList.Add("Title");
+                    if (!AreEqual(content.Web_Skin, currentContent.Web_Skin)) updatesBuilderList.Add("Web Skin");
+
+                    if (updatesBuilderList.Count > 0)
+                    {
+                        if (updatesBuilderList.Count == 1)
+                        {
+                            changeMessage = "Updated the " + updatesBuilderList[0];
+                        }
+                        if (updatesBuilderList.Count == 2)
+                        {
+                            changeMessage = "Updated the " + updatesBuilderList[0] + " and " + updatesBuilderList[1];
+                        }
+                        if (updatesBuilderList.Count > 2)
+                        {
+                            StringBuilder updatesBuilder = new StringBuilder("Updated the ");
+                            for (int i = 0; i < updatesBuilderList.Count; i++)
+                            {
+                                if (i == 0)
+                                    updatesBuilder.Append(updatesBuilderList[0]);
+                                else if (i < updatesBuilderList.Count - 1)
+                                {
+                                    updatesBuilder.Append(", " + updatesBuilderList[i]);
+                                }
+                                else
+                                {
+                                    updatesBuilder.Append(", and " + updatesBuilderList[i]);
+                                }
+                            }
+                            changeMessage = updatesBuilder.ToString();
+                        }
+                    }
+                }
+            }
+
+            // Get the location for this HTML file to be saved
+            StringBuilder dirBuilder = new StringBuilder(Engine_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + content.Level1);
+            if (!String.IsNullOrEmpty(content.Level2))
+            {
+                dirBuilder.Append("\\" + content.Level2);
+                if (!String.IsNullOrEmpty(content.Level3))
+                {
+                    dirBuilder.Append("\\" + content.Level3);
+                    if (!String.IsNullOrEmpty(content.Level4))
+                    {
+                        dirBuilder.Append("\\" + content.Level4);
+                        if (!String.IsNullOrEmpty(content.Level5))
+                        {
+                            dirBuilder.Append("\\" + content.Level5);
+                            if (!String.IsNullOrEmpty(content.Level6))
+                            {
+                                dirBuilder.Append("\\" + content.Level6);
+                                if (!String.IsNullOrEmpty(content.Level7))
+                                {
+                                    dirBuilder.Append("\\" + content.Level7);
+                                    if (!String.IsNullOrEmpty(content.Level8))
+                                    {
+                                        dirBuilder.Append("\\" + content.Level8);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ensure this directory exists
+            if (!Directory.Exists(dirBuilder.ToString()))
+            {
+                try
+                {
+                    Directory.CreateDirectory(dirBuilder.ToString());
+                }
+                catch (Exception)
+                {
+                    Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to create the directory for this web content page"), Response, Protocol, null);
+                    Response.StatusCode = 500;
+                    return;
+                }
+            }
+
+            // Save the HTML file to the file system
+            try
+            {
+                string fileName = Path.Combine(dirBuilder.ToString(), "default.html");
+
+                // Make a backup from today, if none made yet
+                if (File.Exists(fileName))
+                {
+                    DateTime lastWrite = (new FileInfo(fileName)).LastWriteTime;
+                    string new_file = fileName.ToLower().Replace(".txt", "").Replace(".html", "").Replace(".htm", "") + lastWrite.Year + lastWrite.Month.ToString().PadLeft(2, '0') + lastWrite.Day.ToString().PadLeft(2, '0') + ".bak";
+                    if (File.Exists(new_file))
+                        File.Delete(new_file);
+                    File.Move(fileName, new_file);
+                }
+
+                // Save the updated file
+                content.Save_To_File(fileName);
+            }
+            catch (Exception)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to save HTML file for this web content page"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Save to the database
+            bool success;
+            try
+            {
+                success = Engine_Database.WebContent_Edit_Page(webcontentId, content.Title, content.Description, content.Redirect, user, changeMessage, tracer);
+                Engine_ApplicationCache_Gateway.WebContent_Hierarchy.Add_Single_Node(webcontentId, content.Redirect, content.Level1, content.Level2, content.Level3, content.Level4, content.Level5, content.Level6, content.Level7, content.Level8);
+            }
+            catch (Exception)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to save the information for the web content page to the database"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Clear the cache
+            CachedDataManager.WebContent.Clear_Page_Details(webcontentId);
+
+            // If this was a failure, return a message
+            if (!success)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to save the updated information to the database"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Build return value
+            RestResponseMessage message = new RestResponseMessage(ErrorRestTypeEnum.Successful, "Updated web page details");
+
+            // Set the URL
+            StringBuilder urlBuilder = new StringBuilder(Engine_ApplicationCache_Gateway.Settings.Base_URL + "/" + content.Level1);
+            if (!String.IsNullOrEmpty(content.Level2))
+            {
+                urlBuilder.Append("/" + content.Level2);
+                if (!String.IsNullOrEmpty(content.Level3))
+                {
+                    urlBuilder.Append("/" + content.Level3);
+                    if (!String.IsNullOrEmpty(content.Level4))
+                    {
+                        urlBuilder.Append("/" + content.Level4);
+                        if (!String.IsNullOrEmpty(content.Level5))
+                        {
+                            urlBuilder.Append("/" + content.Level5);
+                            if (!String.IsNullOrEmpty(content.Level6))
+                            {
+                                urlBuilder.Append("/" + content.Level6);
+                                if (!String.IsNullOrEmpty(content.Level7))
+                                {
+                                    urlBuilder.Append("/" + content.Level7);
+                                    if (!String.IsNullOrEmpty(content.Level8))
+                                    {
+                                        urlBuilder.Append("/" + content.Level8);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            message.URI = urlBuilder.ToString();
 
             // Use the base class to serialize the object according to request protocol
-            Serialize(message, Response, Protocol, "INVALID");
+            Serialize(message, Response, Protocol, null);
+        }
+
+        private static bool AreEqual(string a, string b)
+        {
+            if (String.IsNullOrEmpty(a))
+            {
+                return String.IsNullOrEmpty(b);
+            }
+            else if (String.IsNullOrEmpty(b))
+            {
+                return false;
+            }
+            else
+            {
+                return (String.Compare(a, b, StringComparison.OrdinalIgnoreCase) == 0);
+            }
+        }
+
+        // <summary> Add a new HTML based web content page or redirect to the system </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="RequestForm"></param>
+        /// <param name="IsDebug"></param>
+        public void Add_HTML_Based_Content(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            // Add a trace
+            tracer.Add_Trace("WebContentServices.Add_HTML_Based_Content");
+
+            //// Validate the web content id exists in the URL
+            //int webcontentId;
+            //if ((UrlSegments.Count == 0) || (!Int32.TryParse(UrlSegments[0], out webcontentId)))
+            //{
+            //    Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Invalid URL.  WebContentID missing from URL"), Response, Protocol, null);
+            //    Response.StatusCode = 400;
+            //    return;
+            //}
+
+            // Get and validate the required USER (string) posted request object
+            if (String.IsNullOrEmpty(RequestForm["User"]))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'User' is missing"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+            string user = RequestForm["User"];
+
+            // Get and validate the required CONTENT (HTML_Based_Content) posted request objects
+            if (String.IsNullOrEmpty(RequestForm["Content"]))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'Content' is missing"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            string contentString = RequestForm["Content"];
+            HTML_Based_Content content = null;
+            try
+            {
+                switch (Protocol)
+                {
+                    case Microservice_Endpoint_Protocol_Enum.JSON:
+                    case Microservice_Endpoint_Protocol_Enum.JSON_P:
+                        content = JSON.Deserialize<HTML_Based_Content>(contentString);
+                        break;
+
+                    case Microservice_Endpoint_Protocol_Enum.PROTOBUF:
+                        // Deserialize using the Protocol buffer-net library
+                        byte[] byteArray = Encoding.ASCII.GetBytes(contentString);
+                        MemoryStream mstream = new MemoryStream(byteArray);
+                        content = Serializer.Deserialize<HTML_Based_Content>(mstream);
+                        break;
+
+                    case Microservice_Endpoint_Protocol_Enum.XML:
+                        byte[] byteArray2 = Encoding.UTF8.GetBytes(contentString);
+                        MemoryStream mstream2 = new MemoryStream(byteArray2);
+                        XmlSerializer x = new XmlSerializer(typeof(Content));
+                        content = (HTML_Based_Content) x.Deserialize(mstream2);
+                        break;
+                }
+            }
+            catch (Exception ee)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Unable to deserialize 'Content' parameter to HTML_Based_Content: " + ee.Message), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // If content wasnot successfully deserialized, return error
+            if (content == null)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Unable to deserialize 'Content' parameter to HTML_Based_Content"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Level1 must be neither NULL nor empty
+            if (String.IsNullOrEmpty(content.Level1))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Level1 of the content cannot be null or empty"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Since this is a PUT verb, the URL should match the uploaded content
+            bool invalidUrl = ((UrlSegments.Count < 1) || (UrlSegments[0] != content.Level1));
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level2)) && ((UrlSegments.Count < 2) || (UrlSegments[1] != content.Level2))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level3)) && ((UrlSegments.Count < 3) || (UrlSegments[2] != content.Level3))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level4)) && ((UrlSegments.Count < 4) || (UrlSegments[3] != content.Level4))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level5)) && ((UrlSegments.Count < 5) || (UrlSegments[4] != content.Level5))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level6)) && ((UrlSegments.Count < 6) || (UrlSegments[5] != content.Level6))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level7)) && ((UrlSegments.Count < 7) || (UrlSegments[6] != content.Level7))) invalidUrl = true;
+            if ((!invalidUrl) && (!String.IsNullOrEmpty(content.Level8)) && ((UrlSegments.Count < 8) || (UrlSegments[7] != content.Level8))) invalidUrl = true;
+
+            // Valiodate the web content id in the URL matches the object
+            if (invalidUrl)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "URL of PUT request does not match Content posted object"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Ensure the first segment is not a reserved word
+            foreach (string thisReserved in Engine_ApplicationCache_Gateway.Settings.Reserved_Keywords)
+            {
+                if (String.Compare(thisReserved, content.Level1, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Level1 cannot be a system reserved word."), Response, Protocol, null);
+                    Response.StatusCode = 400;
+                    return;
+                }
+            }
+
+            // Look for the inherit flag, if it is possible there is a parent (i.e, at least segment 2)
+            if (UrlSegments.Count > 1)
+            {
+                // Get the inherit from parent flag
+                bool inheritFromParent = ((RequestForm["Inherit"] != null) && (RequestForm["Inherit"].ToUpper() == "TRUE"));
+
+                if (inheritFromParent)
+                {
+                    // Copy the current URL segment list
+                    List<string> parentCheck = new List<string>(8);
+                    parentCheck.AddRange(UrlSegments);
+
+                    // Remove the last one
+                    while (parentCheck.Count > 0)
+                    {
+                        parentCheck.RemoveAt(parentCheck.Count - 1);
+
+                        // Is this a match?
+                        WebContent_Hierarchy_Node possibleParent = Engine_ApplicationCache_Gateway.WebContent_Hierarchy.Find(parentCheck);
+                        if (possibleParent != null)
+                        {
+                            // Declare the return object and look this up in the cache by ID
+                            HTML_Based_Content parentValue = CachedDataManager.WebContent.Retrieve_Page_Details(possibleParent.WebContentID, tracer);
+
+                            // If nothing was retrieved, build it
+                            if (parentValue == null)
+                            {
+
+                                // Try to read and return the html based content 
+                                // Get the details from the database
+                                WebContent_Basic_Info parentBasicInfo = Engine_Database.WebContent_Get_Page(possibleParent.WebContentID, tracer);
+                                if ((parentBasicInfo != null) && (!String.IsNullOrEmpty(parentBasicInfo.Redirect)))
+                                {
+                                    // Try to Build the HTML content
+                                    WebContentEndpointErrorEnum errorType;
+                                    parentValue = read_source_file(parentBasicInfo, tracer, out errorType);
+                                    if (parentValue != null)
+                                    {
+                                        // Since everything was found, copy over the values and stop looking for a parent
+                                        if (!String.IsNullOrEmpty(parentValue.Banner)) content.Banner = parentValue.Banner;
+                                        if (!String.IsNullOrEmpty(parentValue.CssFile)) content.CssFile = parentValue.CssFile;
+                                        if (!String.IsNullOrEmpty(parentValue.Extra_Head_Info)) content.Extra_Head_Info = parentValue.Extra_Head_Info;
+                                        if (parentValue.IncludeMenu.HasValue) content.IncludeMenu = parentValue.IncludeMenu;
+                                        if (!String.IsNullOrEmpty(parentValue.JavascriptFile)) content.JavascriptFile = parentValue.JavascriptFile;
+                                        if (!String.IsNullOrEmpty(parentValue.SiteMap)) content.SiteMap = parentValue.SiteMap;
+                                        if (!String.IsNullOrEmpty(parentValue.Web_Skin)) content.Web_Skin = parentValue.Web_Skin;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+
+            // Get the location for this HTML file to be saved
+            StringBuilder dirBuilder = new StringBuilder(Engine_ApplicationCache_Gateway.Settings.Base_Directory + "design\\webcontent\\" + content.Level1);
+            if (!String.IsNullOrEmpty(content.Level2))
+            {
+                dirBuilder.Append("\\" + content.Level2);
+                if (!String.IsNullOrEmpty(content.Level3))
+                {
+                    dirBuilder.Append("\\" + content.Level3);
+                    if (!String.IsNullOrEmpty(content.Level4))
+                    {
+                        dirBuilder.Append("\\" + content.Level4);
+                        if (!String.IsNullOrEmpty(content.Level5))
+                        {
+                            dirBuilder.Append("\\" + content.Level5);
+                            if (!String.IsNullOrEmpty(content.Level6))
+                            {
+                                dirBuilder.Append("\\" + content.Level6);
+                                if (!String.IsNullOrEmpty(content.Level7))
+                                {
+                                    dirBuilder.Append("\\" + content.Level7);
+                                    if (!String.IsNullOrEmpty(content.Level8))
+                                    {
+                                        dirBuilder.Append("\\" + content.Level8);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ensure this directory exists
+            if (!Directory.Exists(dirBuilder.ToString()))
+            {
+                try
+                {
+                    Directory.CreateDirectory(dirBuilder.ToString());
+                }
+                catch (Exception)
+                {
+                    Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to create the directory for this web content page"), Response, Protocol, null);
+                    Response.StatusCode = 500;
+                    return;
+                }
+            }
+
+            // Save the HTML file to the file system
+            try
+            {
+                string fileName = Path.Combine(dirBuilder.ToString(), "default.html");
+                if (!File.Exists(fileName))
+                {
+                    content.Save_To_File(fileName);
+                }
+            }
+            catch (Exception)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to save HTML file for this web content page"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+            // Save to the database
+            try
+            {
+                int webcontentid = Engine_Database.WebContent_Add_Page(content.Level1, content.Level2, content.Level3, content.Level4, content.Level5, content.Level6, content.Level7, content.Level8, user, content.Title, content.Description, content.Redirect, tracer);
+                Engine_ApplicationCache_Gateway.WebContent_Hierarchy.Add_Single_Node(webcontentid, content.Redirect, content.Level1, content.Level2, content.Level3, content.Level4, content.Level5, content.Level6, content.Level7, content.Level8);
+            }
+            catch (Exception)
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Unable to save the information for the new web content page to the database"), Response, Protocol, null);
+                Response.StatusCode = 500;
+                return;
+            }
+
+
+            // Build return value
+            RestResponseMessage message = new RestResponseMessage(ErrorRestTypeEnum.Successful, "Added new page");
+
+            // Set the URL
+            StringBuilder urlBuilder = new StringBuilder(Engine_ApplicationCache_Gateway.Settings.Base_URL + "/" + content.Level1);
+            if (!String.IsNullOrEmpty(content.Level2))
+            {
+                urlBuilder.Append("/" + content.Level2);
+                if (!String.IsNullOrEmpty(content.Level3))
+                {
+                    urlBuilder.Append("/" + content.Level3);
+                    if (!String.IsNullOrEmpty(content.Level4))
+                    {
+                        urlBuilder.Append("/" + content.Level4);
+                        if (!String.IsNullOrEmpty(content.Level5))
+                        {
+                            urlBuilder.Append("/" + content.Level5);
+                            if (!String.IsNullOrEmpty(content.Level6))
+                            {
+                                urlBuilder.Append("/" + content.Level6);
+                                if (!String.IsNullOrEmpty(content.Level7))
+                                {
+                                    urlBuilder.Append("/" + content.Level7);
+                                    if (!String.IsNullOrEmpty(content.Level8))
+                                    {
+                                        urlBuilder.Append("/" + content.Level8);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            message.URI = urlBuilder.ToString();
+
+            // Use the base class to serialize the object according to request protocol
+            Serialize(message, Response, Protocol, null);
+        }
+
+        // <summary> Add a milestone to a static HTML page or redirect </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="RequestForm"></param>
+        /// <param name="IsDebug"></param>
+        public void Add_Milestone(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            // Add a trace
+            tracer.Add_Trace("WebContentServices.Add_Milestone");
+
+            // Validate the web content id exists in the URL
+            int webcontentId;
+            if ((UrlSegments.Count == 0) || (!Int32.TryParse(UrlSegments[0], out webcontentId)))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Invalid URL.  WebContentID missing from URL"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+
+            // Get and validate the required USER (string) posted request object
+            if ((RequestForm["User"] == null) || (String.IsNullOrEmpty(RequestForm["User"])))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'User' is missing"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+            string user = RequestForm["User"];
+
+            // Get and validate the required MILESTONE (string) posted request object
+            if ((RequestForm["Milestone"] == null) || (String.IsNullOrEmpty(RequestForm["Milestone"])))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.InputError, "Required posted object 'Milestone' is missing"), Response, Protocol, null);
+                Response.StatusCode = 400;
+                return;
+            }
+            string milestone = RequestForm["Milestone"];
+
+            // Ensure the web page does not already exist
+            if (Engine_Database.WebContent_Add_Milestone(webcontentId, milestone, user, tracer))
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Successful, null), Response, Protocol, null);
+                Response.StatusCode = 200;
+            }
+            else
+            {
+                Serialize(new RestResponseMessage(ErrorRestTypeEnum.Exception, "Error adding milestone to database", tracer.Text_Trace), Response, Protocol, null);
+                Response.StatusCode = 500;
+            }
+
+            // Clear any cached list of global updates
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates();
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates_NextLevel();
+            CachedDataManager.WebContent.Clear_Global_Recent_Updates_Users();
         }
 
         /// <summary> Gets the special missing web content page, used when a requested resource is missing </summary>
@@ -607,263 +1383,6 @@ namespace SobekCM.Engine_Library.Endpoints
             // Use the base class to serialize the object according to request protocol
             Serialize(simpleWebContent, Response, Protocol, json_callback);
 
-        }
-
-
-        /// <summary> Add a new HTML web content page </summary>
-        /// <param name="Response"></param>
-        /// <param name="UrlSegments"></param>
-        /// <param name="Protocol"></param>
-        /// <param name="RequestForm"></param>
-        public void Add_HTML_Based_Content(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm)
-        {
-            // Create the custom tracer
-            Custom_Tracer tracer = new Custom_Tracer();
-
-            // Validate the username is present
-            if (String.IsNullOrEmpty(RequestForm["User"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'User' (name of user) is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the username
-            string user = RequestForm["User"];
-
-            // Validate the new page information
-            if (String.IsNullOrEmpty(RequestForm["PageInfo"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'PageInfo' is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the page information and deserialize, according to the indicated protocol
-            string pageInfoString = RequestForm["PageInfo"];
-            WebContent_Basic_Info basicInfo = null;
-            try
-            {
-                switch (Protocol)
-                {
-                    case Microservice_Endpoint_Protocol_Enum.JSON:
-                        basicInfo = JSON.Deserialize<WebContent_Basic_Info>(pageInfoString);
-                        break;
-
-                    case Microservice_Endpoint_Protocol_Enum.XML:
-                        XmlSerializer x = new XmlSerializer(typeof(WebContent_Basic_Info));
-                        using (TextReader reader = new StringReader(pageInfoString))
-                        {
-                            basicInfo = (WebContent_Basic_Info) x.Deserialize(reader);
-                        }
-                        break;
-
-                    case Microservice_Endpoint_Protocol_Enum.PROTOBUF:
-                        using (MemoryStream m = new MemoryStream(Encoding.Unicode.GetBytes(pageInfoString ?? "")))
-                        {
-                            basicInfo = Serializer.Deserialize<WebContent_Basic_Info>(m);
-                        }
-                        break;
-                }
-            }
-            catch (Exception)
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Error deserializing 'PageInfo' into the Web_Content_Basic_Info object.\"");
-                Response.End();
-                return;
-            }
-
-            // Should not ever get here
-            if (basicInfo == null)
-                return;
-
-            // Get the levels from the URL request
-            string level1 = UrlSegments.Count > 0 ? UrlSegments[0] : null;
-            string level2 = UrlSegments.Count > 1 ? UrlSegments[1] : null;
-            string level3 = UrlSegments.Count > 2 ? UrlSegments[2] : null;
-            string level4 = UrlSegments.Count > 3 ? UrlSegments[3] : null;
-            string level5 = UrlSegments.Count > 4 ? UrlSegments[4] : null;
-            string level6 = UrlSegments.Count > 5 ? UrlSegments[5] : null;
-            string level7 = UrlSegments.Count > 6 ? UrlSegments[6] : null;
-            string level8 = UrlSegments.Count > 7 ? UrlSegments[7] : null;
-
-            // Ensure the web page does not already exist
-            int newContentId = Engine_Database.WebContent_Add_Page(level1, level2, level3, level4, level5, level6, level7, level8, user, basicInfo.Title, basicInfo.Summary, basicInfo.Redirect, tracer);
-
-            // If this is -1, then an error occurred
-            if (newContentId < 0)
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Error adding the new web page.\"");
-                Response.End();
-                return;
-            }
-
-            // Assign the ID to the page
-            basicInfo.WebContentID = newContentId;
-
-            // Send back the result
-            Response.StatusCode = 201;
-            Serialize(basicInfo, Response, Protocol, "addHtmlBasedContent");
-        }
-
-        /// <summary> Add a milestone to an existing web content page </summary>
-        /// <param name="Response"></param>
-        /// <param name="UrlSegments"></param>
-        /// <param name="Protocol"></param>
-        /// <param name="RequestForm"></param>
-        public void Add_WebContent_Milestone(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm)
-        {
-            // Create the custom tracer
-            Custom_Tracer tracer = new Custom_Tracer();
-
-            // Validate the username is present
-            if (String.IsNullOrEmpty(RequestForm["User"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'User' (name of user) is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the username
-            string user = RequestForm["User"];
-
-            // Validate the new page information
-            if (String.IsNullOrEmpty(RequestForm["WebContentID"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'WebContentID' is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the webcontent id
-            string id_as_string = RequestForm["WebContentID"];
-            int id;
-            if (!Int32.TryParse(id_as_string, out id))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Invalid data type for  'WebContentID'.  Expected integer.\"");
-                Response.End();
-                return;
-            }
-
-            // Validate the milestone is present
-            if (String.IsNullOrEmpty(RequestForm["Milestone"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'Milestone' is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the username
-            string milestone = RequestForm["Milestone"];
-
-
-            // Ensure the web page does not already exist
-            if (Engine_Database.WebContent_Add_Milestone(id, milestone, user, tracer))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 200;
-                Response.Output.WriteLine("\"OK\"");
-                Response.End();
-                return;
-            }
-
-            // AN error occurred
-            Response.ContentType = "text/plain";
-            Response.StatusCode = 500;
-            Response.Output.WriteLine("\"Unknown error adding the milestone\"");
-            Response.End();
-        }
-
-        /// <summary> Delete a web content page </summary>
-        /// <param name="Response"></param>
-        /// <param name="UrlSegments"></param>
-        /// <param name="Protocol"></param>
-        /// <param name="RequestForm"></param>
-        public void Delete_WebContent_Page(HttpResponse Response, List<string> UrlSegments, Microservice_Endpoint_Protocol_Enum Protocol, NameValueCollection RequestForm)
-        {
-            // Create the custom tracer
-            Custom_Tracer tracer = new Custom_Tracer();
-
-            // Validate the username is present
-            if (String.IsNullOrEmpty(RequestForm["User"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'User' (name of user) is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the username
-            string user = RequestForm["User"];
-
-            // Validate the new page information
-            if (String.IsNullOrEmpty(RequestForm["WebContentID"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'WebContentID' is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the webcontent id
-            string id_as_string = RequestForm["WebContentID"];
-            int id;
-            if (!Int32.TryParse(id_as_string, out id))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Invalid data type for  'WebContentID'.  Expected integer.\"");
-                Response.End();
-                return;
-            }
-
-            // Validate the milestone is present
-            if (String.IsNullOrEmpty(RequestForm["Reason"]))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 500;
-                Response.Output.WriteLine("\"INVALID REQUEST: Required posted 'Reason' is missing.\"");
-                Response.End();
-                return;
-            }
-
-            // Get the username
-            string milestone = RequestForm["Reason"];
-
-
-            // Ensure the web page does not already exist
-            if (Engine_Database.WebContent_Delete_Page(id, milestone, user, tracer))
-            {
-                Response.ContentType = "text/plain";
-                Response.StatusCode = 200;
-                Response.Output.WriteLine("\"OK\"");
-                Response.End();
-                return;
-            }
-
-            // AN error occurred
-            Response.ContentType = "text/plain";
-            Response.StatusCode = 500;
-            Response.Output.WriteLine("\"Unknown error deleting the web content page\"");
-            Response.End();
         }
 
         /// <summary> Get the list of milestones affecting a single (non aggregation affiliated) static web content page </summary>
@@ -1038,6 +1557,107 @@ namespace SobekCM.Engine_Library.Endpoints
                 Response.Output.WriteLine("Invalid parameter - expects primary key integer value to the web content object (WebContentID) as part of URL");
                 Response.StatusCode = 500;
             }
+        }
+
+        /// <summary> [PUBLIC] Get the list of uploaded images for a particular aggregation </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="QueryString"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="IsDebug"></param>
+        /// <remarks> This REST API should be publicly available for users that are performing administrative work </remarks>
+        public void GetUploadedImages(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, Microservice_Endpoint_Protocol_Enum Protocol, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            tracer.Add_Trace("WebContentServices.GetUploadedImages", "Compute web content id from url segments");
+
+            // If no URL segments, then invalid
+            if (UrlSegments.Count == 0)
+            {
+                Response.ContentType = "text/plain";
+                Response.Output.WriteLine("Invalid request : must include URL segments to specify the web content page");
+                Response.StatusCode = 400;
+            }
+
+            if (Engine_ApplicationCache_Gateway.WebContent_Hierarchy == null)
+            {
+                tracer.Add_Trace("WebContentServices.GetUploadedImages", "Unable to pull web content hierarchy from engine application cache");
+
+                Response.ContentType = "text/plain";
+                Response.Output.WriteLine("Unable to pull web content hierarchy from engine application cache");
+                Response.StatusCode = 500;
+
+                // If this was debug mode, then just write the tracer
+                if (IsDebug)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("DEBUG MODE DETECTED");
+                    Response.Output.WriteLine();
+                    Response.Output.WriteLine(tracer.Text_Trace);
+                }
+
+                return;
+            }
+
+            // Look this up from the web content hierarchy object
+            WebContent_Hierarchy_Node matchedNode = Engine_ApplicationCache_Gateway.WebContent_Hierarchy.Find(UrlSegments);
+            if (matchedNode == null)
+            {
+                tracer.Add_Trace("WebContentServices.GetUploadedImages", "Requested page does not exist");
+
+                Response.ContentType = "text/plain";
+                Response.Output.WriteLine("Requested page does not exist");
+                Response.StatusCode = 404;
+
+                // If this was debug mode, then just write the tracer
+                if (IsDebug)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("DEBUG MODE DETECTED");
+                    Response.Output.WriteLine();
+                    Response.Output.WriteLine(tracer.Text_Trace);
+                }
+                return;
+            }
+
+            // Since we now know this is a valid web content page, let's just return the uploaded images
+            List<UploadedFileFolderInfo> serverFiles = new List<UploadedFileFolderInfo>();
+
+            // Build the folder which will include the uploads
+            StringBuilder designFolderBldr = new StringBuilder( "webcontent\\" + UrlSegments[0]);
+            if (UrlSegments.Count > 1) designFolderBldr.Append("\\" + UrlSegments[1]);
+            if (UrlSegments.Count > 2) designFolderBldr.Append("\\" + UrlSegments[2]);
+            if (UrlSegments.Count > 3) designFolderBldr.Append("\\" + UrlSegments[3]);
+            if (UrlSegments.Count > 4) designFolderBldr.Append("\\" + UrlSegments[4]);
+            if (UrlSegments.Count > 5) designFolderBldr.Append("\\" + UrlSegments[5]);
+            if (UrlSegments.Count > 6) designFolderBldr.Append("\\" + UrlSegments[6]);
+            if (UrlSegments.Count > 7) designFolderBldr.Append("\\" + UrlSegments[7]);
+
+            // Check that folder
+            string design_folder = Engine_ApplicationCache_Gateway.Settings.Base_Design_Location + designFolderBldr;
+            if (Directory.Exists(design_folder))
+            {
+                string foldername = "Uploads";
+
+                string[] files = SobekCM_File_Utilities.GetFiles(design_folder, "*.jpg|*.bmp|*.gif|*.png");
+                string design_url = Engine_ApplicationCache_Gateway.Settings.System_Base_URL + "design/" + designFolderBldr.ToString().Replace("\\", "/") + "/";
+                foreach (string thisFile in files)
+                {
+                    string filename = Path.GetFileName(thisFile);
+                    string extension = Path.GetExtension(thisFile);
+
+                    // Exclude some files
+                    if ((!String.IsNullOrEmpty(extension)) && (extension.ToLower().IndexOf(".db") < 0) && (extension.ToLower().IndexOf("bridge") < 0) && (extension.ToLower().IndexOf("cache") < 0))
+                    {
+                        string url = design_url + filename;
+                        serverFiles.Add(new UploadedFileFolderInfo(url, foldername));
+                    }
+                }
+            }
+
+            JSON.Serialize(serverFiles, Response.Output, Options.ISO8601ExcludeNulls);
+
         }
 
         #endregion
@@ -1341,42 +1961,52 @@ namespace SobekCM.Engine_Library.Endpoints
             // Create the view for sorting and filtering
             DataView resultsView = new DataView(changes.Tables[0]);
 
-            // Should a filter be applied?
-            if (!String.IsNullOrEmpty(QueryString["l1"]))
+            // Check for a user filter
+            string userFilter = QueryString["user"];
+            if (!String.IsNullOrWhiteSpace(userFilter))
             {
-                string level1_filter = QueryString["l1"];
-                if (!String.IsNullOrEmpty(QueryString["l2"]))
+                resultsView.RowFilter = "MilestoneUser='" + userFilter + "'";
+            }
+            else
+            {
+
+                // Should a filter be applied?
+                if (!String.IsNullOrEmpty(QueryString["l1"]))
                 {
-                    string level2_filter = QueryString["l2"];
-                    if (!String.IsNullOrEmpty(QueryString["l3"]))
+                    string level1_filter = QueryString["l1"];
+                    if (!String.IsNullOrEmpty(QueryString["l2"]))
                     {
-                        string level3_filter = QueryString["l3"];
-                        if (!String.IsNullOrEmpty(QueryString["l4"]))
+                        string level2_filter = QueryString["l2"];
+                        if (!String.IsNullOrEmpty(QueryString["l3"]))
                         {
-                            string level4_filter = QueryString["l4"];
-                            if (!String.IsNullOrEmpty(QueryString["l5"]))
+                            string level3_filter = QueryString["l3"];
+                            if (!String.IsNullOrEmpty(QueryString["l4"]))
                             {
-                                string level5_filter = QueryString["l5"];
-                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "' and Level5='" + level5_filter + "'";
+                                string level4_filter = QueryString["l4"];
+                                if (!String.IsNullOrEmpty(QueryString["l5"]))
+                                {
+                                    string level5_filter = QueryString["l5"];
+                                    resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "' and Level5='" + level5_filter + "'";
+                                }
+                                else
+                                {
+                                    resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "'";
+                                }
                             }
                             else
                             {
-                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "' and Level4='" + level4_filter + "'";
+                                resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "'";
                             }
                         }
                         else
                         {
-                            resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "' and Level3='" + level3_filter + "'";
+                            resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
                         }
                     }
                     else
                     {
-                        resultsView.RowFilter = "Level1='" + level1_filter + "' and Level2='" + level2_filter + "'";
+                        resultsView.RowFilter = "Level1='" + level1_filter + "'";
                     }
-                }
-                else
-                {
-                    resultsView.RowFilter = "Level1='" + level1_filter + "'";
                 }
             }
 
@@ -3957,7 +4587,10 @@ namespace SobekCM.Engine_Library.Endpoints
             {
                 // Start the JSON response for this row
                 DataRow thisRow = resultsView[i].Row;
-                Response.Output.Write("[ " + thisRow["WebContentID"] + ", ");
+                if (( thisRow["Redirect"] == DBNull.Value ) || ( thisRow["Redirect"].ToString().Length == 0 ))
+                    Response.Output.Write("[ \"" + thisRow["WebContentID"] + "\", ");
+                else
+                    Response.Output.Write("[ \"" + thisRow["WebContentID"] + "R\", ");
 
                 Response.Output.Write("\"" + thisRow["Level1"]);
                 if ((thisRow["Level2"] != DBNull.Value) && (!String.IsNullOrEmpty(thisRow["Level2"].ToString())))
@@ -4220,47 +4853,62 @@ namespace SobekCM.Engine_Library.Endpoints
             // Add a trace
             tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Get the list of all sitemaps");
 
-            // Get the sitemaps directory
-            string sitemap_directory = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, "webcontent", "sitemaps");
-            List<string> returnValue;
-            try
+            // Start the return object and look in the cache first
+            List<string> returnValue = CachedDataManager.WebContent.Retrieve_All_Sitemaps(tracer);
+            if (returnValue != null)
             {
-                // Get the sitemaps files from the directory
-                string[] sitemapFiles = Directory.GetFiles(sitemap_directory, "*.sitemap");
-                returnValue = new List<string>();
-                foreach (string thisSitemap in sitemapFiles)
-                {
-                    returnValue.Add(Path.GetFileName(thisSitemap).Replace(".sitemap", ""));
-                }
+                tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Found the list of sitemaps in the cache");
             }
-            catch (Exception ee)
+            else
             {
-                Response.ContentType = "text/plain";
-                Response.Output.WriteLine("Exception pulling the list of sitemap files - " + ee.Message);
-                Response.Output.WriteLine("Sitemap Directory: " + sitemap_directory );
-                Response.StatusCode = 500;
+                // Get the sitemaps directory
+                string sitemap_directory = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, "webcontent", "sitemaps");
 
-                // If this was debug mode, then write the tracer
-                if (IsDebug)
+                if ( IsDebug )
+                    tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Sitemap directory: " + sitemap_directory);
+
+                try
                 {
-                    tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Exception caught " + ee.Message);
-                    Response.Output.WriteLine();
-                    Response.Output.WriteLine();
-                    Response.Output.WriteLine("DEBUG MODE DETECTED");
-                    Response.Output.WriteLine();
-                    Response.Output.WriteLine(tracer.Text_Trace);
-                    Response.Output.WriteLine();
-                    Response.Output.WriteLine(ee.StackTrace);
+                    // Get the sitemaps files from the directory
+                    string[]  sitemapFiles = Directory.GetFiles(sitemap_directory, "*.sitemap");
+                    returnValue = new List<string>();
+                    foreach (string thisSitemap in sitemapFiles)
+                    {
+                        returnValue.Add(Path.GetFileName(thisSitemap).Replace(".sitemap", ""));
+                    }
                 }
-                return;
-                throw;
+                catch (Exception ee)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("Exception pulling the list of sitemap files - " + ee.Message);
+                    Response.Output.WriteLine("Sitemap Directory: " + sitemap_directory);
+                    Response.StatusCode = 500;
+
+                    // If this was debug mode, then write the tracer
+                    if (IsDebug)
+                    {
+                        tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Exception caught " + ee.Message);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine("DEBUG MODE DETECTED");
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(tracer.Text_Trace);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(ee.StackTrace);
+                    }
+                    return;
+                }
+
+                // Store back in the cache
+                tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Store sitemap list in the caceh");
+                CachedDataManager.WebContent.Store_All_Sitemaps(returnValue, tracer);
             }
 
             // If this was debug mode, then just write the tracer
             if (IsDebug)
             {
                 tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Debug mode detected");
-                tracer.Add_Trace("WebContentServices.Get_All_Sitemaps", "Sitemap directory: " + sitemap_directory);
+                
                 Response.ContentType = "text/plain";
                 Response.Output.WriteLine("DEBUG MODE DETECTED");
                 Response.Output.WriteLine();
@@ -4271,6 +4919,190 @@ namespace SobekCM.Engine_Library.Endpoints
 
             // Get the JSON-P callback function
             string json_callback = "parseAllSitemaps";
+            if ((Protocol == Microservice_Endpoint_Protocol_Enum.JSON_P) && (!String.IsNullOrEmpty(QueryString["callback"])))
+            {
+                json_callback = QueryString["callback"];
+            }
+
+            // Use the base class to serialize the object according to request protocol
+            Serialize(returnValue, Response, Protocol, json_callback);
+        }
+
+        #endregion
+
+        #region Methods related to the controlled javascript files
+
+        /// <summary> Gets the list of all controlled javascript files in the system </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="QueryString"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="IsDebug"></param>
+        public void Get_All_Controlled_Javascript(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, Microservice_Endpoint_Protocol_Enum Protocol, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            // Add a trace
+            tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Get the list of all controlled javascript files");
+
+            // Start the return object and look in the cache first
+            List<string> returnValue = CachedDataManager.WebContent.Retrieve_All_Controlled_Javascript(tracer);
+            if (returnValue != null)
+            {
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Found the list of controlled javascript files in the cache");
+            }
+            else
+            {
+                // Get the javascript directory
+                string javascript_directory = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, "webcontent", "javascript");
+
+                if (IsDebug)
+                    tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Javascript directory: " + javascript_directory);
+
+                try
+                {
+                    // Get the javascript files from the directory
+                    string[] sitemapFiles = Directory.GetFiles(javascript_directory, "*.js");
+                    returnValue = new List<string>();
+                    foreach (string thisSitemap in sitemapFiles)
+                    {
+                        returnValue.Add(Path.GetFileName(thisSitemap).Replace(".js", ""));
+                    }
+                }
+                catch (Exception ee)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("Exception pulling the list of controlled javascript files - " + ee.Message);
+                    Response.Output.WriteLine("Javascript Directory: " + javascript_directory);
+                    Response.StatusCode = 500;
+
+                    // If this was debug mode, then write the tracer
+                    if (IsDebug)
+                    {
+                        tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Exception caught " + ee.Message);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine("DEBUG MODE DETECTED");
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(tracer.Text_Trace);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(ee.StackTrace);
+                    }
+                    return;
+                }
+
+                // Store back in the cache
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Store controlled javascript files list in the caceh");
+                CachedDataManager.WebContent.Store_All_Controlled_Javascript(returnValue, tracer);
+            }
+
+            // If this was debug mode, then just write the tracer
+            if (IsDebug)
+            {
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Javascript", "Debug mode detected");
+
+                Response.ContentType = "text/plain";
+                Response.Output.WriteLine("DEBUG MODE DETECTED");
+                Response.Output.WriteLine();
+                Response.Output.WriteLine(tracer.Text_Trace);
+
+                return;
+            }
+
+            // Get the JSON-P callback function
+            string json_callback = "parseAllJavascripts";
+            if ((Protocol == Microservice_Endpoint_Protocol_Enum.JSON_P) && (!String.IsNullOrEmpty(QueryString["callback"])))
+            {
+                json_callback = QueryString["callback"];
+            }
+
+            // Use the base class to serialize the object according to request protocol
+            Serialize(returnValue, Response, Protocol, json_callback);
+        }
+
+        #endregion
+
+        #region Methods related to the controlled stylesheet files
+
+        /// <summary> Gets the list of all controlled stylesheet files in the system </summary>
+        /// <param name="Response"></param>
+        /// <param name="UrlSegments"></param>
+        /// <param name="QueryString"></param>
+        /// <param name="Protocol"></param>
+        /// <param name="IsDebug"></param>
+        public void Get_All_Controlled_Stylesheets(HttpResponse Response, List<string> UrlSegments, NameValueCollection QueryString, Microservice_Endpoint_Protocol_Enum Protocol, bool IsDebug)
+        {
+            Custom_Tracer tracer = new Custom_Tracer();
+
+            // Add a trace
+            tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Get the list of all controlled stylesheet files");
+
+            // Start the return object and look in the cache first
+            List<string> returnValue = CachedDataManager.WebContent.Retrieve_All_Controlled_Stylesheets(tracer);
+            if (returnValue != null)
+            {
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Found the list of controlled stylesheet files in the cache");
+            }
+            else
+            {
+                // Get the stylesheet directory
+                string stylesheet_directory = Path.Combine(Engine_ApplicationCache_Gateway.Settings.Base_Design_Location, "webcontent", "css");
+
+                if (IsDebug)
+                    tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Stylesheet directory: " + stylesheet_directory);
+
+                try
+                {
+                    // Get the stylesheet files from the directory
+                    string[] sitemapFiles = Directory.GetFiles(stylesheet_directory, "*.js");
+                    returnValue = new List<string>();
+                    foreach (string thisSitemap in sitemapFiles)
+                    {
+                        returnValue.Add(Path.GetFileName(thisSitemap).Replace(".js", ""));
+                    }
+                }
+                catch (Exception ee)
+                {
+                    Response.ContentType = "text/plain";
+                    Response.Output.WriteLine("Exception pulling the list of controlled stylesheet files - " + ee.Message);
+                    Response.Output.WriteLine("Stylesheet Directory: " + stylesheet_directory);
+                    Response.StatusCode = 500;
+
+                    // If this was debug mode, then write the tracer
+                    if (IsDebug)
+                    {
+                        tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Exception caught " + ee.Message);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine("DEBUG MODE DETECTED");
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(tracer.Text_Trace);
+                        Response.Output.WriteLine();
+                        Response.Output.WriteLine(ee.StackTrace);
+                    }
+                    return;
+                }
+
+                // Store back in the cache
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Store controlled stylesheet files list in the caceh");
+                CachedDataManager.WebContent.Store_All_Controlled_Stylesheets(returnValue, tracer);
+            }
+
+            // If this was debug mode, then just write the tracer
+            if (IsDebug)
+            {
+                tracer.Add_Trace("WebContentServices.Get_All_Controlled_Stylesheets", "Debug mode detected");
+
+                Response.ContentType = "text/plain";
+                Response.Output.WriteLine("DEBUG MODE DETECTED");
+                Response.Output.WriteLine();
+                Response.Output.WriteLine(tracer.Text_Trace);
+
+                return;
+            }
+
+            // Get the JSON-P callback function
+            string json_callback = "parseAllStylesheets";
             if ((Protocol == Microservice_Endpoint_Protocol_Enum.JSON_P) && (!String.IsNullOrEmpty(QueryString["callback"])))
             {
                 json_callback = QueryString["callback"];
@@ -4371,6 +5203,7 @@ namespace SobekCM.Engine_Library.Endpoints
                     simpleWebContent.Level6 = BasicInfo.Level6;
                     simpleWebContent.Level7 = BasicInfo.Level7;
                     simpleWebContent.Level8 = BasicInfo.Level8;
+                    if ((BasicInfo.Locked.HasValue) && (BasicInfo.Locked.Value)) simpleWebContent.Locked = true;
 
                     // Now, check for any "server-side include" directorives in the source text
                     int include_index = simpleWebContent.Content.IndexOf("<%INCLUDE");
